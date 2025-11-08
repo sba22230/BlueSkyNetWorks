@@ -1,0 +1,58 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+To download posts from Bluesky and run a network analysis in R, you’ll use the bskyr package to access Bluesky’s API, tidy the data into R-friendly formats, and then apply network analysis libraries like igraph or ggraph. The workflow is: install bskyr → authenticate → pull posts and relationships → clean and structure data → build a graph object → analyze and visualize.
+
+```{r}
+#install.packages(c("igraph", "tidygraph", "ggraph", "dplyr"))
+#install.packages("bskyr")
+```
+
+```{r}
+library(bskyr)
+
+bs_user <- bs_get_user()
+bs_pass <- bs_get_pass()
+bs_Auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
+```
+
+```{r}
+me <- bs_get_profile(actor = bs_user, auth = bs_Auth)
+print(me)
+
+```
+
+```{r}
+posts <- bs_search_posts("*", tag = 'speirgorm OR SpeirGorm OR Speirgorm', clean = TRUE)
+
+library(stringr)
+#posts$hashtags <- str_extract_all(posts$text, "#\\w+")
+
+```
+
+```{r}
+library(dplyr)
+edges <- posts %>%
+  select(author = author$did, reply_to = reply_parent) %>%
+  filter(!is.na(reply_to))
+
+nodes <- data.frame(name = unique(c(edges$author, edges$reply_to)))
+
+```
+
+```{r}
+library(igraph)
+g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+
+```
+
+```{r}
+library(ggraph)
+ggraph(g, layout = "fr") +
+  geom_edge_link(alpha = 0.3) +
+  geom_node_point(size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE)
+
+```
