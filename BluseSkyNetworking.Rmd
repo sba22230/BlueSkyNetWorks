@@ -38,10 +38,23 @@ bs_Auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
 ```
 
 ```{r}
-posts <- bs_search_posts("Jocelyn Bell Burnell",  clean = FALSE)
+resp <- bs_search_posts("Jocelyn Bell Burnell", clean = FALSE)
 # posts <- bs_get_post_thread('at://did:plc:znrkwcuzdbhduyqrbdpkl7pe/app.bsky.feed.post/3m54urlsan22g', 5, clean = FALSE)
 
-posts <-posts[[1]]$posts
+# Detect where the list of posts lives in the API response and extract it.
+# Possible shapes:
+# - resp$posts (named element)
+# - resp[[1]]$posts (wrapped in another list)
+# - resp itself is already a list of posts (each element has a uri/author etc)
+if (is.list(resp) && !is.null(resp$posts)) {
+    posts <- resp$posts
+} else if (is.list(resp) && length(resp) > 0 && is.list(resp[[1]]) && !is.null(resp[[1]]$posts)) {
+    posts <- resp[[1]]$posts
+} else if (is.list(resp) && length(resp) > 0 && all(vapply(resp, function(x) !is.null(x$uri), logical(1)))) {
+    posts <- resp
+} else {
+    stop("Unexpected structure returned by bs_search_posts(); inspect 'resp' to adapt parsing")
+}
 ```
 
 # Get reply texts and authors
@@ -75,18 +88,20 @@ post_reply_parent_uri <- map_chr(posts, ~ safe_chr(.x, "record", "reply", "paren
 ```
 
 ```{r}
-post_rplyuri <- map_chr(posts, function(x) {
-     if (!is.null(x$record$reply$parent$uri) && length(x$record$reply$parent$uri) > 0) {
-         x$record$reply$parent$uri
-     } else {
-         NA_character_
-     }
- })
+## reply parent uri is already extracted above into `post_reply_parent_uri` using safe extractor
+## (we keep the explicit chunk removed to avoid duplicated work)
 ```
 
 ```{r}
 # 5. Build edge list (who replied to whom)
-edges <- tibble(from = reply_authors, to = reply_targets)
+# Use the extracted vectors and join reply-parent URIs to posts to find parent authors.
+edges <- tibble(from = post_author, reply_parent = post_reply_parent_uri) %>%
+    filter(!is.na(reply_parent)) %>%
+    left_join(tibble(uri = post_uri, parent_author = post_author),
+                        by = c("reply_parent" = "uri")) %>%
+    transmute(from = from, to = parent_author) %>%
+    filter(!is.na(to) & !is.na(from)) %>%
+    distinct()
 
 # 6. Build node list
 nodes <- tibble(name = unique(c(edges$from, edges$to)))
@@ -99,13 +114,13 @@ g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 
 ```
 
-reply_authors \<- map_chr(replies, \~ .x\$post\$author\$handle)
-
+```{r}
+```
 ```{r}
 
 ggraph(g, layout = "fr") +
-  geom_edge_link(alpha = 0.3) +
-  geom_node_point(size = 5) +
-  geom_node_text(aes(label = name), repel = TRUE)
+    geom_edge_link(alpha = 0.3) +
+    geom_node_point(size = 5) +
+    geom_node_text(aes(label = name), repel = TRUE)
 
 ```
