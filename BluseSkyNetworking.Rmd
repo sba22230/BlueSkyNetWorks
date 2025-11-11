@@ -93,11 +93,31 @@ post_reply_parent_uri <- map_chr(posts, ~ safe_chr(.x, "record", "reply", "paren
 ```
 
 ```{r}
+# Build a tidy posts dataframe for downstream analysis and graph building
+# Columns: uri, author_handle, indexedAt, text, like_count, bookmark_count,
+# reply_count, repost_count, reply_parent_uri
+posts_df <- tibble(
+    uri = post_uri,
+    author_handle = post_author,
+    indexedAt = post_created,
+    text = post_text,
+    like_count = post_likedCnt,
+    bookmark_count = post_bookmrkCnt,
+    reply_count = post_rplyCnt,
+    repost_count = post_rpstCount,
+    reply_parent_uri = post_reply_parent_uri
+)
+
+# Quick peek (first rows)
+print(dplyr::select(posts_df, uri, author_handle, indexedAt, like_count, reply_count))
+```
+
+```{r}
 # 5. Build edge list (who replied to whom)
 # Use the extracted vectors and join reply-parent URIs to posts to find parent authors.
 edges <- tibble(from = post_author, reply_parent = post_reply_parent_uri) %>%
     filter(!is.na(reply_parent)) %>%
-    left_join(tibble(uri = post_uri, parent_author = post_author),
+    left_join(posts_df %>% select(uri, parent_author = author_handle),
                         by = c("reply_parent" = "uri")) %>%
     transmute(from = from, to = parent_author) %>%
     filter(!is.na(to) & !is.na(from)) %>%
