@@ -1,0 +1,143 @@
+library(bskyr)
+library(dplyr)
+library(lubridate)
+library(igraph)
+library(stringr)
+library(tidyr)
+library(purrr)
+library(tibble)
+library(ggraph)
+
+# authenticate
+bs_user <- bs_get_user()
+bs_pass <- bs_get_pass()
+bs_Auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
+
+
+resp <- bs_search_posts("Jocelyn Bell Burnell", clean = FALSE)
+# posts <- bs_get_post_thread('at://did:plc:znrkwcuzdbhduyqrbdpkl7pe/app.bsky.feed.post/3m54urlsan22g', 5, clean = FALSE)
+
+# Detect where the list of posts lives in the API response and extract it.
+# Possible shapes:
+# - resp$posts (named element)
+# - resp[[1]]$posts (wrapped in another list)
+# - resp itself is already a list of posts (each element has aView  uri/author etc)
+if (is.list(resp) && !is.null(resp$posts)) {
+  posts <- resp$posts
+} else if (is.list(resp) && length(resp) > 0 && is.list(resp[[1]]) && !is.null(resp[[1]]$posts)) {
+  posts <- resp[[1]]$posts
+} else if (is.list(resp) && length(resp) > 0 && all(vapply(resp, function(x) !is.null(x$uri), logical(1)))) {
+  posts <- resp
+} else {
+  stop("Unexpected structure returned by bs_search_posts(); inspect 'resp' to adapt parsing")
+}
+
+
+# Extract uri, author, created_at, text, likeCount, bookmarkCount, replyCount
+# repostCount, likeCount, quoteCount, and reply parent uri using safe extractors
+# This avoids errors when fields or nested elements are missing in the API response.
+
+# Safe extractor helpers using purrr::pluck (returns NA on missing)
+safe_chr <- function(x, ...) {
+  val <- purrr::pluck(x, ..., .default = NA_character_)
+  if (is.null(val)) NA_character_ else as.character(val)
+}
+safe_int <- function(x, ...) {
+  val <- purrr::pluck(x, ..., .default = NA_integer_)
+  if (is.null(val)) NA_integer_ else as.integer(val)
+}
+
+post_uri <- map_chr(posts, ~ safe_chr(.x, "uri"))
+post_author <- map_chr(posts, ~ safe_chr(.x, "author", "handle"))
+post_created <- map_chr(posts, ~ safe_chr(.x, "indexedAt"))
+post_text <- map_chr(posts, ~ safe_chr(.x, "record", "text"))
+post_likedCnt <- map_int(posts, ~ safe_int(.x, "likeCount"))
+post_bookmrkCnt <- map_int(posts, ~ safe_int(.x, "bookmarkCount"))
+post_rplyCnt <- map_int(posts, ~ safe_int(.x, "replyCount"))
+post_rpstCount <- map_int(posts, ~ safe_int(.x, "repostCount"))
+# reply parent uri if present (NA otherwise)
+post_reply_parent_uri <- map_chr(posts, ~ safe_chr(.x, "record", "reply", "parent", "uri"))
+
+
+# Build a tidy posts dataframe for downstream analysis and graph building
+# Columns: uri, author_handle, indexedAt, text, like_count, bookmark_count,
+# reply_count, repost_count, reply_parent_uri
+posts_df <- tibble(
+  uri = post_uri,
+  author_handle = post_author,
+  indexedAt = post_created,
+  text = post_text,
+  like_count = post_likedCnt,
+  bookmark_count = post_bookmrkCnt,
+  reply_count = post_rplyCnt,
+  repost_count = post_rpstCount,
+  reply_parent_uri = post_reply_parent_uri
+)
+
+# Quick peek (first rows)
+print(dplyr::select(posts_df, uri, author_handle, indexedAt, like_count, reply_count))
+
+
+
+# Robust hashtag extractor from record$facets
+# Returns a character vector of tags (without #) or character(0) if none
+extract_hashtags <- function(record) {
+  if (is.null(record) || is.null(record$facets)) return(character(0))
+  facets <- record$facets
+  tags <- purrr::map(facets, function(f) {
+    # facet may contain a features list or a single feature
+    feat <- tryCatch(f$features[[1]], error = function(e) NULL)
+    if (is.null(feat)) feat <- f$feature
+    if (is.null(feat)) return(NULL)
+    
+    # type can be in `$type` or `type`
+    ttype <- NULL
+    if (!is.null(feat[["$type"]])) ttype <- feat[["$type"]]
+    if (is.null(ttype) && !is.null(feat[["type"]])) ttype <- feat[["type"]]
+    
+    # If the facet indicates a tag, return the tag field if present
+    if (!is.null(ttype) && grepl("facet#tag", ttype)) {
+      if (!is.null(feat$tag)) return(feat$tag)
+      return(NULL)
+    }
+    
+    # Some facet shapes may expose tag directly on the feature
+    if (!is.null(feat$tag)) return(feat$tag)
+    NULL
+  })
+  tags <- purrr::compact(tags)
+  if (length(tags) == 0) character(0) else unique(unlist(tags))
+}
+
+# Extract hashtags for each post (list-column)
+post_hashtags <- purrr::map(posts, function(x) {
+  rec <- x$record
+  extract_hashtags(rec)
+})
+
+# Attach as a list-column to posts_df
+posts_df$hashtags <- post_hashtags
+
+## Quick check: show posts with hashtags
+print(head(dplyr::select(posts_df, uri, author_handle, hashtags)))
+
+
+# 5. Build edge list (who replied to whom)
+# Build edges directly from posts_df by joining reply_parent_uri back to posts_df$uri
+edges <- posts_df %>%
+  filter(!is.na(reply_parent_uri)) %>%
+  left_join(posts_df %>% select(uri, parent_author = author_handle),
+            by = c("reply_parent_uri" = "uri")) %>%
+  transmute(from = author_handle, to = parent_author) %>%
+  filter(!is.na(to) & !is.na(from)) %>%
+  distinct()
+
+# 6. Build node list
+nodes <- tibble(name = unique(c(edges$from, edges$to)))
+
+g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+
+ggraph(g, layout = "fr") +
+  geom_edge_link(alpha = 0.3) +
+  geom_node_point(size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE)
