@@ -3,53 +3,94 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-To download posts from Bluesky and run a network analysis in R, you’ll use the bskyr package to access Bluesky’s API, tidy the data into R-friendly formats, and then apply network analysis libraries like igraph or ggraph. The workflow is: install bskyr → authenticate → pull posts and relationships → clean and structure data → build a graph object → analyze and visualize.
+# Downloading BlueSky Posts
 
 ```{r}
 #install.packages(c("igraph", "tidygraph", "ggraph", "dplyr"))
 #install.packages("bskyr")
 ```
 
+Load libraries
+
 ```{r}
 library(bskyr)
+library(dplyr)
+library(lubridate)
+library(igraph)
+library(stringr)
+library(tidyr)
+library(purrr)
+library(tibble)
+library(ggraph)
+library(igraph)
+```
 
+Authenticate with BlueSky
+
+```{r}
 bs_user <- bs_get_user()
 bs_pass <- bs_get_pass()
 bs_Auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
 ```
 
 ```{r}
-me <- bs_get_profile(actor = bs_user, auth = bs_Auth)
-print(me)
+# me <- bs_get_profile(actor = bs_user, auth = bs_Auth)
+# print(me)
+```
+
+```{r}
+posts <- bs_search_posts("Jocelyn Bell Burnell",  clean = FALSE)
+# posts <- bs_get_post_thread('at://did:plc:znrkwcuzdbhduyqrbdpkl7pe/app.bsky.feed.post/3m54urlsan22g', 5, clean = FALSE)
+
+posts <-posts[[1]]$posts
+```
+
+# Get reply texts and authors
+
+```{r}
+# Extract uri, author, created_at, text, likeCount, bookmarkCount, replyCount
+# repostCount, likeCount, quoteCount, [["record"]][["reply"]][["parent"]][["uri"]]
+#
+post_uri <- map_chr(posts, ~ .x$uri)
+post_author <- map_chr(posts, ~ .x$author$handle)
+post_created <- map_chr(posts, ~ .x$indexedAt)
+post_text <- map_chr(posts, ~ .x$record$text)
+post_likedCnt <- map_int(posts, ~ .x$likeCount)
+post_bookmrkCnt <- map_int(posts, ~ .x$bookmarkCount)
+post_rplyCnt <- map_int(posts, ~ .x$replyCount)
+post_rpstCount <- map_int(posts, ~ .x$repostCount)
 
 ```
 
 ```{r}
-posts <- bs_search_posts("*", tag = 'speirgorm OR SpeirGorm OR Speirgorm', clean = TRUE)
+post_rplyuri <- map_chr(posts, function(x) {
+     if (!is.null(x$record$reply$parent$uri) && length(x$record$reply$parent$uri) > 0) {
+         x$record$reply$parent$uri
+     } else {
+         NA_character_
+     }
+ })
+```
 
-library(stringr)
-#posts$hashtags <- str_extract_all(posts$text, "#\\w+")
+```{r}
+# 5. Build edge list (who replied to whom)
+edges <- tibble(from = reply_authors, to = reply_targets)
+
+# 6. Build node list
+nodes <- tibble(name = unique(c(edges$from, edges$to)))
 
 ```
 
 ```{r}
-library(dplyr)
-edges <- posts %>%
-  select(author = author$did, reply_to = reply_parent) %>%
-  filter(!is.na(reply_to))
 
-nodes <- data.frame(name = unique(c(edges$author, edges$reply_to)))
-
-```
-
-```{r}
-library(igraph)
 g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 
 ```
 
+reply_authors \<- map_chr(replies, \~ .x\$post\$author\$handle)
+
 ```{r}
-library(ggraph)
+
 ggraph(g, layout = "fr") +
   geom_edge_link(alpha = 0.3) +
   geom_node_point(size = 5) +
