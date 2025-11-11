@@ -113,6 +113,50 @@ print(dplyr::select(posts_df, uri, author_handle, indexedAt, like_count, reply_c
 ```
 
 ```{r}
+# Robust hashtag extractor from record$facets
+# Returns a character vector of tags (without #) or character(0) if none
+extract_hashtags <- function(record) {
+    if (is.null(record) || is.null(record$facets)) return(character(0))
+    facets <- record$facets
+    tags <- purrr::map(facets, function(f) {
+        # facet may contain a features list or a single feature
+        feat <- tryCatch(f$features[[1]], error = function(e) NULL)
+        if (is.null(feat)) feat <- f$feature
+        if (is.null(feat)) return(NULL)
+
+        # type can be in `$type` or `type`
+        ttype <- NULL
+        if (!is.null(feat[["$type"]])) ttype <- feat[["$type"]]
+        if (is.null(ttype) && !is.null(feat[["type"]])) ttype <- feat[["type"]]
+
+        # If the facet indicates a tag, return the tag field if present
+        if (!is.null(ttype) && grepl("facet#tag", ttype)) {
+            if (!is.null(feat$tag)) return(feat$tag)
+            return(NULL)
+        }
+
+        # Some facet shapes may expose tag directly on the feature
+        if (!is.null(feat$tag)) return(feat$tag)
+        NULL
+    })
+    tags <- purrr::compact(tags)
+    if (length(tags) == 0) character(0) else unique(unlist(tags))
+}
+
+# Extract hashtags for each post (list-column)
+post_hashtags <- purrr::map(posts, function(x) {
+    rec <- x$record
+    extract_hashtags(rec)
+})
+
+# Attach as a list-column to posts_df
+posts_df$hashtags <- post_hashtags
+
+## Quick check: show posts with hashtags
+print(head(dplyr::select(posts_df, uri, author_handle, hashtags)))
+```
+
+```{r}
 # 5. Build edge list (who replied to whom)
 # Build edges directly from posts_df by joining reply_parent_uri back to posts_df$uri
 edges <- posts_df %>%
