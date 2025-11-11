@@ -22,7 +22,6 @@ library(tidyr)
 library(purrr)
 library(tibble)
 library(ggraph)
-library(igraph)
 ```
 
 Authenticate with BlueSky
@@ -49,16 +48,29 @@ posts <-posts[[1]]$posts
 
 ```{r}
 # Extract uri, author, created_at, text, likeCount, bookmarkCount, replyCount
-# repostCount, likeCount, quoteCount, [["record"]][["reply"]][["parent"]][["uri"]]
-#
-post_uri <- map_chr(posts, ~ .x$uri)
-post_author <- map_chr(posts, ~ .x$author$handle)
-post_created <- map_chr(posts, ~ .x$indexedAt)
-post_text <- map_chr(posts, ~ .x$record$text)
-post_likedCnt <- map_int(posts, ~ .x$likeCount)
-post_bookmrkCnt <- map_int(posts, ~ .x$bookmarkCount)
-post_rplyCnt <- map_int(posts, ~ .x$replyCount)
-post_rpstCount <- map_int(posts, ~ .x$repostCount)
+# repostCount, likeCount, quoteCount, and reply parent uri using safe extractors
+# This avoids errors when fields or nested elements are missing in the API response.
+
+# Safe extractor helpers using purrr::pluck (returns NA on missing)
+safe_chr <- function(x, ...) {
+    val <- purrr::pluck(x, ..., .default = NA_character_)
+    if (is.null(val)) NA_character_ else as.character(val)
+}
+safe_int <- function(x, ...) {
+    val <- purrr::pluck(x, ..., .default = NA_integer_)
+    if (is.null(val)) NA_integer_ else as.integer(val)
+}
+
+post_uri <- map_chr(posts, ~ safe_chr(.x, "uri"))
+post_author <- map_chr(posts, ~ safe_chr(.x, "author", "handle"))
+post_created <- map_chr(posts, ~ safe_chr(.x, "indexedAt"))
+post_text <- map_chr(posts, ~ safe_chr(.x, "record", "text"))
+post_likedCnt <- map_int(posts, ~ safe_int(.x, "likeCount"))
+post_bookmrkCnt <- map_int(posts, ~ safe_int(.x, "bookmarkCount"))
+post_rplyCnt <- map_int(posts, ~ safe_int(.x, "replyCount"))
+post_rpstCount <- map_int(posts, ~ safe_int(.x, "repostCount"))
+# reply parent uri if present (NA otherwise)
+post_reply_parent_uri <- map_chr(posts, ~ safe_chr(.x, "record", "reply", "parent", "uri"))
 
 ```
 
