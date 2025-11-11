@@ -45,7 +45,7 @@ resp <- bs_search_posts("Jocelyn Bell Burnell", clean = FALSE)
 # Possible shapes:
 # - resp$posts (named element)
 # - resp[[1]]$posts (wrapped in another list)
-# - resp itself is already a list of posts (each element has a uri/author etc)
+# - resp itself is already a list of posts (each element has aView  uri/author etc)
 if (is.list(resp) && !is.null(resp$posts)) {
     posts <- resp$posts
 } else if (is.list(resp) && length(resp) > 0 && is.list(resp[[1]]) && !is.null(resp[[1]]$posts)) {
@@ -114,12 +114,12 @@ print(dplyr::select(posts_df, uri, author_handle, indexedAt, like_count, reply_c
 
 ```{r}
 # 5. Build edge list (who replied to whom)
-# Use the extracted vectors and join reply-parent URIs to posts to find parent authors.
-edges <- tibble(from = post_author, reply_parent = post_reply_parent_uri) %>%
-    filter(!is.na(reply_parent)) %>%
+# Build edges directly from posts_df by joining reply_parent_uri back to posts_df$uri
+edges <- posts_df %>%
+    filter(!is.na(reply_parent_uri)) %>%
     left_join(posts_df %>% select(uri, parent_author = author_handle),
-                        by = c("reply_parent" = "uri")) %>%
-    transmute(from = from, to = parent_author) %>%
+              by = c("reply_parent_uri" = "uri")) %>%
+    transmute(from = author_handle, to = parent_author) %>%
     filter(!is.na(to) & !is.na(from)) %>%
     distinct()
 
