@@ -1,7 +1,4 @@
-isn---
-title: "R Notebook"
-output: html_notebook
----
+isn--- title: "R Notebook" output: html_notebook ---
 
 # Downloading BlueSky Posts
 
@@ -38,7 +35,7 @@ bs_Auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
 ```
 
 ```{r}
-resp <- bs_search_posts("Jocelyn Bell Burnell", clean = FALSE)
+resp <- bs_search_posts("Speirgorm", clean = FALSE, limit = 1000)
 # posts <- bs_get_post_thread('at://did:plc:znrkwcuzdbhduyqrbdpkl7pe/app.bsky.feed.post/3m54urlsan22g', 5, clean = FALSE)
 
 # Detect where the list of posts lives in the API response and extract it.
@@ -55,6 +52,15 @@ if (is.list(resp) && !is.null(resp$posts)) {
 } else {
     stop("Unexpected structure returned by bs_search_posts(); inspect 'resp' to adapt parsing")
 }
+
+# reply parent uri if present (NA otherwise)
+post_reply_parent_uri <- map_chr(posts, ~ safe_chr(.x, "record", "reply", "parent", "uri"))
+
+
+post_reply_parent_uri <- data.frame(uri = post_reply_parent_uri[!is.na(post_reply_parent_uri)])
+
+
+reposts <- bskyr::bs_get_reposts('at://did:plc:kba5ra5zizxsey2nq4pwnove/app.bsky.feed.post/3m5fx3ycixc2j', clean = FALSE)
 ```
 
 # Get reply texts and authors
@@ -74,6 +80,26 @@ safe_int <- function(x, ...) {
     if (is.null(val)) NA_integer_ else as.integer(val)
 }
 
+# Step 1: Define a function to get reposts for a single URI
+get_reposts_df <- function(uri) {
+  reposts <- bs_get_reposts(uri, clean = TRUE)
+  if (length(reposts) == 0) return(NULL)
+  
+  # Convert to data frame and add original URI for reference
+  data.frame(
+    original_uri = uri,
+    reposted_by = sapply(reposts, function(x) x$actor$handle),
+    repost_uri = sapply(reposts, function(x) x$uri),
+    stringsAsFactors = FALSE
+  )
+}
+```
+
+posts \<- post_reply_parent_uri\$uri %\>% map_dfr(get_reposts_df)
+
+```{r}
+## reply parent uri is already extracted above into `post_reply_parent_uri` using safe extractor
+## (we keep the explicit chunk removed to avoid duplicated work)
 post_uri <- map_chr(posts, ~ safe_chr(.x, "uri"))
 post_author <- map_chr(posts, ~ safe_chr(.x, "author", "handle"))
 post_created <- map_chr(posts, ~ safe_chr(.x, "indexedAt"))
@@ -82,14 +108,7 @@ post_likedCnt <- map_int(posts, ~ safe_int(.x, "likeCount"))
 post_bookmrkCnt <- map_int(posts, ~ safe_int(.x, "bookmarkCount"))
 post_rplyCnt <- map_int(posts, ~ safe_int(.x, "replyCount"))
 post_rpstCount <- map_int(posts, ~ safe_int(.x, "repostCount"))
-# reply parent uri if present (NA otherwise)
-post_reply_parent_uri <- map_chr(posts, ~ safe_chr(.x, "record", "reply", "parent", "uri"))
 
-```
-
-```{r}
-## reply parent uri is already extracted above into `post_reply_parent_uri` using safe extractor
-## (we keep the explicit chunk removed to avoid duplicated work)
 ```
 
 ```{r}
@@ -180,6 +199,7 @@ g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 
 ```{r}
 ```
+
 ```{r}
 
 ggraph(g, layout = "fr") +
