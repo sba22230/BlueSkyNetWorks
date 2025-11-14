@@ -7,7 +7,7 @@ isn--- title: "R Notebook" output: html_notebook ---
 #install.packages("bskyr")
 ```
 
-Load libraries
+# Load libraries
 
 ```{r}
 library(bskyr)
@@ -32,10 +32,35 @@ bs_Auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
 ```{r}
 # me <- bs_get_profile(actor = bs_user, auth = bs_Auth)
 # print(me)
+
+# Extract uri, author, created_at, text, likeCount, bookmarkCount, replyCount
+# repostCount, likeCount, quoteCount, and reply parent uri using safe extractors
+# This avoids errors when fields or nested elements are missing in the API response.
+
+# Safe extractor helpers using purrr::pluck (returns NA on missing)
+safe_chr <- function(x, ...) {
+    val <- purrr::pluck(x, ..., .default = NA_character_)
+    if (is.null(val)) NA_character_ else as.character(val)
+}
+safe_int <- function(x, ...) {
+    val <- purrr::pluck(x, ..., .default = NA_integer_)
+    if (is.null(val)) NA_integer_ else as.integer(val)
+}
+
+# Step 1: Define a function to get reposts for a single URI
+get_reposts_df <- function(uri) {
+  reposts <- bs_get_reposts(uri, clean = TRUE)
+  #str(reposts)
+  if (length(reposts) == 0) return(NULL)
+    reposts$original_uri <- uri
+    reposts
+
+  
+}
 ```
 
 ```{r}
-resp <- bs_search_posts("Speirgorm", clean = FALSE, limit = 1000)
+resp <- bs_search_posts("Speirgorm", clean = FALSE, limit = 100)
 # posts <- bs_get_post_thread('at://did:plc:znrkwcuzdbhduyqrbdpkl7pe/app.bsky.feed.post/3m54urlsan22g', 5, clean = FALSE)
 
 # Detect where the list of posts lives in the API response and extract it.
@@ -55,51 +80,21 @@ if (is.list(resp) && !is.null(resp$posts)) {
 
 # reply parent uri if present (NA otherwise)
 post_reply_parent_uri <- map_chr(posts, ~ safe_chr(.x, "record", "reply", "parent", "uri"))
-
-
-post_reply_parent_uri <- data.frame(uri = post_reply_parent_uri[!is.na(post_reply_parent_uri)])
-
-
-reposts <- bskyr::bs_get_reposts('at://did:plc:kba5ra5zizxsey2nq4pwnove/app.bsky.feed.post/3m5fx3ycixc2j', clean = FALSE)
+post_reply_parent_uri_df <- data.frame(uri = post_reply_parent_uri[!is.na(post_reply_parent_uri)])
+#reposts <- bskyr::bs_get_reposts('at://did:plc:kba5ra5zizxsey2nq4pwnove/app.bsky.feed.post/3m5fx3ycixc2j', clean = FALSE)
+posts_df <- post_reply_parent_uri_df$uri %>% map_dfr(get_reposts_df)
 ```
 
 # Get reply texts and authors
 
 ```{r}
-# Extract uri, author, created_at, text, likeCount, bookmarkCount, replyCount
-# repostCount, likeCount, quoteCount, and reply parent uri using safe extractors
-# This avoids errors when fields or nested elements are missing in the API response.
-
-# Safe extractor helpers using purrr::pluck (returns NA on missing)
-safe_chr <- function(x, ...) {
-    val <- purrr::pluck(x, ..., .default = NA_character_)
-    if (is.null(val)) NA_character_ else as.character(val)
-}
-safe_int <- function(x, ...) {
-    val <- purrr::pluck(x, ..., .default = NA_integer_)
-    if (is.null(val)) NA_integer_ else as.integer(val)
-}
-
-# Step 1: Define a function to get reposts for a single URI
-get_reposts_df <- function(uri) {
-  reposts <- bs_get_reposts(uri, clean = TRUE)
-  if (length(reposts) == 0) return(NULL)
-  
-  # Convert to data frame and add original URI for reference
-  data.frame(
-    original_uri = uri,
-    reposted_by = sapply(reposts, function(x) x$actor$handle),
-    repost_uri = sapply(reposts, function(x) x$uri),
-    stringsAsFactors = FALSE
-  )
-}
+a <- get_reposts_df('at://did:plc:kba5ra5zizxsey2nq4pwnove/app.bsky.feed.post/3m5fx3ycixc2j')
 ```
 
-posts \<- post_reply_parent_uri\$uri %\>% map_dfr(get_reposts_df)
 
 ```{r}
-## reply parent uri is already extracted above into `post_reply_parent_uri` using safe extractor
-## (we keep the explicit chunk removed to avoid duplicated work)
+# reply parent uri is already extracted above into `post_reply_parent_uri` using safe extractor
+# (we keep the explicit chunk removed to avoid duplicated work)
 post_uri <- map_chr(posts, ~ safe_chr(.x, "uri"))
 post_author <- map_chr(posts, ~ safe_chr(.x, "author", "handle"))
 post_created <- map_chr(posts, ~ safe_chr(.x, "indexedAt"))
@@ -115,7 +110,7 @@ post_rpstCount <- map_int(posts, ~ safe_int(.x, "repostCount"))
 # Build a tidy posts dataframe for downstream analysis and graph building
 # Columns: uri, author_handle, indexedAt, text, like_count, bookmark_count,
 # reply_count, repost_count, reply_parent_uri
-posts_df <- tibble(
+posts_df1 <- tibble(
     uri = post_uri,
     author_handle = post_author,
     indexedAt = post_created,
@@ -126,9 +121,9 @@ posts_df <- tibble(
     repost_count = post_rpstCount,
     reply_parent_uri = post_reply_parent_uri
 )
-
+#posts_df <- posts
 # Quick peek (first rows)
-print(dplyr::select(posts_df, uri, author_handle, indexedAt, like_count, reply_count))
+print(dplyr::select(posts_df1, uri, author_handle, indexedAt))
 ```
 
 ```{r}
@@ -169,17 +164,17 @@ post_hashtags <- purrr::map(posts, function(x) {
 })
 
 # Attach as a list-column to posts_df
-posts_df$hashtags <- post_hashtags
+posts_df1$hashtags <- post_hashtags
 
 ## Quick check: show posts with hashtags
-print(head(dplyr::select(posts_df, uri, author_handle, hashtags)))
+print(head(dplyr::select(posts_df1, uri, author_handle, hashtags)))
 ```
 
 ```{r}
 # 5. Build edge list (who replied to whom)
 # Build edges directly from posts_df by joining reply_parent_uri back to posts_df$uri
 edges <- posts_df %>%
-    filter(!is.na(reply_parent_uri)) %>%
+    filter(!is.na(post_reply_parent_uri_df)) %>%
     left_join(posts_df %>% select(uri, parent_author = author_handle),
               by = c("reply_parent_uri" = "uri")) %>%
     transmute(from = author_handle, to = parent_author) %>%

@@ -8,13 +8,66 @@ library(purrr)
 library(tibble)
 library(ggraph)
 
-# authenticate
+## Authenticate with BlueSky
+
+
 bs_user <- bs_get_user()
 bs_pass <- bs_get_pass()
 bs_Auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
 
 
-resp <- bs_search_posts("Jocelyn Bell Burnell", clean = FALSE)
+# me <- bs_get_profile(actor = bs_user, auth = bs_Auth)
+# print(me)
+
+# Extract uri, author, created_at, text, likeCount, bookmarkCount, replyCount
+# repostCount, likeCount, quoteCount, and reply parent uri using safe extractors
+# This avoids errors when fields or nested elements are missing in the API response.
+
+# Safe extractor helpers using purrr::pluck (returns NA on missing)
+safe_chr <- function(x, ...) {
+    val <- purrr::pluck(x, ..., .default = NA_character_)
+    if (is.null(val)) NA_character_ else as.character(val)
+}
+safe_int <- function(x, ...) {
+    val <- purrr::pluck(x, ..., .default = NA_integer_)
+    if (is.null(val)) NA_integer_ else as.integer(val)
+}
+
+# Step 1: Define a function to get reposts for a single URI
+get_reposts_df <- function(uri) {
+  reposts <- bs_get_reposts(uri, auth = bs_Auth, clean = TRUE)
+  
+  # If it's NULL or not a data frame, return an empty tibble
+  if (is.null(reposts) || !inherits(reposts, "data.frame") || nrow(reposts) == 0) {
+    return(tibble(
+      original_uri = character(),
+      handle = character(),
+      uri = character()
+    ))
+  }
+  
+  reposts$original_uri <- uri
+  reposts
+}
+
+get_thread_df <- function(uri) {
+  thread <- bs_get_post_thread(uri, auth = bs_Auth, clean = FALSE)
+  
+  if (is.null(thread) || length(thread) == 0) {
+    return(tibble(original_uri = character()))
+  }
+  
+  # Convert list output into a tibble with the fields you care about
+  tibble(
+    original_uri = uri,
+    author = purrr::map_chr(thread, ~ purrr::pluck(.x, "post", "author", "handle", .default = NA)),
+    text   = purrr::map_chr(thread, ~ purrr::pluck(.x, "post", "record", "text", .default = NA)),
+    uri    = purrr::map_chr(thread, ~ purrr::pluck(.x, "post", "uri", .default = NA))
+  )
+}
+
+
+resp <- bs_search_posts("Speirgorm", clean = FALSE, limit = 1000)
 # posts <- bs_get_post_thread('at://did:plc:znrkwcuzdbhduyqrbdpkl7pe/app.bsky.feed.post/3m54urlsan22g', 5, clean = FALSE)
 
 # Detect where the list of posts lives in the API response and extract it.
@@ -31,21 +84,16 @@ if (is.list(resp) && !is.null(resp$posts)) {
 } else {
   stop("Unexpected structure returned by bs_search_posts(); inspect 'resp' to adapt parsing")
 }
+post_uri <- map_chr(posts, ~ safe_chr(.x, "uri"))
+post_reply_parent_uri <- map_chr(posts, ~ safe_chr(.x, "record", "reply", "parent", "uri"))
+post_reply_parent_uri_df <- data.frame(uri = post_reply_parent_uri[!is.na(post_reply_parent_uri)])
+#reposts <- bskyr::bs_get_reposts('at://did:plc:kba5ra5zizxsey2nq4pwnove/app.bsky.feed.post/3m5fx3ycixc2j', clean = FALSE)
+posts_df <- post_reply_parent_uri_df$uri %>% map_dfr(get_reposts_df)
+# Get reply texts and authors
+reposts_df <- post_uri %>% purrr::map_dfr(get_reposts_df)
+threads_df <- post_uri %>% purrr::map_dfr(get_thread_df)
 
-
-# Extract uri, author, created_at, text, likeCount, bookmarkCount, replyCount
-# repostCount, likeCount, quoteCount, and reply parent uri using safe extractors
-# This avoids errors when fields or nested elements are missing in the API response.
-
-# Safe extractor helpers using purrr::pluck (returns NA on missing)
-safe_chr <- function(x, ...) {
-  val <- purrr::pluck(x, ..., .default = NA_character_)
-  if (is.null(val)) NA_character_ else as.character(val)
-}
-safe_int <- function(x, ...) {
-  val <- purrr::pluck(x, ..., .default = NA_integer_)
-  if (is.null(val)) NA_integer_ else as.integer(val)
-}
+# a <- get_reposts_df('at://did:plc:kba5ra5zizxsey2nq4pwnove/app.bsky.feed.post/3m5fx3ycixc2j')
 
 post_uri <- map_chr(posts, ~ safe_chr(.x, "uri"))
 post_author <- map_chr(posts, ~ safe_chr(.x, "author", "handle"))
@@ -55,8 +103,7 @@ post_likedCnt <- map_int(posts, ~ safe_int(.x, "likeCount"))
 post_bookmrkCnt <- map_int(posts, ~ safe_int(.x, "bookmarkCount"))
 post_rplyCnt <- map_int(posts, ~ safe_int(.x, "replyCount"))
 post_rpstCount <- map_int(posts, ~ safe_int(.x, "repostCount"))
-# reply parent uri if present (NA otherwise)
-post_reply_parent_uri <- map_chr(posts, ~ safe_chr(.x, "record", "reply", "parent", "uri"))
+
 
 
 # Build a tidy posts dataframe for downstream analysis and graph building
@@ -124,13 +171,10 @@ print(head(dplyr::select(posts_df, uri, author_handle, hashtags)))
 
 # 5. Build edge list (who replied to whom)
 # Build edges directly from posts_df by joining reply_parent_uri back to posts_df$uri
-edges <- posts_df %>%
-  filter(!is.na(reply_parent_uri)) %>%
-  left_join(posts_df %>% select(uri, parent_author = author_handle),
-            by = c("reply_parent_uri" = "uri")) %>%
-  transmute(from = author_handle, to = parent_author) %>%
-  filter(!is.na(to) & !is.na(from)) %>%
+edges <- reposts_df %>%
+  transmute(from = handle, to = original_uri) %>%
   distinct()
+
 
 # 6. Build node list
 nodes <- tibble(name = unique(c(edges$from, edges$to)))
@@ -141,3 +185,47 @@ ggraph(g, layout = "fr") +
   geom_edge_link(alpha = 0.3) +
   geom_node_point(size = 5) +
   geom_node_text(aes(label = name), repel = TRUE)
+
+
+edges <- reposts_df %>%
+  left_join(posts_df %>% select(uri, author_handle),
+            by = c("original_uri" = "uri")) %>%
+  transmute(from = handle, to = author_handle, repost_uri = uri, created_at = created_at) %>%
+  filter(!is.na(from) & !is.na(to)) %>%
+  distinct()
+
+nodes <- bind_rows(
+  reposts_df %>% select(name = handle, display_name, avatar, did, description),
+  posts_df %>% select(name = author_handle)
+) %>%
+  distinct(name, .keep_all = TRUE)
+
+nodes <- nodes %>%
+  mutate(repost_count = table(edges$to)[name] %>% as.integer())
+
+g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+
+ggraph(g, layout = "fr") +
+  geom_edge_link(alpha = 0.3) +
+  geom_node_point(aes(size = repost_count, color = repost_count)) +
+  geom_node_text(aes(label = display_name), repel = TRUE) +
+  scale_size_continuous(range = c(3, 12)) +
+  scale_color_gradient(low = "lightblue", high = "red") +
+  theme_void()
+
+library(visNetwork)
+
+vis_nodes <- nodes %>%
+  mutate(
+    id = name,
+    label = display_name,
+    title = text,              # tooltip text
+    value = repost_count       # node size
+  ) %>%
+  distinct(id, .keep_all = TRUE)
+
+vis_edges <- edges %>%
+  transmute(from = from, to = to)
+
+visNetwork(vis_nodes, vis_edges) %>%
+  visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE)
