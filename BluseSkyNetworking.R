@@ -219,7 +219,7 @@ vis_nodes <- nodes %>%
   mutate(
     id = name,
     label = display_name,
-    title = text,              # tooltip text
+    title = description,              # tooltip text
     value = repost_count       # node size
   ) %>%
   distinct(id, .keep_all = TRUE)
@@ -229,3 +229,4 @@ vis_edges <- edges %>%
 
 visNetwork(vis_nodes, vis_edges) %>%
   visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE)
+
