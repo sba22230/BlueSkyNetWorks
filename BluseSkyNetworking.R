@@ -7,6 +7,7 @@ library(tidyr)
 library(purrr)
 library(tibble)
 library(ggraph)
+library(visNetwork)
 
 ## Authenticate with BlueSky
 bs_user <- bs_get_user()
@@ -51,15 +52,17 @@ get_thread_df <- function(uri) {
 # Step 2: Search posts containing "Speirgorm"
 resp <- bs_search_posts("Speirgorm", clean = FALSE, limit = 5000)
 
-# Step 3: Normalize API response into a posts list
-if (is.list(resp) && !is.null(resp$posts)) {
-  posts <- resp$posts
-} else if (is.list(resp) && length(resp) > 0 && is.list(resp[[1]]) && !is.null(resp[[1]]$posts)) {
-  posts <- resp[[1]]$posts
-} else if (is.list(resp) && length(resp) > 0 && all(vapply(resp, function(x) !is.null(x$uri), logical(1)))) {
-  posts <- resp
-} else {
-  stop("Unexpected structure returned by bs_search_posts(); inspect 'resp'")
+get_posts <- function(resp, x) {
+  # Step 3: Normalize API response into a posts list
+  if (is.list(resp) && !is.null(resp$posts)) {
+    posts <- resp$posts
+  } else if (is.list(resp) && length(resp) > 0 && is.list(resp[[x]]) && !is.null(resp[[x]]$posts)) {
+    posts <- resp[[x]]$posts
+  } else if (is.list(resp) && length(resp) > 0 && all(vapply(resp, function(x) !is.null(x$uri), logical(1)))) {
+    posts <- resp
+  } else {
+    stop("Unexpected structure returned by bs_search_posts(); inspect 'resp'")
+  }
 }
 
 # Step 4: Extract key fields from posts
@@ -166,7 +169,7 @@ cat("Final graph summary:\n")
 print(summary(g))
 
 # Step 13: Interactive visualization with visNetwork
-library(visNetwork)
+
 
 vis_nodes <- nodes %>%
   mutate(
