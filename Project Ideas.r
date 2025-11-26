@@ -1,4 +1,5 @@
-Absolutely, Stephen. Here's a complete R script that builds a **nested reply network** from a single Bluesky post using the `bskyr` package, and then constructs a directed graph of user interactions. I’ve also included a summary table of all the feature suggestions we discussed throughout this conversation.
+# Absolutely, Stephen. Here's a complete R script that builds a **nested reply network** from a single Bluesky post using the `bskyr` package, 
+# and then constructs a directed graph of user interactions. I’ve also included a summary table of all the feature suggestions we discussed throughout this conversation.
 
 ---
 
@@ -64,22 +65,22 @@ print(summary_df)
 ---
 
 ## 📊 Feature Suggestions Summary
-
-Here’s a table of all the feature ideas and enhancements we discussed:
-
-| Feature Suggestion                            | Purpose                                                                 |
-|-----------------------------------------------|-------------------------------------------------------------------------|
-| Temporal slicing of hashtag networks          | Analyze how user communities evolve over time                          |
-| Weekly network metrics summary                | Track size, density, centrality across time slices                     |
-| Animated network visualization (`gganimate`)  | Visualize dynamic changes in user interactions                         |
-| Static snapshots per time slice               | Provide reference charts alongside animation                           |
-| `.Renviron` setup for secure credentials      | Store app passwords safely and load them into R                        |
-| Safe extraction of nested replies             | Handle missing fields and avoid crashes during parsing                 |
-| Recursive reply network builder               | Capture full conversation trees, not just direct replies               |
-| Centrality and community detection            | Identify influential users and clusters in the network                 |
-| Edge weighting by interaction frequency       | Add nuance to network structure based on activity                      |
-| Reusable wrapper functions (`safe_get_thread`)| Simplify repeated tasks with clean, error-tolerant code                |
-
----
-
-Let me know if you'd like me to help you visualize this nested reply network using `ggraph`, or export the edge list for external analysis. I can also help you compare multiple threads side-by-side.
+# 
+# Here’s a table of all the feature ideas and enhancements we discussed:
+# 
+# | Feature Suggestion                            | Purpose                                                                 |
+# |-----------------------------------------------|-------------------------------------------------------------------------|
+# | Temporal slicing of hashtag networks          | Analyze how user communities evolve over time                          |
+# | Weekly network metrics summary                | Track size, density, centrality across time slices                     |
+# | Animated network visualization (`gganimate`)  | Visualize dynamic changes in user interactions                         |
+# | Static snapshots per time slice               | Provide reference charts alongside animation                           |
+# | `.Renviron` setup for secure credentials      | Store app passwords safely and load them into R                        |
+# | Safe extraction of nested replies             | Handle missing fields and avoid crashes during parsing                 |
+# | Recursive reply network builder               | Capture full conversation trees, not just direct replies               |
+# | Centrality and community detection            | Identify influential users and clusters in the network                 |
+# | Edge weighting by interaction frequency       | Add nuance to network structure based on activity                      |
+# | Reusable wrapper functions (`safe_get_thread`)| Simplify repeated tasks with clean, error-tolerant code                |
+# 
+# ---
+# 
+# Let me know if you'd like me to help you visualize this nested reply network using `ggraph`, or export the edge list for external analysis. I can also help you compare multiple threads side-by-side.
