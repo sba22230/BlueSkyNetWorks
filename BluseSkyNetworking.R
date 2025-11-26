@@ -158,7 +158,7 @@ g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 ggraph(g, layout = "fr") +
   geom_edge_link(alpha = 0.3) +
   geom_node_point(aes(size = repost_count, color = repost_count)) +
-  geom_node_text(aes(label = display_name), repel = TRUE) +
+  geom_node_text(aes(label = text), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +
   theme_void()
@@ -170,9 +170,9 @@ library(visNetwork)
 
 vis_nodes <- nodes %>%
   mutate(
-    id = name,
+    id = uri,
     label = ifelse(is.na(display_name) | display_name == "", name, display_name),
-    title = text,
+    title = paste0("Name: ", name, "\nText: ", text),   # hover tooltip
     value = ifelse(is.na(repost_count), 0, repost_count)  # size by repost_count
   ) %>%
   distinct(id, .keep_all = TRUE)
