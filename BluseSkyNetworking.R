@@ -170,11 +170,11 @@ library(visNetwork)
 
 vis_nodes <- nodes %>%
   mutate(
-    id = uri,
+    id = name,
     label = ifelse(is.na(display_name) | display_name == "", name, display_name),
     title = paste0("Name: ", name, "\nText: ", text),   # hover tooltip
     value = ifelse(is.na(repost_count), 0, repost_count),  # size by repost_count
-    group = author_handle
+    group = display_name
   ) %>%
   distinct(id, .keep_all = TRUE)
 
@@ -185,7 +185,6 @@ vis_edges <- edges %>%
     arrows = "from"   # add arrow pointing to the reposter node
   )
 
-
 # Sort dropdown alphabetically by label
 sorted_ids <- vis_nodes %>% arrange(label) %>% pull(id)
 
@@ -194,6 +193,5 @@ visNetwork(vis_nodes, vis_edges, width = "3000px", height = "1000px") %>%
              nodesIdSelection = list(values = sorted_ids)) |>
                visEdges(arrows = "to") |>
   visGroups(groupname = unique(vis_nodes$group))   # auto-color by author
-
-
-
+cat("Interactive visualization ready.\n")
+# End of script
