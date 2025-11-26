@@ -26,6 +26,8 @@ safe_int <- function(x, ...) {
 # Step 1: Define helper functions to fetch reposts and threads
 get_reposts_df <- function(uri) {
   reposts <- bs_get_reposts(uri, auth = bs_Auth, clean = TRUE)
+  
+  # If it's NULL or not a data frame, return an empty tibble
   if (is.null(reposts) || !inherits(reposts, "data.frame") || nrow(reposts) == 0) {
     return(tibble(original_uri = character(), handle = character(), uri = character()))
   }
@@ -179,7 +181,7 @@ vis_edges <- edges %>%
   transmute(
     from = from,
     to = to,
-    arrows = "from"   # add arrow pointing to the 'to' node
+    arrows = "from"   # add arrow pointing to the reposter node
   )
 
 

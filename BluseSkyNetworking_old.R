@@ -9,8 +9,6 @@ library(tibble)
 library(ggraph)
 
 ## Authenticate with BlueSky
-
-
 bs_user <- bs_get_user()
 bs_pass <- bs_get_pass()
 bs_Auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
