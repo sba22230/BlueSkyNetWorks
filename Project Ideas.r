@@ -67,4 +67,5 @@ print(summary_df)
 # 
 # Let me know if you'd like me to help you visualize this nested reply network using `ggraph`, or export the edge list for external analysis. I can also help you compare multiple threads side-by-side.
 
-
+replies are nested in the structure returned by bs_get_thread
+look into each line there is replies list
