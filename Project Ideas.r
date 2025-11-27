@@ -5,24 +5,6 @@
 
 ## 🧠 Full R Script: Nested Replies → User Network Graph
 
-```r
-# Load libraries
-library(bskyr)
-library(purrr)
-library(dplyr)
-library(tibble)
-library(igraph)
-
-# 1. Authenticate with Bluesky
-session <- bsky_login(
-  identifier = Sys.getenv("BLUESKY_USER"),
-  password   = Sys.getenv("BLUESKY_PASS")
-)
-
-# 2. Query the post and its full reply thread
-uri <- "at://did:plc:znrkwcuzdbhduyqrbdpkl7pe/app.bsky.feed.post/3m54urlsan22g"
-thread <- bs_get_post_thread(uri = uri, depth = 5, clean = FALSE)
-
 # 3. Recursive function to extract all replies and their targets
 extract_edges <- function(reply_list, parent_author) {
   map_dfr(reply_list, function(x) {
@@ -85,24 +67,4 @@ print(summary_df)
 # 
 # Let me know if you'd like me to help you visualize this nested reply network using `ggraph`, or export the edge list for external analysis. I can also help you compare multiple threads side-by-side.
 
-library(purrr)
 
-get_posts <- function(resp, x = NULL) {
-  if (is.list(resp) && !is.null(resp$posts)) {
-    posts <- resp$posts
-  } else if (!is.null(x) && is.list(resp) && length(resp) > 0 &&
-             is.list(resp[[x]]) && !is.null(resp[[x]]$posts)) {
-    posts <- resp[[x]]$posts
-  } else if (is.list(resp) && length(resp) > 0 &&
-             all(vapply(resp, function(x) !is.null(x$uri), logical(1)))) {
-    posts <- resp
-  } else {
-    stop("Unexpected structure returned by bs_search_posts(); inspect 'resp'")
-  }
-
-  # Always return a data frame
-  as.data.frame(posts, stringsAsFactors = FALSE)
-}
-
-# Example: apply to each element of resp and combine
-all_posts_df <- map_dfr(seq_along(resp), ~ get_posts(resp, .x))
