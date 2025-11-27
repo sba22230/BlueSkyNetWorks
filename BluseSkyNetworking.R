@@ -1,4 +1,5 @@
 library(bskyr)
+library(furrr)
 library(dplyr)
 library(lubridate)
 library(igraph)
@@ -8,6 +9,7 @@ library(purrr)
 library(tibble)
 library(ggraph)
 library(visNetwork)
+library(retry)
 
 ## Authenticate with BlueSky
 bs_user <- bs_get_user()
@@ -26,31 +28,55 @@ safe_int <- function(x, ...) {
 
 # Step 1: Define helper functions to fetch reposts and threads
 get_reposts_df <- function(uri) {
-  reposts <- bs_get_reposts(uri, auth = bs_Auth, clean = TRUE)
+  Sys.sleep(runif(1, 0.2, 0.5))  # jittered pause 200–500ms
+  # Wrap bs_get_reposts in retry, return directly
+  reposts <- retry(
+    bs_get_reposts(uri, limit = 500, auth = bs_Auth, clean = TRUE),
+    when = "error",
+    max_tries = 3,
+    interval = runif(1, 0.5, 1.5)
+  )
   
-  # If it's NULL or not a data frame, return an empty tibble
+  # If it's NULL or not a data frame, return an empty tibble with consistent columns
   if (is.null(reposts) || !inherits(reposts, "data.frame") || nrow(reposts) == 0) {
-    return(tibble(original_uri = character(), handle = character(), uri = character()))
+    return(tibble(original_uri = character(),
+                  handle = character(),
+                  uri = character()))
   }
+  
+  # Add original_uri column
   reposts$original_uri <- uri
   reposts
 }
 
 get_thread_df <- function(uri) {
-  thread <- bs_get_post_thread(uri, auth = bs_Auth, clean = FALSE)
+  Sys.sleep(runif(1, 0.2, 0.5))  # jittered pause
+  
+  thread <- retry(
+    bs_get_post_thread(uri, auth = bs_Auth, clean = FALSE),
+    when = "error",
+    max_tries = 3,
+    interval = runif(1, 0.5, 1.5)
+  )
+  
   if (is.null(thread) || length(thread) == 0) {
-    return(tibble(original_uri = character()))
+    return(tibble(
+      original_uri = character(),
+      author = character(),
+      text = character(),
+      uri = character()
+    ))
   }
+  
   tibble(
     original_uri = uri,
-    author = purrr::map_chr(thread, ~ purrr::pluck(.x, "post", "author", "handle", .default = NA)),
-    text   = purrr::map_chr(thread, ~ purrr::pluck(.x, "post", "record", "text", .default = NA)),
-    uri    = purrr::map_chr(thread, ~ purrr::pluck(.x, "post", "uri", .default = NA))
+    author = map_chr(thread, ~ pluck(.x, "post", "author", "handle", .default = NA)),
+    text   = map_chr(thread, ~ pluck(.x, "post", "record", "text", .default = NA)),
+    uri    = map_chr(thread, ~ pluck(.x, "post", "uri", .default = NA))
   )
 }
 
-# Step 2: Search posts containing "Speirgorm"
-resp <- bs_search_posts("Speirgorm", clean = FALSE, limit = 5000)
+
 
 get_posts <- function(resp) {
   if (is.list(resp) && !is.null(resp$posts)) {
@@ -73,6 +99,12 @@ get_posts <- function(resp) {
 
   posts
 }
+
+# Step 2: Search posts containing "Speirgorm"
+resp <- bs_search_posts("Speirgorm", clean = FALSE, limit = 5000)
+
+# Flatten all posts from the response
+posts <- get_posts(resp)
 
 # Step 4: Extract key fields from posts
 post_uri <- map_chr(posts, ~ safe_chr(.x, "uri"))
@@ -104,17 +136,30 @@ print(head(posts_df))
 cat("Posts dataframe rows:", nrow(posts_df), "\n")
 
 # Step 6: Build reposts and threads data frames
-reposts_df <- post_uri %>% map_dfr(get_reposts_df)
-threads_df <- post_uri %>% map_dfr(get_thread_df)
+plan(multisession, workers = 16)  # adjust workers to your CPU/network capacity
+
+reposts_df <- posts_df |>
+  filter(repost_count > 0) |>
+  pull(uri) |>
+  future_map_dfr(get_reposts_df, .progress = TRUE)
+
+threads_df <- posts_df |>
+  filter(reply_count > 0) |>
+  pull(uri) |> 
+  future_map_dfr(get_thread_df, .progress = TRUE)
+
+#reposts_df <- post_uri |> map_dfr(get_reposts_df)
+#threads_df <- post_uri |> map_dfr(get_thread_df)
 cat("Reposts dataframe rows:", nrow(reposts_df), "\n")
 cat("Threads dataframe rows:", nrow(threads_df), "\n")
+plan(sequential)  # reset back to normal, shuts down workers
 
 # Debug: check reposts_df structure
 print(head(reposts_df))
 
 # Step 7: Build edge list (who reposted whom)
-edges <- reposts_df %>%
-  transmute(from = handle, to = original_uri) %>%
+edges <- reposts_df |>
+  transmute(from = handle, to = original_uri) |>
   distinct()
 cat("Edges count:", nrow(edges), "\n")
 
@@ -139,11 +184,11 @@ ggraph(g, layout = "fr") +
   geom_node_text(aes(label = name), repel = TRUE)
 
 # Step 10: Enrich edges with author info
-edges <- reposts_df %>%
-  left_join(posts_df %>% select(uri, author_handle),
-            by = c("original_uri" = "uri")) %>%
-  transmute(from = handle, to = author_handle, repost_uri = uri, created_at = created_at) %>%
-  filter(!is.na(from) & !is.na(to)) %>%
+edges <- reposts_df |>
+  left_join(posts_df |> select(uri, author_handle),
+            by = c("original_uri" = "uri")) |>
+  transmute(from = handle, to = author_handle, repost_uri = uri, created_at = created_at) |>
+  filter(!is.na(from) & !is.na(to)) |>
   distinct()
 cat("Enriched edges count:", nrow(edges), "\n")
 
@@ -152,14 +197,14 @@ print(head(edges))
 
 # Step 11: Enrich nodes with metadata
 nodes <- bind_rows(
-  reposts_df %>% select(name = handle, display_name, avatar, did),
-  posts_df %>% select(name = author_handle, text)
-) %>%
+  reposts_df |> select(name = handle, display_name, avatar, did),
+  posts_df |> select(name = author_handle, text)
+) |>
   distinct(name, .keep_all = TRUE)
 
 # Add repost counts
-nodes <- nodes %>%
-  mutate(repost_count = table(edges$to)[name] %>% as.integer())
+nodes <- nodes |>
+  mutate(repost_count = table(edges$to)[name] |> as.integer())
 cat("Enriched nodes count:", nrow(nodes), "\n")
 
 # Debug: enriched nodes
@@ -178,17 +223,17 @@ cat("Final graph summary:\n")
 print(summary(g))
 
 # Step 13: Interactive visualization with visNetwork
-vis_nodes <- nodes %>%
+vis_nodes <- nodes |>
   mutate(
     id = name,
     label = ifelse(is.na(display_name) | display_name == "", name, display_name),
     title = paste0("Name: ", name, "\nText: ", text),   # hover tooltip
     value = ifelse(is.na(repost_count), 0, repost_count),  # size by repost_count
     group = display_name
-  ) %>%
+  ) |>
   distinct(id, .keep_all = TRUE)
 
-vis_edges <- edges %>%
+vis_edges <- edges |>
   transmute(
     from = from,
     to = to,
@@ -196,9 +241,9 @@ vis_edges <- edges %>%
   )
 
 # Sort dropdown alphabetically by label
-sorted_ids <- vis_nodes %>% arrange(label) %>% pull(id)
+sorted_ids <- vis_nodes |> arrange(label) |> pull(id)
 
-visNetwork(vis_nodes, vis_edges, width = "100%", height = "1500px") %>%
+visNetwork(vis_nodes, vis_edges, width = "100%", height = "1500px") |>
   visOptions(highlightNearest = TRUE,
              nodesIdSelection = list(values = sorted_ids)) |>
                visEdges(arrows = "to") |>
