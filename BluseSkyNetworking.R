@@ -52,17 +52,26 @@ get_thread_df <- function(uri) {
 # Step 2: Search posts containing "Speirgorm"
 resp <- bs_search_posts("Speirgorm", clean = FALSE, limit = 5000)
 
-get_posts <- function(resp, x) {
-  # Step 3: Normalize API response into a posts list
+get_posts <- function(resp) {
   if (is.list(resp) && !is.null(resp$posts)) {
+    # Case: resp itself has posts
     posts <- resp$posts
-  } else if (is.list(resp) && length(resp) > 0 && is.list(resp[[x]]) && !is.null(resp[[x]]$posts)) {
-    posts <- resp[[x]]$posts
-  } else if (is.list(resp) && length(resp) > 0 && all(vapply(resp, function(x) !is.null(x$uri), logical(1)))) {
+
+  } else if (is.list(resp) && length(resp) > 0 &&
+             all(vapply(resp, function(x) is.list(x) && !is.null(x$posts), logical(1)))) {
+    # Case: resp is a list of objects, each with posts
+    posts <- flatten(map(resp, "posts"))
+
+  } else if (is.list(resp) && length(resp) > 0 &&
+             all(vapply(resp, function(x) !is.null(x$uri), logical(1)))) {
+    # Case: resp is already a list of posts
     posts <- resp
+
   } else {
     stop("Unexpected structure returned by bs_search_posts(); inspect 'resp'")
   }
+
+  posts
 }
 
 # Step 4: Extract key fields from posts
@@ -169,8 +178,6 @@ cat("Final graph summary:\n")
 print(summary(g))
 
 # Step 13: Interactive visualization with visNetwork
-
-
 vis_nodes <- nodes %>%
   mutate(
     id = name,
@@ -191,7 +198,7 @@ vis_edges <- edges %>%
 # Sort dropdown alphabetically by label
 sorted_ids <- vis_nodes %>% arrange(label) %>% pull(id)
 
-visNetwork(vis_nodes, vis_edges, width = "3000px", height = "1000px") %>%
+visNetwork(vis_nodes, vis_edges, width = "100%", height = "1500px") %>%
   visOptions(highlightNearest = TRUE,
              nodesIdSelection = list(values = sorted_ids)) |>
                visEdges(arrows = "to") |>
