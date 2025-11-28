@@ -133,7 +133,7 @@ print(head(posts_df))
 cat("Posts dataframe rows:", nrow(posts_df), "\n")
 
 # Step 6: Build reposts and threads data frames
-plan(multisession, workers = 10)  # adjust workers to your CPU/network capacity
+plan(multisession, workers = 2)  # adjust workers to your CPU/network capacity
 
 reposts_df <- posts_df |>
   filter(repost_count > 0) |>
@@ -284,7 +284,7 @@ top_nodes <- vis_nodes %>% arrange(desc(degree)) %>% slice(1:50) %>% pull(id)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 
 # --- Use precomputed layout in visNetwork ---
-visNetwork(vis_nodes, vis_edges, width = "100%", height = "3000px") %>%
+visNetwork(vis_nodes, vis_edges, width = "1040px", height = "800px") %>%
   visOptions(
     highlightNearest = TRUE,
     nodesIdSelection = list(values = sorted_ids)
