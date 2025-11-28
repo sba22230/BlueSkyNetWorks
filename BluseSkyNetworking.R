@@ -221,7 +221,7 @@ ggraph(g, layout = "fr") +
   theme_void()
 cat("Final graph summary:\n")
 print(summary(g))
-
+write_graph(g, "bluesky enriched Speirgorm Network", format = "graphml")
 
 # Step 13: Interactive visualization with visNetwork
 vis_nodes <- nodes %>%
