@@ -33,8 +33,9 @@ safe_int <- function(x, ...) {
 get_reposts_df <- function(uri) {
   Sys.sleep(runif(1, 0.1, 2.9))  # jittered pause 
   # Wrap bs_get_reposts in retry, return directly
+  lmt = round(runif(1, 500, 1000))
   reposts <- retry(
-    bs_get_reposts(uri, limit = 500, auth = bs_auth, clean = TRUE),
+    bs_get_reposts(uri, limit = lmt, auth = bs_auth, clean = TRUE),
     when = "error",
     max_tries = 3,
     interval = runif(1, 0.5, 1.5)
@@ -225,7 +226,7 @@ ggraph(g, layout = "fr") +
   theme_void()
 cat("Final graph summary:\n")
 print(summary(g))
-write_graph(g, "bluesky enriched Speirgorm Network", format = "graphml")
+write_graph(g, "bluesky enriched Speirgorm Network.graphml", format = "graphml")
 
 # Step 13: Interactive visualization with visNetwork
 vis_nodes <- nodes |>
