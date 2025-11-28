@@ -4,12 +4,15 @@ library(dplyr)
 library(lubridate)
 library(igraph)
 library(stringr)
+library(stringi)
 library(tidyr)
 library(purrr)
 library(tibble)
 library(ggraph)
 library(visNetwork)
 library(retry)
+library(rgexf)
+
 
 ## Authenticate with BlueSky
 bs_user <- bs_get_user()
@@ -28,7 +31,7 @@ safe_int <- function(x, ...) {
 
 # Step 1: Define helper functions to fetch reposts and threads
 get_reposts_df <- function(uri) {
-  Sys.sleep(runif(1, 0.2, 0.5))  # jittered pause 200–500ms
+  Sys.sleep(runif(1, 0.1, 2.9))  # jittered pause 
   # Wrap bs_get_reposts in retry, return directly
   reposts <- retry(
     bs_get_reposts(uri, limit = 500, auth = bs_auth, clean = TRUE),
@@ -98,7 +101,7 @@ get_posts <- function(resp) {
 }
 
 # Step 2: Search posts containing "Speirgorm"
-resp <- bs_search_posts("Speirgorm", clean = FALSE, limit = 1500)
+resp <- bs_search_posts("Speirgorm", clean = FALSE, limit = 15000)
 
 # Flatten all posts from the response
 posts <- get_posts(resp)
@@ -133,19 +136,20 @@ print(head(posts_df))
 cat("Posts dataframe rows:", nrow(posts_df), "\n")
 
 # Step 6: Build reposts and threads data frames
-plan(multisession, workers = 2)  # adjust workers to your CPU/network capacity
+wrkrs = availableCores(constraints = "connections-16") * .3
+plan(multisession, workers = wrkrs)  # adjust workers to your CPU/network capacity
 
 reposts_df <- posts_df |>
   filter(repost_count > 0) |>
   pull(uri) |>
-  future_map_dfr(get_reposts_df, .progress = TRUE)
+  future_map_dfr(get_reposts_df, .progress = TRUE, .options = furrr_options(seed = 22230))
 
 # set the system to sleep
 Sys.sleep(runif(1, 10, 30))
 threads_df <- posts_df |>
   filter(reply_count > 0) |>
   pull(uri) |>
-  future_map_dfr(get_thread_df, .progress = TRUE)
+  future_map_dfr(get_thread_df, .progress = TRUE, .options = furrr_options(seed = 22230))
 
 #reposts_df <- post_uri |> map_dfr(get_reposts_df) # nolint
 #threads_df <- post_uri |> map_dfr(get_thread_df) # nolint
@@ -224,17 +228,17 @@ print(summary(g))
 write_graph(g, "bluesky enriched Speirgorm Network", format = "graphml")
 
 # Step 13: Interactive visualization with visNetwork
-vis_nodes <- nodes %>%
+vis_nodes <- nodes |>
   mutate(
     id = name,
     label = ifelse(is.na(display_name) | display_name == "", name, display_name), # nolint: line_length_linter.
     title = paste0("Name: ", name, "\nText: ", text),   # hover tooltip
     value = ifelse(is.na(repost_count), 0, repost_count),  # size by repost_count # nolint: line_length_linter.
-    group = display_name
-  ) %>%
+    group = name
+  ) |>
   distinct(id, .keep_all = TRUE)
 
-vis_edges <- edges %>%
+vis_edges <- edges |>
   transmute(
     from = from,
     to = to,
@@ -248,12 +252,12 @@ g <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
 deg <- degree(g, mode = "all")
 
 # Add degree to vis_nodes
-vis_nodes <- vis_nodes %>%
+vis_nodes <- vis_nodes |>
   mutate(degree = deg[id])
 
 # Sort IDs by degree (descending)
-sorted_ids <- vis_nodes %>%
-  arrange(desc(degree)) %>%
+sorted_ids <- vis_nodes |>
+  arrange(desc(degree)) |>
   pull(id)
 
 # --- Precompute layout coordinates with igraph ---
@@ -280,33 +284,112 @@ for (comp_id in unique(comps$membership)) {
 vis_nodes$x <- coords[, 1]
 vis_nodes$y <- coords[, 2]
 
-top_nodes <- vis_nodes %>% arrange(desc(degree)) %>% slice(1:50) %>% pull(id)
+top_nodes <- vis_nodes |> arrange(desc(degree)) |> slice(1:50) |> pull(id)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 
+# Community detection
+comm <- cluster_walktrap(g)   # works on directed graphs
+
+# Add community membership to nodes
+vis_nodes$community <- comm$membership
+
+# add isolation tag 
+vis_nodes$isolated <- vis_nodes$degree == 0
+
 # --- Use precomputed layout in visNetwork ---
-visNetwork(vis_nodes, vis_edges, width = "1040px", height = "800px") %>%
+visNetwork(vis_nodes, vis_edges, width = "1040px", height = "800px") |>
   visOptions(
     highlightNearest = TRUE,
     nodesIdSelection = list(values = sorted_ids)
-  ) %>%
-  visEdges(arrows = "to") %>%
-  visGroups(groupname = unique(vis_nodes$group)) %>%
-  visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE) %>%
+  ) |>
+  visEdges(arrows = "to") |>
+  visGroups(groupname = unique(vis_nodes$group)) |>
+  visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE) |>
   visPhysics(enabled = TRUE)
+
+# Export the Visnetwork into GEXF format and visualise it again - check performance of Gephi 
+# Nodes table
+ge_nodes <- data.frame(
+  id    = vis_nodes$id,
+  label = ifelse(is.na(vis_nodes$label), vis_nodes$id, vis_nodes$label),
+  x     = vis_nodes$x,
+  y     = vis_nodes$y
+)
+
+# Node attributes (include everything else, including x/y coords, degree, community, isolated)
+ge_nodesAtt <- vis_nodes %>%
+  transmute(
+    degree       = ifelse(is.na(degree), 0L, as.integer(degree)),
+    repost_count = ifelse(is.na(repost_count), 0L, as.integer(repost_count)),
+    community    = as.integer(community),
+    isolated     = ifelse(isolated, "TRUE", "FALSE")
+  )
+
+# Edges table
+ge_edges <- data.frame(
+  source = vis_edges$from,
+  target = vis_edges$to
+)
+
+# Edge attributes (optional)
+ge_edgesAtt <- vis_edges |>
+  select(-from, -to) |>
+  mutate(across(where(is.character),
+                ~ stri_replace_all_regex(., "[&<>]", " "))) |>
+  mutate(across(where(is.character),
+                ~ stri_trans_general(., "Latin-ASCII")))
+
+#ge_nodesAtt <- ge_nodesAtt %>% mutate(across(where(is.character), ~ replace_na(., "")))
+#ge_nodesAtt <- ge_nodesAtt %>% mutate(across(where(is.character), ~ gsub("[\r\n\t]", " ", .)))
+#ge_nodesAtt <- ge_nodesAtt %>% mutate(repost_count = ifelse(is.na(repost_count), 0L, repost_count))
+ge_edgesAtt <- ge_edgesAtt %>% mutate(across(where(is.character), ~ replace_na(., "")))
+
+# Create a palette with enough distinct colours
+palette <- grDevices::rainbow(length(unique(vis_nodes$community)))
+
+# Map each node's community to a colour
+comm_colors <- data.frame(
+  r = col2rgb(palette[vis_nodes$community])[1, ],
+  g = col2rgb(palette[vis_nodes$community])[2, ],
+  b = col2rgb(palette[vis_nodes$community])[3, ],
+  a = rep(1, nrow(vis_nodes))
+)
+
+# Create GEXF object
+gexf_obj <- write.gexf(
+  nodes     = ge_nodes[, c("id", "label")],   # only 2 columns
+  edges     = ge_edges,
+  nodesAtt  = ge_nodesAtt,
+  edgesAtt  = ge_edgesAtt,
+  nodesVizAtt = list(
+    position = data.frame(
+      x = vis_nodes$x,
+      y = vis_nodes$y,
+      z = rep(0, nrow(vis_nodes))   # optional, Gephi expects 3D coords
+    ),
+    size = vis_nodes$value,
+    color = comm_colors
+  ),
+  defaultedgetype = "directed"
+)
+
+# Save to file
+print(gexf_obj, file = "visnetwork_export.gexf")
+plot(gexf_obj)
 
 
 
 cat("Interactive visualization ready with precomputed layout.\n")
-top_authors_reposted <- posts_df %>%
-  group_by(author_handle) %>%
-  summarise(total_reposts = sum(repost_count, na.rm = TRUE)) %>%
-  arrange(desc(total_reposts)) %>%
+top_authors_reposted <- posts_df |>
+  group_by(author_handle) |>
+  summarise(total_reposts = sum(repost_count, na.rm = TRUE)) |>
+  arrange(desc(total_reposts)) |>
   slice(1:10)
 
-top_reposters <- reposts_df %>%
-  group_by(handle, display_name) %>%              # group by both
-  summarise(total_reposts_made = n(), .groups = "drop") %>%  # count reposts
-  arrange(desc(total_reposts_made)) %>%           # sort descending
+top_reposters <- reposts_df |>
+  group_by(handle, display_name) |>              # group by both
+  summarise(total_reposts_made = n(), .groups = "drop") |>  # count reposts
+  arrange(desc(total_reposts_made)) |>           # sort descending
   slice(1:10)                                     # top 10
 
 library(DT)

@@ -62,6 +62,7 @@ print(summary_df)
 # | Centrality and community detection            | Identify influential users and clusters in the network                 |
 # | Edge weighting by interaction frequency       | Add nuance to network structure based on activity                      |
 # | Reusable wrapper functions (`safe_get_thread`)| Simplify repeated tasks with clean, error-tolerant code                |
+# | Tone of the post - NLP or LLM?                | See what the network looks when grouped by tone of post                |
 # 
 # ---
 # 
@@ -69,3 +70,5 @@ print(summary_df)
 
 replies are nested in the structure returned by bs_get_thread
 look into each line there is replies list
+
+
