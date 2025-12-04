@@ -8,3 +8,5 @@ BluseSkyNetworking.nb.html
 BluseSkyNetworking.html
 reposts_batch_speirgorm_*.csv
 threads_batch_speirgorm_*.csv
+.data/*
+.Rhistory

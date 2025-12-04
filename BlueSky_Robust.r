@@ -147,7 +147,7 @@ deep_search_posts <- function(
         break
       }
       oldest <- df$indexedAt[which.min(indexedAt_posix)]
-      if (!is.na(oldest) && oldest != until) {
+      if (!is.na(oldest) && !identical(oldest, until)) {
         until <- oldest
         # reset cursor to start a new anchored window
         cursor <- NULL
