@@ -7,6 +7,7 @@ library(retry)
 library(readr)
 library(furrr)
 library(tidyr)
+library(arrow)
 
 bs_user <- bs_get_user()
 bs_pass <- bs_get_pass()
@@ -71,13 +72,33 @@ deep_search_posts <- function(
   query,
   hard_limit = 50000,
   chunk_limit = 100,
-  checkpoint_path = "posts_checkpoint.parquet"
+  checkpoint_path = ".data/speirgorm_posts.parquet"
 ) {
   all_rows <- list()
   cursor <- NULL
   until <- NULL
   fetched <- 0
   iter <- 0
+  # ✅ Load existing checkpoint if available
+  if (file.exists(checkpoint_path)) {
+    checkpoint <- tryCatch(
+      arrow::read_parquet(checkpoint_path),
+      error = function(e) {
+        message("Failed to read checkpoint: ", e$message)
+        NULL
+      }
+    )
+    if (!is.null(checkpoint) && nrow(checkpoint) > 0) {
+      all_rows <- list(checkpoint)
+      fetched <- nrow(checkpoint)
+      # anchor forward: only query posts newer than the latest indexedAt
+      latest <- max(as.POSIXct(checkpoint$indexedAt, tz = "UTC"), na.rm = TRUE)
+      until <- NULL
+      since <- format(latest, "%Y-%m-%dT%H:%M:%SZ")
+      message("Resuming from checkpoint, last post at: ", since)
+      query <- paste0(query, " since:", since)
+    }
+  }
 
   while (fetched < hard_limit) {
     iter <- iter + 1
