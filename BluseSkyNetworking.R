@@ -258,7 +258,16 @@ gexf_obj <- write.gexf(
 )
 
 # Save to file
-print(gexf_obj, file = "visnetwork_export.gexf")
+home_dir <- here::here()
+file_path <- file.path(home_dir, ".data")
+file_name <- file.path(file_path, "visnetwork_export.gexf")
+
+# Make sure the directory exists
+if (!dir.exists(file_path)) dir.create(file_path, recursive = TRUE)
+
+# Write the GEXF object to file
+rgexf::write.gexf(gexf_obj, output = file_name)
+
 plot(gexf_obj)
 
 plan(sequential) # reset back to normal, shuts down workers
