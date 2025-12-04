@@ -8,6 +8,7 @@ library(readr)
 library(furrr)
 library(tidyr)
 library(arrow)
+library(igraph)
 
 bs_user <- bs_get_user()
 bs_pass <- bs_get_pass()
@@ -186,10 +187,6 @@ deep_search_posts <- function(
   bind_rows(all_rows) %>% distinct(uri, .keep_all = TRUE)
 }
 
-
-wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.3))
-plan(multisession, workers = wrkrs)
-
 get_reposts_df <- function(uri) {
   Sys.sleep(runif(1, 0.2, 1.1))
   reposts <- retry(
@@ -305,6 +302,9 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
 
   list(reposts_df = reposts_df, threads_df = threads_df)
 }
+
+wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.3))
+plan(multisession, workers = wrkrs)
 
 # Run deep search
 posts_df <- deep_search_posts(
