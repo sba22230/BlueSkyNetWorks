@@ -266,7 +266,7 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
     all_reposts <- append(all_reposts, list(part))
     tryCatch(
       {
-        readr::write_csv(part, sprintf("reposts_batch_%s_%03d.csv", tag, i))
+        readr::write_csv(part, sprintf(".data/reposts_batch_%s_%03d.csv", tag, i))
       },
       error = function(e) message("Failed to write reposts batch: ", e$message)
     )
@@ -289,7 +289,7 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
     all_threads <- append(all_threads, list(part))
     tryCatch(
       {
-        readr::write_csv(part, sprintf("threads_batch_%s_%03d.csv", tag, i))
+        readr::write_csv(part, sprintf(".data/threads_batch_%s_%03d.csv", tag, i))
       },
       error = function(e) message("Failed to write threads batch: ", e$message)
     )
@@ -311,16 +311,16 @@ posts_df <- deep_search_posts(
   "Speirgorm",
   hard_limit = 50000,
   chunk_limit = 100,
-  checkpoint_path = "speirgorm_posts.parquet"
+  checkpoint_path = ".data/speirgorm_posts.parquet"
 )
-readr::write_csv(posts_df, "speirgorm_posts.csv")
+readr::write_csv(posts_df, ".data/speirgorm_posts.csv")
 
 # Hydrate in batches
 hydrated <- hydrate_in_batches(posts_df, batch_size = 400, tag = "speirgorm")
 reposts_df <- hydrated$reposts_df
 threads_df <- hydrated$threads_df
-readr::write_csv(reposts_df, "speirgorm_reposts.csv")
-readr::write_csv(threads_df, "speirgorm_threads.csv")
+readr::write_csv(reposts_df, ".data/speirgorm_reposts.csv")
+readr::write_csv(threads_df, ".data/speirgorm_threads.csv")
 
 # Build edges: reposter -> author (original)
 edges <- reposts_df %>%
@@ -364,8 +364,8 @@ nodes <- bind_rows(
   distinct(name, .keep_all = TRUE) %>%
   mutate(repost_count = replace_na(as.integer(table(edges$to)[name]), 0L))
 
-readr::write_csv(edges, "speirgorm_edges.csv")
-readr::write_csv(nodes, "speirgorm_nodes.csv")
+readr::write_csv(edges, ".graphs/speirgorm_edges.csv")
+readr::write_csv(nodes, ".graphs/speirgorm_nodes.csv")
 
 # Step 12: Plot enriched network with ggraph
 g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
@@ -378,4 +378,4 @@ ggraph(g, layout = "fr") +
   theme_void()
 cat("Final graph summary:\n")
 print(summary(g))
-write_graph(g, "bluesky enriched Speirgorm Network.graphml", format = "graphml")
+write_graph(g, ".graphs/bluesky enriched Speirgorm Network.graphml", format = "graphml")
