@@ -13,175 +13,21 @@ library(visNetwork)
 library(retry)
 library(rgexf)
 
-
-## Authenticate with BlueSky
-bs_user <- bs_get_user()
-bs_pass <- bs_get_pass()
-bs_auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
-
-# Safe extractor helpers (avoid errors if fields are missing)
-safe_chr <- function(x, ...) {
-  val <- purrr::pluck(x, ..., .default = NA_character_)
-  if (is.null(val)) NA_character_ else as.character(val)
-}
-safe_int <- function(x, ...) {
-  val <- purrr::pluck(x, ..., .default = NA_integer_)
-  if (is.null(val)) NA_integer_ else as.integer(val)
-}
-
-# Step 1: Define helper functions to fetch reposts and threads
-get_reposts_df <- function(uri) {
-  Sys.sleep(runif(1, 0.1, 2.9)) # jittered pause
-  # Wrap bs_get_reposts in retry, return directly
-  lmt = round(runif(1, 500, 1000))
-  reposts <- retry(
-    bs_get_reposts(uri, limit = lmt, auth = bs_auth, clean = TRUE),
-    when = "error",
-    max_tries = 3,
-    interval = runif(1, 0.5, 1.5)
-  )
-  #If it's NULL or not a data frame, return an empty tibble with consistent
-  #columns
-  if (
-    is.null(reposts) || !inherits(reposts, "data.frame") || nrow(reposts) == 0
-  ) {
-    # nolint: line_length_linter.
-    return(tibble(
-      original_uri = character(),
-      handle = character(),
-      uri = character()
-    ))
-  }
-  # Add original_uri column
-  reposts$original_uri <- uri
-  reposts
-}
-
-get_thread_df <- function(uri) {
-  Sys.sleep(runif(1, 0.2, 0.5)) # jittered pause
-  thread <- retry(
-    bs_get_post_thread(uri, auth = bs_auth, clean = FALSE),
-    when = "error",
-    max_tries = 3,
-    interval = runif(1, 0.5, 1.5)
-  )
-
-  if (is.null(thread) || length(thread) == 0) {
-    return(tibble(
-      original_uri = character(),
-      author = character(),
-      text = character(),
-      uri = character()
-    ))
-  }
-  tibble(
-    original_uri = uri,
-    author = map_chr(
-      thread,
-      ~ pluck(.x, "post", "author", "handle", .default = NA)
-    ), # nolint: line_length_linter.
-    text = map_chr(
-      thread,
-      ~ pluck(.x, "post", "record", "text", .default = NA)
-    ), # nolint: line_length_linter.
-    uri = map_chr(thread, ~ pluck(.x, "post", "uri", .default = NA))
-  )
-}
-
-
-get_posts <- function(resp) {
-  if (is.list(resp) && !is.null(resp$posts)) {
-    # Case: resp itself has posts
-    posts <- resp$posts
-  } else if (
-    is.list(resp) &&
-      length(resp) > 0 &&
-      all(vapply(resp, function(x) is.list(x) && !is.null(x$posts), logical(1)))
-  ) {
-    # nolint: line_length_linter.
-    # Case: resp is a list of objects, each with posts
-    posts <- flatten(map(resp, "posts"))
-  } else if (
-    is.list(resp) &&
-      length(resp) > 0 &&
-      all(vapply(resp, function(x) !is.null(x$uri), logical(1)))
-  ) {
-    # Case: resp is already a list of posts
-    posts <- resp
-  } else {
-    stop("Unexpected structure returned by bs_search_posts(); inspect 'resp'")
-  }
-
-  posts
-}
-
-# Step 2: Search posts containing "Speirgorm"
-resp <- bs_search_posts("Speirgorm", clean = FALSE, limit = 15000)
-
-# Flatten all posts from the response
-posts <- get_posts(resp)
-
-# Step 4: Extract key fields from posts
-post_uri <- map_chr(posts, ~ safe_chr(.x, "uri"))
-post_reply_parent_uri <- map_chr(
-  posts,
-  ~ safe_chr(.x, "record", "reply", "parent", "uri")
-) # nolint: line_length_linter.
-
-# Step 5: Build posts_df with metadata
-post_author <- map_chr(posts, ~ safe_chr(.x, "author", "handle"))
-post_created <- map_chr(posts, ~ safe_chr(.x, "indexedAt"))
-post_text <- map_chr(posts, ~ safe_chr(.x, "record", "text"))
-post_liked_cnt <- map_int(posts, ~ safe_int(.x, "likeCount"))
-post_bookmrk_cnt <- map_int(posts, ~ safe_int(.x, "bookmarkCount"))
-post_rply_cnt <- map_int(posts, ~ safe_int(.x, "replyCount"))
-post_rpst_count <- map_int(posts, ~ safe_int(.x, "repostCount"))
-
-posts_df <- tibble(
-  uri = post_uri,
-  author_handle = post_author,
-  indexedAt = post_created,
-  text = post_text,
-  like_count = post_liked_cnt,
-  bookmark_count = post_bookmrk_cnt,
-  reply_count = post_rply_cnt,
-  repost_count = post_rpst_count,
-  reply_parent_uri = post_reply_parent_uri
-)
-
-# Debug: inspect first few posts
-print(head(posts_df))
-cat("Posts dataframe rows:", nrow(posts_df), "\n")
-
+edges <- readr::read_csv(".graphs/speirgorm_edges.csv")
+nodes <- readr::read_csv(".graphs/speirgorm_nodes.csv")
 # Step 6: Build reposts and threads data frames
-wrkrs = availableCores(constraints = "connections-16") * .3
+wrkrs <- ifelse (round(availableCores(constraints = "connections-16") * .3) == 1, 2, round(availableCores(constraints = "connections-16") * .3 ))
+    
 plan(multisession, workers = wrkrs) # adjust workers to your CPU/network capacity
 
-reposts_df <- posts_df |>
-  filter(repost_count > 0) |>
-  pull(uri) |>
-  future_map_dfr(
-    get_reposts_df,
-    .progress = TRUE,
-    .options = furrr_options(seed = 22230)
-  )
+posts_df <- read.csv(".data/speirgorm_posts.csv")
 
-# set the system to sleep
-Sys.sleep(runif(1, 10, 30))
-threads_df <- posts_df |>
-  filter(reply_count > 0) |>
-  pull(uri) |>
-  future_map_dfr(
-    get_thread_df,
-    .progress = TRUE,
-    .options = furrr_options(seed = 22230)
-  )
+reposts_df <- read.csv(".data/speirgorm_reposts.csv")
 
-#reposts_df <- post_uri |> map_dfr(get_reposts_df) # nolint
-#threads_df <- post_uri |> map_dfr(get_thread_df) # nolint
+threads_df <- read.csv(".data/speirgorm_threads.csv")
+  
 cat("Reposts dataframe rows:", nrow(reposts_df), "\n")
 cat("Threads dataframe rows:", nrow(threads_df), "\n")
-plan(sequential) # reset back to normal, shuts down workers
 
 # Debug: check reposts_df structure
 print(head(reposts_df))
@@ -415,7 +261,7 @@ gexf_obj <- write.gexf(
 print(gexf_obj, file = "visnetwork_export.gexf")
 plot(gexf_obj)
 
-
+plan(sequential) # reset back to normal, shuts down workers
 cat("Interactive visualization ready with precomputed layout.\n")
 top_authors_reposted <- posts_df |>
   group_by(author_handle) |>
