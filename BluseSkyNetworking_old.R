@@ -23,44 +23,55 @@ bs_Auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
 
 # Safe extractor helpers using purrr::pluck (returns NA on missing)
 safe_chr <- function(x, ...) {
-    val <- purrr::pluck(x, ..., .default = NA_character_)
-    if (is.null(val)) NA_character_ else as.character(val)
+  val <- purrr::pluck(x, ..., .default = NA_character_)
+  if (is.null(val)) NA_character_ else as.character(val)
 }
 safe_int <- function(x, ...) {
-    val <- purrr::pluck(x, ..., .default = NA_integer_)
-    if (is.null(val)) NA_integer_ else as.integer(val)
+  val <- purrr::pluck(x, ..., .default = NA_integer_)
+  if (is.null(val)) NA_integer_ else as.integer(val)
 }
 
 # Step 1: Define a function to get reposts for a single URI
 get_reposts_df <- function(uri) {
   reposts <- bs_get_reposts(uri, auth = bs_Auth, clean = TRUE)
-  
+
   # If it's NULL or not a data frame, return an empty tibble
-  if (is.null(reposts) || !inherits(reposts, "data.frame") || nrow(reposts) == 0) {
+  if (
+    is.null(reposts) || !inherits(reposts, "data.frame") || nrow(reposts) == 0
+  ) {
     return(tibble(
       original_uri = character(),
       handle = character(),
       uri = character()
     ))
   }
-  
+
   reposts$original_uri <- uri
   reposts
 }
 
 get_thread_df <- function(uri) {
   thread <- bs_get_post_thread(uri, auth = bs_Auth, clean = FALSE)
-  
+
   if (is.null(thread) || length(thread) == 0) {
     return(tibble(original_uri = character()))
   }
-  
+
   # Convert list output into a tibble with the fields you care about
   tibble(
     original_uri = uri,
-    author = purrr::map_chr(thread, ~ purrr::pluck(.x, "post", "author", "handle", .default = NA)),
-    text   = purrr::map_chr(thread, ~ purrr::pluck(.x, "post", "record", "text", .default = NA)),
-    uri    = purrr::map_chr(thread, ~ purrr::pluck(.x, "post", "uri", .default = NA))
+    author = purrr::map_chr(
+      thread,
+      ~ purrr::pluck(.x, "post", "author", "handle", .default = NA)
+    ),
+    text = purrr::map_chr(
+      thread,
+      ~ purrr::pluck(.x, "post", "record", "text", .default = NA)
+    ),
+    uri = purrr::map_chr(
+      thread,
+      ~ purrr::pluck(.x, "post", "uri", .default = NA)
+    )
   )
 }
 
@@ -75,16 +86,32 @@ resp <- bs_search_posts("Speirgorm", clean = FALSE, limit = 5000)
 # - resp itself is already a list of posts (each element has aView  uri/author etc)
 if (is.list(resp) && !is.null(resp$posts)) {
   posts <- resp$posts
-} else if (is.list(resp) && length(resp) > 0 && is.list(resp[[1]]) && !is.null(resp[[1]]$posts)) {
+} else if (
+  is.list(resp) &&
+    length(resp) > 0 &&
+    is.list(resp[[1]]) &&
+    !is.null(resp[[1]]$posts)
+) {
   posts <- resp[[1]]$posts
-} else if (is.list(resp) && length(resp) > 0 && all(vapply(resp, function(x) !is.null(x$uri), logical(1)))) {
+} else if (
+  is.list(resp) &&
+    length(resp) > 0 &&
+    all(vapply(resp, function(x) !is.null(x$uri), logical(1)))
+) {
   posts <- resp
 } else {
-  stop("Unexpected structure returned by bs_search_posts(); inspect 'resp' to adapt parsing")
+  stop(
+    "Unexpected structure returned by bs_search_posts(); inspect 'resp' to adapt parsing"
+  )
 }
 post_uri <- map_chr(posts, ~ safe_chr(.x, "uri"))
-post_reply_parent_uri <- map_chr(posts, ~ safe_chr(.x, "record", "reply", "parent", "uri"))
-post_reply_parent_uri_df <- data.frame(uri = post_reply_parent_uri[!is.na(post_reply_parent_uri)])
+post_reply_parent_uri <- map_chr(
+  posts,
+  ~ safe_chr(.x, "record", "reply", "parent", "uri")
+)
+post_reply_parent_uri_df <- data.frame(
+  uri = post_reply_parent_uri[!is.na(post_reply_parent_uri)]
+)
 #reposts <- bskyr::bs_get_reposts('at://did:plc:kba5ra5zizxsey2nq4pwnove/app.bsky.feed.post/3m5fx3ycixc2j', clean = FALSE)
 posts_df <- post_reply_parent_uri_df$uri %>% map_dfr(get_reposts_df)
 # Get reply texts and authors
@@ -103,7 +130,6 @@ post_rplyCnt <- map_int(posts, ~ safe_int(.x, "replyCount"))
 post_rpstCount <- map_int(posts, ~ safe_int(.x, "repostCount"))
 
 
-
 # Build a tidy posts dataframe for downstream analysis and graph building
 # Columns: uri, author_handle, indexedAt, text, like_count, bookmark_count,
 # reply_count, repost_count, reply_parent_uri
@@ -120,34 +146,54 @@ posts_df <- tibble(
 )
 
 # Quick peek (first rows)
-print(dplyr::select(posts_df, uri, author_handle, indexedAt, like_count, reply_count))
-
+print(dplyr::select(
+  posts_df,
+  uri,
+  author_handle,
+  indexedAt,
+  like_count,
+  reply_count
+))
 
 
 # Robust hashtag extractor from record$facets
 # Returns a character vector of tags (without #) or character(0) if none
 extract_hashtags <- function(record) {
-  if (is.null(record) || is.null(record$facets)) return(character(0))
+  if (is.null(record) || is.null(record$facets)) {
+    return(character(0))
+  }
   facets <- record$facets
   tags <- purrr::map(facets, function(f) {
     # facet may contain a features list or a single feature
     feat <- tryCatch(f$features[[1]], error = function(e) NULL)
-    if (is.null(feat)) feat <- f$feature
-    if (is.null(feat)) return(NULL)
-    
-    # type can be in `$type` or `type`
-    ttype <- NULL
-    if (!is.null(feat[["$type"]])) ttype <- feat[["$type"]]
-    if (is.null(ttype) && !is.null(feat[["type"]])) ttype <- feat[["type"]]
-    
-    # If the facet indicates a tag, return the tag field if present
-    if (!is.null(ttype) && grepl("facet#tag", ttype)) {
-      if (!is.null(feat$tag)) return(feat$tag)
+    if (is.null(feat)) {
+      feat <- f$feature
+    }
+    if (is.null(feat)) {
       return(NULL)
     }
-    
+
+    # type can be in `$type` or `type`
+    ttype <- NULL
+    if (!is.null(feat[["$type"]])) {
+      ttype <- feat[["$type"]]
+    }
+    if (is.null(ttype) && !is.null(feat[["type"]])) {
+      ttype <- feat[["type"]]
+    }
+
+    # If the facet indicates a tag, return the tag field if present
+    if (!is.null(ttype) && grepl("facet#tag", ttype)) {
+      if (!is.null(feat$tag)) {
+        return(feat$tag)
+      }
+      return(NULL)
+    }
+
     # Some facet shapes may expose tag directly on the feature
-    if (!is.null(feat$tag)) return(feat$tag)
+    if (!is.null(feat$tag)) {
+      return(feat$tag)
+    }
     NULL
   })
   tags <- purrr::compact(tags)
@@ -186,9 +232,16 @@ ggraph(g, layout = "fr") +
 
 
 edges <- reposts_df %>%
-  left_join(posts_df %>% select(uri, author_handle),
-            by = c("original_uri" = "uri")) %>%
-  transmute(from = handle, to = author_handle, repost_uri = uri, created_at = created_at) %>%
+  left_join(
+    posts_df %>% select(uri, author_handle),
+    by = c("original_uri" = "uri")
+  ) %>%
+  transmute(
+    from = handle,
+    to = author_handle,
+    repost_uri = uri,
+    created_at = created_at
+  ) %>%
   filter(!is.na(from) & !is.na(to)) %>%
   distinct()
 
@@ -216,9 +269,13 @@ library(visNetwork)
 vis_nodes <- nodes %>%
   mutate(
     id = name,
-    label = ifelse(is.na(display_name) | display_name == "", name, display_name),
-    title = description,      
-    value = ifelse(is.na(repost_count), 0, repost_count)  # replace NA with 0
+    label = ifelse(
+      is.na(display_name) | display_name == "",
+      name,
+      display_name
+    ),
+    title = description,
+    value = ifelse(is.na(repost_count), 0, repost_count) # replace NA with 0
   ) %>%
   distinct(id, .keep_all = TRUE)
 
@@ -234,5 +291,7 @@ sorted_labels <- vis_nodes %>% arrange(label) %>% pull(id)
 
 
 visNetwork(vis_nodes, vis_edges) %>%
-  visOptions(highlightNearest = TRUE, nodesIdSelection = list(values = sorted_ids))
-
+  visOptions(
+    highlightNearest = TRUE,
+    nodesIdSelection = list(values = sorted_ids)
+  )

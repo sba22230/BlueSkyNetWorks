@@ -31,7 +31,7 @@ safe_int <- function(x, ...) {
 
 # Step 1: Define helper functions to fetch reposts and threads
 get_reposts_df <- function(uri) {
-  Sys.sleep(runif(1, 0.1, 2.9))  # jittered pause 
+  Sys.sleep(runif(1, 0.1, 2.9)) # jittered pause
   # Wrap bs_get_reposts in retry, return directly
   lmt = round(runif(1, 500, 1000))
   reposts <- retry(
@@ -42,10 +42,15 @@ get_reposts_df <- function(uri) {
   )
   #If it's NULL or not a data frame, return an empty tibble with consistent
   #columns
-  if (is.null(reposts) || !inherits(reposts, "data.frame") || nrow(reposts) == 0) { # nolint: line_length_linter.
-    return(tibble(original_uri = character(),
-                  handle = character(),
-                  uri = character()))
+  if (
+    is.null(reposts) || !inherits(reposts, "data.frame") || nrow(reposts) == 0
+  ) {
+    # nolint: line_length_linter.
+    return(tibble(
+      original_uri = character(),
+      handle = character(),
+      uri = character()
+    ))
   }
   # Add original_uri column
   reposts$original_uri <- uri
@@ -53,7 +58,7 @@ get_reposts_df <- function(uri) {
 }
 
 get_thread_df <- function(uri) {
-  Sys.sleep(runif(1, 0.2, 0.5))  # jittered pause
+  Sys.sleep(runif(1, 0.2, 0.5)) # jittered pause
   thread <- retry(
     bs_get_post_thread(uri, auth = bs_auth, clean = FALSE),
     when = "error",
@@ -71,29 +76,38 @@ get_thread_df <- function(uri) {
   }
   tibble(
     original_uri = uri,
-    author = map_chr(thread, ~ pluck(.x, "post", "author", "handle", .default = NA)), # nolint: line_length_linter.
-    text   = map_chr(thread, ~ pluck(.x, "post", "record", "text", .default = NA)), # nolint: line_length_linter.
-    uri    = map_chr(thread, ~ pluck(.x, "post", "uri", .default = NA))
+    author = map_chr(
+      thread,
+      ~ pluck(.x, "post", "author", "handle", .default = NA)
+    ), # nolint: line_length_linter.
+    text = map_chr(
+      thread,
+      ~ pluck(.x, "post", "record", "text", .default = NA)
+    ), # nolint: line_length_linter.
+    uri = map_chr(thread, ~ pluck(.x, "post", "uri", .default = NA))
   )
 }
-
 
 
 get_posts <- function(resp) {
   if (is.list(resp) && !is.null(resp$posts)) {
     # Case: resp itself has posts
     posts <- resp$posts
-
-  } else if (is.list(resp) && length(resp) > 0 &&
-               all(vapply(resp, function(x) is.list(x) && !is.null(x$posts), logical(1)))) { # nolint: line_length_linter.
+  } else if (
+    is.list(resp) &&
+      length(resp) > 0 &&
+      all(vapply(resp, function(x) is.list(x) && !is.null(x$posts), logical(1)))
+  ) {
+    # nolint: line_length_linter.
     # Case: resp is a list of objects, each with posts
     posts <- flatten(map(resp, "posts"))
-
-  } else if (is.list(resp) && length(resp) > 0 &&
-               all(vapply(resp, function(x) !is.null(x$uri), logical(1)))) {
+  } else if (
+    is.list(resp) &&
+      length(resp) > 0 &&
+      all(vapply(resp, function(x) !is.null(x$uri), logical(1)))
+  ) {
     # Case: resp is already a list of posts
     posts <- resp
-
   } else {
     stop("Unexpected structure returned by bs_search_posts(); inspect 'resp'")
   }
@@ -109,7 +123,10 @@ posts <- get_posts(resp)
 
 # Step 4: Extract key fields from posts
 post_uri <- map_chr(posts, ~ safe_chr(.x, "uri"))
-post_reply_parent_uri <- map_chr(posts, ~ safe_chr(.x, "record", "reply", "parent", "uri")) # nolint: line_length_linter.
+post_reply_parent_uri <- map_chr(
+  posts,
+  ~ safe_chr(.x, "record", "reply", "parent", "uri")
+) # nolint: line_length_linter.
 
 # Step 5: Build posts_df with metadata
 post_author <- map_chr(posts, ~ safe_chr(.x, "author", "handle"))
@@ -138,25 +155,33 @@ cat("Posts dataframe rows:", nrow(posts_df), "\n")
 
 # Step 6: Build reposts and threads data frames
 wrkrs = availableCores(constraints = "connections-16") * .3
-plan(multisession, workers = wrkrs)  # adjust workers to your CPU/network capacity
+plan(multisession, workers = wrkrs) # adjust workers to your CPU/network capacity
 
 reposts_df <- posts_df |>
   filter(repost_count > 0) |>
   pull(uri) |>
-  future_map_dfr(get_reposts_df, .progress = TRUE, .options = furrr_options(seed = 22230))
+  future_map_dfr(
+    get_reposts_df,
+    .progress = TRUE,
+    .options = furrr_options(seed = 22230)
+  )
 
 # set the system to sleep
 Sys.sleep(runif(1, 10, 30))
 threads_df <- posts_df |>
   filter(reply_count > 0) |>
   pull(uri) |>
-  future_map_dfr(get_thread_df, .progress = TRUE, .options = furrr_options(seed = 22230))
+  future_map_dfr(
+    get_thread_df,
+    .progress = TRUE,
+    .options = furrr_options(seed = 22230)
+  )
 
 #reposts_df <- post_uri |> map_dfr(get_reposts_df) # nolint
 #threads_df <- post_uri |> map_dfr(get_thread_df) # nolint
 cat("Reposts dataframe rows:", nrow(reposts_df), "\n")
 cat("Threads dataframe rows:", nrow(threads_df), "\n")
-plan(sequential)  # reset back to normal, shuts down workers
+plan(sequential) # reset back to normal, shuts down workers
 
 # Debug: check reposts_df structure
 print(head(reposts_df))
@@ -189,10 +214,16 @@ ggraph(g, layout = "fr") +
 
 # Step 10: Enrich edges with author info
 edges <- reposts_df |>
-  left_join(posts_df |> select(uri, author_handle),
-            by = c("original_uri" = "uri")) |>
-  transmute(from = handle, to = author_handle,
-            repost_uri = uri, created_at = created_at) |>
+  left_join(
+    posts_df |> select(uri, author_handle),
+    by = c("original_uri" = "uri")
+  ) |>
+  transmute(
+    from = handle,
+    to = author_handle,
+    repost_uri = uri,
+    created_at = created_at
+  ) |>
   filter(!is.na(from) & !is.na(to)) |>
   distinct()
 cat("Enriched edges count:", nrow(edges), "\n")
@@ -232,9 +263,13 @@ write_graph(g, "bluesky enriched Speirgorm Network.graphml", format = "graphml")
 vis_nodes <- nodes |>
   mutate(
     id = name,
-    label = ifelse(is.na(display_name) | display_name == "", name, display_name), # nolint: line_length_linter.
-    title = paste0("Name: ", name, "\nText: ", text),   # hover tooltip
-    value = ifelse(is.na(repost_count), 0, repost_count),  # size by repost_count # nolint: line_length_linter.
+    label = ifelse(
+      is.na(display_name) | display_name == "",
+      name,
+      display_name
+    ), # nolint: line_length_linter.
+    title = paste0("Name: ", name, "\nText: ", text), # hover tooltip
+    value = ifelse(is.na(repost_count), 0, repost_count), # size by repost_count # nolint: line_length_linter.
     group = name
   ) |>
   distinct(id, .keep_all = TRUE)
@@ -243,7 +278,7 @@ vis_edges <- edges |>
   transmute(
     from = from,
     to = to,
-    arrows = "from"   # add arrow pointing to the reposter node
+    arrows = "from" # add arrow pointing to the reposter node
   )
 
 # Build igraph object from edges
@@ -266,9 +301,9 @@ comps <- components(g)
 layouts <- lapply(unique(comps$membership), function(comp_id) {
   subg <- induced_subgraph(g, which(comps$membership == comp_id))
   if (vcount(subg) > 100) {
-    layout_with_lgl(subg)   # large component
+    layout_with_lgl(subg) # large component
   } else {
-    layout_with_kk(subg)    # smaller components
+    layout_with_kk(subg) # smaller components
   }
 })
 coords <- matrix(NA, nrow = vcount(g), ncol = 2)
@@ -280,7 +315,7 @@ for (comp_id in unique(comps$membership)) {
 
   # Apply offset so components don’t overlap
   coords[sub_nodes, ] <- sub_coords + offset
-  offset <- offset + max(sub_coords[, 1]) + 10  # shift horizontally
+  offset <- offset + max(sub_coords[, 1]) + 10 # shift horizontally
 }
 vis_nodes$x <- coords[, 1]
 vis_nodes$y <- coords[, 2]
@@ -289,12 +324,12 @@ top_nodes <- vis_nodes |> arrange(desc(degree)) |> slice(1:50) |> pull(id)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 
 # Community detection
-comm <- cluster_walktrap(g)   # works on directed graphs
+comm <- cluster_walktrap(g) # works on directed graphs
 
 # Add community membership to nodes
 vis_nodes$community <- comm$membership
 
-# add isolation tag 
+# add isolation tag
 vis_nodes$isolated <- vis_nodes$degree == 0
 
 # --- Use precomputed layout in visNetwork ---
@@ -308,22 +343,22 @@ visNetwork(vis_nodes, vis_edges, width = "1040px", height = "800px") |>
   visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE) |>
   visPhysics(enabled = TRUE)
 
-# Export the Visnetwork into GEXF format and visualise it again - check performance of Gephi 
+# Export the Visnetwork into GEXF format and visualise it again - check performance of Gephi
 # Nodes table
 ge_nodes <- data.frame(
-  id    = vis_nodes$id,
+  id = vis_nodes$id,
   label = ifelse(is.na(vis_nodes$label), vis_nodes$id, vis_nodes$label),
-  x     = vis_nodes$x,
-  y     = vis_nodes$y
+  x = vis_nodes$x,
+  y = vis_nodes$y
 )
 
 # Node attributes (include everything else, including x/y coords, degree, community, isolated)
 ge_nodesAtt <- vis_nodes %>%
   transmute(
-    degree       = ifelse(is.na(degree), 0L, as.integer(degree)),
+    degree = ifelse(is.na(degree), 0L, as.integer(degree)),
     repost_count = ifelse(is.na(repost_count), 0L, as.integer(repost_count)),
-    community    = as.integer(community),
-    isolated     = ifelse(isolated, "TRUE", "FALSE")
+    community = as.integer(community),
+    isolated = ifelse(isolated, "TRUE", "FALSE")
   )
 
 # Edges table
@@ -335,15 +370,17 @@ ge_edges <- data.frame(
 # Edge attributes (optional)
 ge_edgesAtt <- vis_edges |>
   select(-from, -to) |>
-  mutate(across(where(is.character),
-                ~ stri_replace_all_regex(., "[&<>]", " "))) |>
-  mutate(across(where(is.character),
-                ~ stri_trans_general(., "Latin-ASCII")))
+  mutate(across(
+    where(is.character),
+    ~ stri_replace_all_regex(., "[&<>]", " ")
+  )) |>
+  mutate(across(where(is.character), ~ stri_trans_general(., "Latin-ASCII")))
 
 #ge_nodesAtt <- ge_nodesAtt %>% mutate(across(where(is.character), ~ replace_na(., "")))
 #ge_nodesAtt <- ge_nodesAtt %>% mutate(across(where(is.character), ~ gsub("[\r\n\t]", " ", .)))
 #ge_nodesAtt <- ge_nodesAtt %>% mutate(repost_count = ifelse(is.na(repost_count), 0L, repost_count))
-ge_edgesAtt <- ge_edgesAtt %>% mutate(across(where(is.character), ~ replace_na(., "")))
+ge_edgesAtt <- ge_edgesAtt %>%
+  mutate(across(where(is.character), ~ replace_na(., "")))
 
 # Create a palette with enough distinct colours
 palette <- grDevices::rainbow(length(unique(vis_nodes$community)))
@@ -358,15 +395,15 @@ comm_colors <- data.frame(
 
 # Create GEXF object
 gexf_obj <- write.gexf(
-  nodes     = ge_nodes[, c("id", "label")],   # only 2 columns
-  edges     = ge_edges,
-  nodesAtt  = ge_nodesAtt,
-  edgesAtt  = ge_edgesAtt,
+  nodes = ge_nodes[, c("id", "label")], # only 2 columns
+  edges = ge_edges,
+  nodesAtt = ge_nodesAtt,
+  edgesAtt = ge_edgesAtt,
   nodesVizAtt = list(
     position = data.frame(
       x = vis_nodes$x,
       y = vis_nodes$y,
-      z = rep(0, nrow(vis_nodes))   # optional, Gephi expects 3D coords
+      z = rep(0, nrow(vis_nodes)) # optional, Gephi expects 3D coords
     ),
     size = vis_nodes$value,
     color = comm_colors
@@ -379,7 +416,6 @@ print(gexf_obj, file = "visnetwork_export.gexf")
 plot(gexf_obj)
 
 
-
 cat("Interactive visualization ready with precomputed layout.\n")
 top_authors_reposted <- posts_df |>
   group_by(author_handle) |>
@@ -388,10 +424,10 @@ top_authors_reposted <- posts_df |>
   slice(1:10)
 
 top_reposters <- reposts_df |>
-  group_by(handle, display_name) |>              # group by both
-  summarise(total_reposts_made = n(), .groups = "drop") |>  # count reposts
-  arrange(desc(total_reposts_made)) |>           # sort descending
-  slice(1:10)                                     # top 10
+  group_by(handle, display_name) |> # group by both
+  summarise(total_reposts_made = n(), .groups = "drop") |> # count reposts
+  arrange(desc(total_reposts_made)) |> # sort descending
+  slice(1:10) # top 10
 
 library(DT)
 
