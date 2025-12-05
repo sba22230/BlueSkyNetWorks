@@ -23,51 +23,6 @@ safe_int <- function(x, ...) {
   if (is.null(val)) NA_integer_ else as.integer(val)
 }
 
-# Deduplicate by URI
-dedup_posts <- function(posts) {
-  posts %>%
-    tibble::as_tibble() %>%
-    distinct(uri, .keep_all = TRUE)
-}
-
-# Single page search with retry
-search_page <- function(query, cursor = NULL, limit = 300) {
-  retry(
-    {
-      bs_search_posts(
-        query = query,
-        limit = limit,
-        cursor = cursor,
-        clean = FALSE,
-        auth = bs_auth
-      )
-    },
-    when = "error",
-    max_tries = 5,
-    interval = runif(1, 1.0, 2.0)
-  )
-}
-
-get_posts_from_resp <- function(resp) {
-  if (is.list(resp) && !is.null(resp$posts)) {
-    resp$posts
-  } else if (
-    is.list(resp) &&
-      length(resp) > 0 &&
-      all(vapply(resp, function(x) is.list(x) && !is.null(x$posts), logical(1)))
-  ) {
-    flatten(map(resp, "posts"))
-  } else if (
-    is.list(resp) &&
-      length(resp) > 0 &&
-      all(vapply(resp, function(x) !is.null(x$uri), logical(1)))
-  ) {
-    resp
-  } else {
-    list()
-  }
-}
-
 # Deep pagination with "until" anchoring by last indexedAt
 deep_search_posts <- function(
   query,
@@ -105,8 +60,41 @@ deep_search_posts <- function(
     iter <- iter + 1
     q <- if (!is.null(until)) paste0(query, " until:", until) else query
 
-    resp <- search_page(q, cursor = cursor, limit = chunk_limit)
-    posts <- get_posts_from_resp(resp)
+    resp <- retry(
+      {
+        bs_search_posts(
+          query = q,
+          limit = chunk_limit,
+          cursor = cursor,
+          clean = FALSE,
+          auth = bs_auth
+        )
+      },
+      when = "error",
+      max_tries = 5,
+      interval = runif(1, 1.0, 2.0)
+    )
+    if (is.list(resp) && !is.null(resp$posts)) {
+      posts <- resp$posts
+    } else if (
+      is.list(resp) &&
+        length(resp) > 0 &&
+        all(vapply(
+          resp,
+          function(x) is.list(x) && !is.null(x$posts),
+          logical(1)
+        ))
+    ) {
+      flatten(map(resp, "posts"))
+    } else if (
+      is.list(resp) &&
+        length(resp) > 0 &&
+        all(vapply(resp, function(x) !is.null(x$uri), logical(1)))
+    ) {
+      resp
+    } else {
+      list()
+    }
 
     if (length(posts) == 0) {
       # No posts: attempt to push further back if we have an anchor
