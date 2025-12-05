@@ -313,12 +313,7 @@ wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.3))
 plan(multisession, workers = wrkrs)
 
 # Run deep search
-posts_df <- deep_search_posts(
-  "Speirgorm",
-  hard_limit = 50000,
-  chunk_limit = 100,
-  checkpoint_path = ".data/speirgorm_posts.parquet"
-)
+
 readr::write_csv(posts_df, ".data/speirgorm_posts.csv")
 
 # Load existing reposts/threads or start fresh
