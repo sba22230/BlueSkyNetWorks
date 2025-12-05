@@ -263,7 +263,10 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
     all_reposts <- append(all_reposts, list(part))
     tryCatch(
       {
-        readr::write_csv(part, sprintf(".data/reposts_batch_%s_%03d.csv", tag, i))
+        readr::write_csv(
+          part,
+          sprintf(".data/reposts_batch_%s_%03d.csv", tag, i)
+        )
       },
       error = function(e) message("Failed to write reposts batch: ", e$message)
     )
@@ -286,7 +289,10 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
     all_threads <- append(all_threads, list(part))
     tryCatch(
       {
-        readr::write_csv(part, sprintf(".data/threads_batch_%s_%03d.csv", tag, i))
+        readr::write_csv(
+          part,
+          sprintf(".data/threads_batch_%s_%03d.csv", tag, i)
+        )
       },
       error = function(e) message("Failed to write threads batch: ", e$message)
     )
@@ -315,10 +321,33 @@ posts_df <- deep_search_posts(
 )
 readr::write_csv(posts_df, ".data/speirgorm_posts.csv")
 
+# Load existing reposts/threads or start fresh
+reposts_df <- tryCatch(
+  arrow::read_parquet(".data/speirgorm_reposts.parquet"),
+  error = function(e) tibble(original_uri = character())
+)
+threads_df <- tryCatch(
+  arrow::read_parquet(".data/speirgorm_threads.parquet"),
+  error = function(e) tibble(original_uri = character())
+)
+
+# Filter to only hydrate new posts
+posts_to_hydrate <- posts_df %>%
+  filter(!(uri %in% c(reposts_df$original_uri, threads_df$original_uri)))
+
 # Hydrate in batches
-hydrated <- hydrate_in_batches(posts_df, batch_size = 400, tag = "speirgorm")
-reposts_df <- hydrated$reposts_df
-threads_df <- hydrated$threads_df
+hydrated <- hydrate_in_batches(
+  posts_to_hydrate,
+  batch_size = 400,
+  tag = "speirgorm"
+)
+reposts_df <- bind_rows(reposts_df, hydrated$reposts_df) %>%
+  distinct(original_uri, handle, uri, .keep_all = TRUE)
+threads_df <- bind_rows(threads_df, hydrated$threads_df) %>%
+  distinct(original_uri, author, uri, .keep_all = TRUE)
+
+arrow::write_parquet(reposts_df, ".data/speirgorm_reposts.parquet")
+arrow::write_parquet(threads_df, ".data/speirgorm_threads.parquet")
 readr::write_csv(reposts_df, ".data/speirgorm_reposts.csv")
 readr::write_csv(threads_df, ".data/speirgorm_threads.csv")
 
@@ -378,4 +407,8 @@ ggraph(g, layout = "fr") +
   theme_void()
 cat("Final graph summary:\n")
 print(summary(g))
-write_graph(g, ".graphs/bluesky enriched Speirgorm Network.graphml", format = "graphml")
+write_graph(
+  g,
+  ".graphs/bluesky enriched Speirgorm Network.graphml",
+  format = "graphml"
+)
