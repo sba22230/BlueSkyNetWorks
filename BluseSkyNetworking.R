@@ -103,7 +103,7 @@ ggraph(g, layout = "fr") +
   theme_void()
 cat("Final graph summary:\n")
 print(summary(g))
-write_graph(g, "bluesky enriched Speirgorm Network.graphml", format = "graphml")
+write_graph(g, ".data/bluesky enriched Speirgorm Network.graphml", format = "graphml")
 
 # Step 13: Interactive visualization with visNetwork
 vis_nodes <- nodes |>
@@ -259,7 +259,7 @@ gexf_obj <- write.gexf(
 
 # Save to file
 home_dir <- here::here()
-file_path <- file.path(home_dir, ".data")
+file_path <- file.path(home_dir, ".graphs")
 file_name <- file.path(file_path, "visnetwork_export.gexf")
 
 # Make sure the directory exists
