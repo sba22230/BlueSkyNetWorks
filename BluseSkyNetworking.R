@@ -13,16 +13,7 @@ library(visNetwork)
 library(retry)
 library(rgexf)
 
-edges <- readr::read_csv(".graphs/speirgorm_edges.csv")
-nodes <- readr::read_csv(".graphs/speirgorm_nodes.csv")
-# Step 6: Build reposts and threads data frames
-wrkrs <- ifelse(
-  round(availableCores(constraints = "connections-16") * .3) == 1,
-  2,
-  round(availableCores(constraints = "connections-16") * .3)
-)
-
-plan(multisession, workers = wrkrs) # adjust workers to your CPU/network capacity
+# Step 1: Load data
 
 posts_df <- read.csv(".data/speirgorm_posts.csv")
 
@@ -53,14 +44,28 @@ cat("Nodes count:", nrow(nodes), "\n")
 print(head(nodes))
 
 # Step 9: Build igraph object and plot basic network
-g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+g1 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 cat("Graph summary:\n")
-print(summary(g))
+print(summary(g1))
 
-ggraph(g, layout = "fr") +
+coords <- layout_with_drl(g1) # heavy step, do once
+V(g1)$x <- coords[, 1]
+V(g1)$y <- coords[, 2]
+
+# Select top N nodes to label (e.g., top 50 by degree)
+deg <- degree(g1)
+top_nodes <- names(sort(deg, decreasing = TRUE))[1:50]
+
+# Faster ggraph call
+ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
   geom_edge_link(alpha = 0.3) +
   geom_node_point(size = 5) +
-  geom_node_text(aes(label = name), repel = TRUE)
+  geom_node_text(
+    aes(label = ifelse(name %in% top_nodes, name, "")),
+    repel = TRUE,
+    max.overlaps = 100
+  )
+
 
 # Step 10: Enrich edges with author info
 edges <- reposts_df |>
@@ -97,8 +102,11 @@ cat("Enriched nodes count:", nrow(nodes), "\n")
 print(head(nodes))
 
 # Step 12: Plot enriched network with ggraph
-g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-ggraph(g, layout = "fr") +
+g2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+coords <- layout_with_kk(g2) # heavy step, do once
+V(g2)$x <- coords[, 1]
+V(g2)$y <- coords[, 2]
+ggraph(g2, layout = "manual") +
   geom_edge_link(alpha = 0.3) +
   geom_node_point(aes(size = repost_count, color = repost_count)) +
   geom_node_text(aes(label = display_name), repel = TRUE) +
@@ -106,10 +114,10 @@ ggraph(g, layout = "fr") +
   scale_color_gradient(low = "lightblue", high = "red") +
   theme_void()
 cat("Final graph summary:\n")
-print(summary(g))
+print(summary(g2))
 write_graph(
-  g,
-  ".data/bluesky enriched Speirgorm Network.graphml",
+  g2,
+  ".graphs/bluesky enriched Speirgorm Network.graphml",
   format = "graphml"
 )
 
@@ -193,7 +201,7 @@ visNetwork(vis_nodes, vis_edges, width = "1040px", height = "800px") |>
     nodesIdSelection = list(values = sorted_ids)
   ) |>
   visEdges(arrows = "to") |>
-  visGroups(groupname = unique(vis_nodes$group)) |>
+  visGroups(groupname = unique(vis_nodes$community)) |>
   visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE) |>
   visPhysics(enabled = TRUE)
 
@@ -280,14 +288,12 @@ rgexf::write.gexf(gexf_obj, output = file_name)
 
 plot(gexf_obj)
 
-plan(sequential) # reset back to normal, shuts down workers
 cat("Interactive visualization ready with precomputed layout.\n")
 top_authors_reposted <- posts_df |>
   group_by(author_handle) |>
   summarise(total_reposts = sum(repost_count, na.rm = TRUE)) |>
   arrange(desc(total_reposts)) |>
   slice(1:10)
-
 top_reposters <- reposts_df |>
   group_by(handle, display_name) |> # group by both
   summarise(total_reposts_made = n(), .groups = "drop") |> # count reposts
