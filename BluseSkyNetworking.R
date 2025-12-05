@@ -16,8 +16,12 @@ library(rgexf)
 edges <- readr::read_csv(".graphs/speirgorm_edges.csv")
 nodes <- readr::read_csv(".graphs/speirgorm_nodes.csv")
 # Step 6: Build reposts and threads data frames
-wrkrs <- ifelse (round(availableCores(constraints = "connections-16") * .3) == 1, 2, round(availableCores(constraints = "connections-16") * .3 ))
-    
+wrkrs <- ifelse(
+  round(availableCores(constraints = "connections-16") * .3) == 1,
+  2,
+  round(availableCores(constraints = "connections-16") * .3)
+)
+
 plan(multisession, workers = wrkrs) # adjust workers to your CPU/network capacity
 
 posts_df <- read.csv(".data/speirgorm_posts.csv")
@@ -25,7 +29,7 @@ posts_df <- read.csv(".data/speirgorm_posts.csv")
 reposts_df <- read.csv(".data/speirgorm_reposts.csv")
 
 threads_df <- read.csv(".data/speirgorm_threads.csv")
-  
+
 cat("Reposts dataframe rows:", nrow(reposts_df), "\n")
 cat("Threads dataframe rows:", nrow(threads_df), "\n")
 
@@ -103,7 +107,11 @@ ggraph(g, layout = "fr") +
   theme_void()
 cat("Final graph summary:\n")
 print(summary(g))
-write_graph(g, ".data/bluesky enriched Speirgorm Network.graphml", format = "graphml")
+write_graph(
+  g,
+  ".data/bluesky enriched Speirgorm Network.graphml",
+  format = "graphml"
+)
 
 # Step 13: Interactive visualization with visNetwork
 vis_nodes <- nodes |>
@@ -263,7 +271,9 @@ file_path <- file.path(home_dir, ".graphs")
 file_name <- file.path(file_path, "visnetwork_export.gexf")
 
 # Make sure the directory exists
-if (!dir.exists(file_path)) dir.create(file_path, recursive = TRUE)
+if (!dir.exists(file_path)) {
+  dir.create(file_path, recursive = TRUE)
+}
 
 # Write the GEXF object to file
 rgexf::write.gexf(gexf_obj, output = file_name)
