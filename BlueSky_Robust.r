@@ -31,7 +31,7 @@ dedup_posts <- function(posts) {
 }
 
 # Single page search with retry
-search_page <- function(query, cursor = NULL, limit = 100) {
+search_page <- function(query, cursor = NULL, limit = 300) {
   retry(
     {
       bs_search_posts(
@@ -157,7 +157,8 @@ deep_search_posts <- function(
     cursor <- resp$cursor %||% NULL
 
     if (is.null(cursor)) {
-      # If the server ended this window, push the anchor back using the oldest indexedAt
+      # If the server ended this window,
+      # push the anchor back using the oldest indexedAt
       # Convert indexedAt to POSIXct for proper comparison
       indexedAt_posix <- suppressWarnings(as.POSIXct(
         df$indexedAt,
@@ -247,6 +248,19 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
   all_reposts <- list()
   all_threads <- list()
 
+  # Load existing partial results if resuming
+  reposts_checkpoint_path <- sprintf(".data/%s_hydrated_reposts.parquet", tag)
+  threads_checkpoint_path <- sprintf(".data/%s_hydrated_threads.parquet", tag)
+
+  if (file.exists(reposts_checkpoint_path)) {
+    all_reposts <- list(arrow::read_parquet(reposts_checkpoint_path))
+    message("Loaded existing reposts checkpoint: ", reposts_checkpoint_path)
+  }
+  if (file.exists(threads_checkpoint_path)) {
+    all_threads <- list(arrow::read_parquet(threads_checkpoint_path))
+    message("Loaded existing threads checkpoint: ", threads_checkpoint_path)
+  }
+
   for (i in seq_along(rep_chunks)) {
     message(sprintf(
       "Hydrating reposts batch %d/%d (%d uris)",
@@ -261,6 +275,8 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
       .options = furrr_options(seed = 22230)
     )
     all_reposts <- append(all_reposts, list(part))
+
+    # Write batch CSV
     tryCatch(
       {
         readr::write_csv(
@@ -270,6 +286,17 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
       },
       error = function(e) message("Failed to write reposts batch: ", e$message)
     )
+
+    # Checkpoint combined reposts (for resume capability)
+    combined <- bind_rows(all_reposts) %>%
+      distinct(original_uri, handle, uri, .keep_all = TRUE)
+    tryCatch(
+      {
+        arrow::write_parquet(combined, reposts_checkpoint_path)
+      },
+      error = function(e) message("Failed to checkpoint reposts: ", e$message)
+    )
+
     Sys.sleep(runif(1, 3, 6))
   }
 
@@ -287,6 +314,8 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
       .options = furrr_options(seed = 22230)
     )
     all_threads <- append(all_threads, list(part))
+
+    # Write batch CSV
     tryCatch(
       {
         readr::write_csv(
@@ -296,6 +325,17 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
       },
       error = function(e) message("Failed to write threads batch: ", e$message)
     )
+
+    # Checkpoint combined threads (for resume capability)
+    combined <- bind_rows(all_threads) %>%
+      distinct(original_uri, author, uri, .keep_all = TRUE)
+    tryCatch(
+      {
+        arrow::write_parquet(combined, threads_checkpoint_path)
+      },
+      error = function(e) message("Failed to checkpoint threads: ", e$message)
+    )
+
     Sys.sleep(runif(1, 3, 6))
   }
 
@@ -311,8 +351,14 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
 
 wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.3))
 plan(multisession, workers = wrkrs)
-
 # Run deep search
+posts_df <- deep_search_posts(
+  "Speirgorm",
+  hard_limit = 50000,
+  chunk_limit = 100,
+  checkpoint_path = ".data/speirgorm_posts.parquet"
+)
+
 
 readr::write_csv(posts_df, ".data/speirgorm_posts.csv")
 
@@ -330,12 +376,62 @@ threads_df <- tryCatch(
 posts_to_hydrate <- posts_df %>%
   filter(!(uri %in% c(reposts_df$original_uri, threads_df$original_uri)))
 
-# Hydrate in batches
-hydrated <- hydrate_in_batches(
-  posts_to_hydrate,
-  batch_size = 400,
-  tag = "speirgorm"
+# Check for partial hydration checkpoints and load if available
+hydrated_reposts_checkpoint <- ".data/speirgorm_hydrated_reposts.parquet"
+hydrated_threads_checkpoint <- ".data/speirgorm_hydrated_threads.parquet"
+
+if (file.exists(hydrated_reposts_checkpoint)) {
+  message("Found existing hydrated reposts checkpoint; loading...")
+  hydrated_reposts_partial <- arrow::read_parquet(hydrated_reposts_checkpoint)
+  posts_to_hydrate <- posts_to_hydrate %>%
+    filter(!(uri %in% hydrated_reposts_partial$original_uri))
+  message(
+    "Filtered to ",
+    nrow(posts_to_hydrate),
+    " remaining posts to hydrate (reposts)"
+  )
+}
+
+if (file.exists(hydrated_threads_checkpoint)) {
+  message("Found existing hydrated threads checkpoint; loading...")
+  hydrated_threads_partial <- arrow::read_parquet(hydrated_threads_checkpoint)
+  posts_to_hydrate <- posts_to_hydrate %>%
+    filter(!(uri %in% hydrated_threads_partial$original_uri))
+  message(
+    "Filtered to ",
+    nrow(posts_to_hydrate),
+    " remaining posts to hydrate (threads)"
+  )
+}
+
+# Hydrate in batches with error handling
+hydrated <- tryCatch(
+  {
+    hydrate_in_batches(
+      posts_to_hydrate,
+      batch_size = 500,
+      tag = "speirgorm"
+    )
+  },
+  error = function(e) {
+    message("Hydration failed with error: ", e$message)
+    message("Continuing with existing reposts/threads data and checkpoints.")
+    list(
+      reposts_df = tibble(
+        original_uri = character(),
+        handle = character(),
+        uri = character()
+      ),
+      threads_df = tibble(
+        original_uri = character(),
+        author = character(),
+        uri = character(),
+        text = character()
+      )
+    )
+  }
 )
+
 reposts_df <- bind_rows(reposts_df, hydrated$reposts_df) %>%
   distinct(original_uri, handle, uri, .keep_all = TRUE)
 threads_df <- bind_rows(threads_df, hydrated$threads_df) %>%
