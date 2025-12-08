@@ -9,6 +9,7 @@ library(furrr)
 library(tidyr)
 library(arrow)
 library(igraph)
+library(ggraph)
 
 bs_user <- bs_get_user()
 bs_pass <- bs_get_pass()
@@ -190,11 +191,28 @@ deep_search_posts <- function(
 
 get_reposts_df <- function(uri) {
   Sys.sleep(runif(1, 0.2, 1.1))
-  reposts <- retry(
-    bs_get_reposts(uri, limit = 500, auth = bs_auth, clean = TRUE),
-    when = "error",
-    max_tries = 4,
-    interval = runif(1, 0.8, 1.8)
+  reposts <- tryCatch(
+    {
+      retry(
+        bs_get_reposts(uri, limit = 500, auth = bs_auth, clean = TRUE),
+        when = "error",
+        max_tries = 4,
+        interval = runif(1, 0.8, 1.8)
+      )
+    },
+    error = function(e) {
+      msg <- conditionMessage(e)
+      if (grepl("400", msg)) {
+        message("Skipping invalid/missing repost: ", uri, " (Bad Request)")
+        return(tibble(original_uri = uri, handle = character(), uri = character()))
+      } else if (grepl("502", msg)) {
+        message("Temporary gateway error for ", uri, "; will retry later.")
+        return(tibble(original_uri = uri, handle = character(), uri = character()))
+      } else {
+        message("Failed to get reposts for ", uri, ": ", msg)
+        return(tibble(original_uri = uri, handle = character(), uri = character()))
+      }
+    }
   )
   if (
     is.null(reposts) || !inherits(reposts, "data.frame") || nrow(reposts) == 0
@@ -207,12 +225,26 @@ get_reposts_df <- function(uri) {
 
 get_thread_df <- function(uri) {
   Sys.sleep(runif(1, 0.2, 0.7))
-  thread <- retry(
+  thread <- tryCatch({
+    retry(
     bs_get_post_thread(uri, auth = bs_auth, clean = FALSE),
     when = "error",
     max_tries = 4,
     interval = runif(1, 0.8, 1.8)
-  )
+  )},
+  error = function(e){
+    msg <- conditionMessage(e)
+    if (grepl("400", msg)) {
+      message("Skipping invalid/missing thread: ", uri, " (Bad Request)")
+      return(tibble(original_uri = uri, author = character(), text = character(), uri = character()))
+    } else if (grepl("502", msg)) {
+      message("Temporary gateway error for ", uri, "; will retry later.")
+      return(tibble(original_uri = uri, author = character(), text = character(), uri = character()))
+    } else {
+      message("Failed to get thread for ", uri, ": ", msg)
+      return(tibble(original_uri = uri, author = character(), text = character(), uri = character()))
+    }
+  })
   if (is.null(thread) || length(thread) == 0) {
     return(tibble(
       original_uri = uri,
@@ -489,7 +521,7 @@ readr::write_csv(nodes, ".graphs/speirgorm_nodes.csv")
 
 # Step 12: Plot enriched network with ggraph
 g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-ggraph(g, layout = "fr") +
+ggraph::ggraph(g, layout = "drl") +
   geom_edge_link(alpha = 0.3) +
   geom_node_point(aes(size = repost_count, color = repost_count)) +
   geom_node_text(aes(label = display_name), repel = TRUE) +
@@ -503,3 +535,4 @@ write_graph(
   ".graphs/bluesky enriched Speirgorm Network.graphml",
   format = "graphml"
 )
+
