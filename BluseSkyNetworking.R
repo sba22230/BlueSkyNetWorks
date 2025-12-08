@@ -1,5 +1,3 @@
-library(bskyr)
-library(furrr)
 library(dplyr)
 library(lubridate)
 library(igraph)
@@ -12,7 +10,7 @@ library(ggraph)
 library(visNetwork)
 library(retry)
 library(rgexf)
-library(statnet)
+## library(statnet) # this needs to be loaded later otherwise it interferes with previous packages
 
 # Step 1: Load data
 
@@ -20,10 +18,10 @@ posts_df <- read.csv(".data/speirgorm_posts.csv")
 
 reposts_df <- read.csv(".data/speirgorm_reposts.csv")
 
-threads_df <- read.csv(".data/speirgorm_threads.csv")
+#threads_df <- read.csv(".data/speirgorm_threads.csv")
 
 cat("Reposts dataframe rows:", nrow(reposts_df), "\n")
-cat("Threads dataframe rows:", nrow(threads_df), "\n")
+#cat("Threads dataframe rows:", nrow(threads_df), "\n")
 
 # Debug: check reposts_df structure
 print(head(reposts_df))
@@ -104,9 +102,9 @@ print(head(nodes))
 
 # Step 12: Plot enriched network with ggraph
 g2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-coords <- layout_with_kk(g2) # heavy step, do once
-V(g2)$x <- coords[, 1]
-V(g2)$y <- coords[, 2]
+coords2 <- layout_with_graphopt(g2, niter = 200) # heavy step, do once
+V(g2)$x <- coords2[, 1]
+V(g2)$y <- coords2[, 2]
 ggraph(g2, layout = "manual") +
   geom_edge_link(alpha = 0.3) +
   geom_node_point(aes(size = repost_count, color = repost_count)) +
@@ -145,10 +143,10 @@ vis_edges <- edges |>
   )
 
 # Build igraph object from edges
-g <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
+g3 <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
 
 # Compute degree for each node
-deg <- degree(g2, mode = "all")
+deg <- degree(g3, mode = "all")
 
 # Add degree to vis_nodes
 vis_nodes <- vis_nodes |>
@@ -160,16 +158,16 @@ sorted_ids <- vis_nodes |>
   pull(id)
 
 # --- Precompute layout coordinates with igraph ---
-comps <- components(g2)
+comps <- components(g3)
 layouts <- lapply(unique(comps$membership), function(comp_id) {
-  subg <- induced_subgraph(g2, which(comps$membership == comp_id))
+  subg <- induced_subgraph(g3, which(comps$membership == comp_id))
   if (vcount(subg) > 100) {
     layout_with_lgl(subg) # large component
   } else {
     layout_with_kk(subg) # smaller components
   }
 })
-coords <- matrix(NA, nrow = vcount(g2), ncol = 2)
+coords3 <- matrix(NA, nrow = vcount(g3), ncol = 2)
 offset <- 0
 
 for (comp_id in unique(comps$membership)) {
@@ -177,17 +175,17 @@ for (comp_id in unique(comps$membership)) {
   sub_coords <- layouts[[which(unique(comps$membership) == comp_id)]]
 
   # Apply offset so components don’t overlap
-  coords[sub_nodes, ] <- sub_coords + offset
+  coords3[sub_nodes, ] <- sub_coords + offset
   offset <- offset + max(sub_coords[, 1]) + 10 # shift horizontally
 }
-vis_nodes$x <- coords[, 1]
-vis_nodes$y <- coords[, 2]
+vis_nodes$x <- coords3[, 1]
+vis_nodes$y <- coords3[, 2]
 
 top_nodes <- vis_nodes |> arrange(desc(degree)) |> slice(1:50) |> pull(id)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 
 # Community detection
-comm <- cluster_walktrap(g2) # works on directed graphs
+comm <- cluster_walktrap(g3) # works on directed graphs
 
 # Add community membership to nodes
 vis_nodes$community <- comm$membership
