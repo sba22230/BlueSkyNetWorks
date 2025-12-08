@@ -12,6 +12,7 @@ library(ggraph)
 library(visNetwork)
 library(retry)
 library(rgexf)
+library(statnet)
 
 # Step 1: Load data
 
@@ -147,7 +148,7 @@ vis_edges <- edges |>
 g <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
 
 # Compute degree for each node
-deg <- degree(g, mode = "all")
+deg <- degree(g2, mode = "all")
 
 # Add degree to vis_nodes
 vis_nodes <- vis_nodes |>
@@ -159,16 +160,16 @@ sorted_ids <- vis_nodes |>
   pull(id)
 
 # --- Precompute layout coordinates with igraph ---
-comps <- components(g)
+comps <- components(g2)
 layouts <- lapply(unique(comps$membership), function(comp_id) {
-  subg <- induced_subgraph(g, which(comps$membership == comp_id))
+  subg <- induced_subgraph(g2, which(comps$membership == comp_id))
   if (vcount(subg) > 100) {
     layout_with_lgl(subg) # large component
   } else {
     layout_with_kk(subg) # smaller components
   }
 })
-coords <- matrix(NA, nrow = vcount(g), ncol = 2)
+coords <- matrix(NA, nrow = vcount(g2), ncol = 2)
 offset <- 0
 
 for (comp_id in unique(comps$membership)) {
@@ -186,7 +187,7 @@ top_nodes <- vis_nodes |> arrange(desc(degree)) |> slice(1:50) |> pull(id)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 
 # Community detection
-comm <- cluster_walktrap(g) # works on directed graphs
+comm <- cluster_walktrap(g2) # works on directed graphs
 
 # Add community membership to nodes
 vis_nodes$community <- comm$membership
