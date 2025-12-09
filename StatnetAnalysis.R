@@ -1,5 +1,6 @@
 library(dplyr)
 library(lubridate)
+library(intergraph)
 library(igraph)
 library(stringr)
 library(stringi)
@@ -64,3 +65,7 @@ ggraph(g2, layout = "manual") +
   theme_void()
 cat("Final graph summary:\n")
 print(summary(g2))
+
+# Start of Statnet analysis
+# Convert igraph to statnet network
+bluSkynet <- asNetwork(g2)
