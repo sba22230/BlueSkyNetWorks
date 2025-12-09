@@ -74,7 +74,7 @@ deep_search_posts <- function(
   query,
   hard_limit = 50000,
   chunk_limit = 100,
-  checkpoint_path = ".data/speirgorm_posts.parquet"
+  checkpoint_path = "data/speirgorm_posts.parquet"
 ) {
   all_rows <- list()
   cursor <- NULL
@@ -204,13 +204,25 @@ get_reposts_df <- function(uri) {
       msg <- conditionMessage(e)
       if (grepl("400", msg)) {
         message("Skipping invalid/missing repost: ", uri, " (Bad Request)")
-        return(tibble(original_uri = uri, handle = character(), uri = character()))
+        return(tibble(
+          original_uri = uri,
+          handle = character(),
+          uri = character()
+        ))
       } else if (grepl("502", msg)) {
         message("Temporary gateway error for ", uri, "; will retry later.")
-        return(tibble(original_uri = uri, handle = character(), uri = character()))
+        return(tibble(
+          original_uri = uri,
+          handle = character(),
+          uri = character()
+        ))
       } else {
         message("Failed to get reposts for ", uri, ": ", msg)
-        return(tibble(original_uri = uri, handle = character(), uri = character()))
+        return(tibble(
+          original_uri = uri,
+          handle = character(),
+          uri = character()
+        ))
       }
     }
   )
@@ -225,26 +237,44 @@ get_reposts_df <- function(uri) {
 
 get_thread_df <- function(uri) {
   Sys.sleep(runif(1, 0.2, 0.7))
-  thread <- tryCatch({
-    retry(
-    bs_get_post_thread(uri, auth = bs_auth, clean = FALSE),
-    when = "error",
-    max_tries = 4,
-    interval = runif(1, 0.8, 1.8)
-  )},
-  error = function(e){
-    msg <- conditionMessage(e)
-    if (grepl("400", msg)) {
-      message("Skipping invalid/missing thread: ", uri, " (Bad Request)")
-      return(tibble(original_uri = uri, author = character(), text = character(), uri = character()))
-    } else if (grepl("502", msg)) {
-      message("Temporary gateway error for ", uri, "; will retry later.")
-      return(tibble(original_uri = uri, author = character(), text = character(), uri = character()))
-    } else {
-      message("Failed to get thread for ", uri, ": ", msg)
-      return(tibble(original_uri = uri, author = character(), text = character(), uri = character()))
+  thread <- tryCatch(
+    {
+      retry(
+        bs_get_post_thread(uri, auth = bs_auth, clean = FALSE),
+        when = "error",
+        max_tries = 4,
+        interval = runif(1, 0.8, 1.8)
+      )
+    },
+    error = function(e) {
+      msg <- conditionMessage(e)
+      if (grepl("400", msg)) {
+        message("Skipping invalid/missing thread: ", uri, " (Bad Request)")
+        return(tibble(
+          original_uri = uri,
+          author = character(),
+          text = character(),
+          uri = character()
+        ))
+      } else if (grepl("502", msg)) {
+        message("Temporary gateway error for ", uri, "; will retry later.")
+        return(tibble(
+          original_uri = uri,
+          author = character(),
+          text = character(),
+          uri = character()
+        ))
+      } else {
+        message("Failed to get thread for ", uri, ": ", msg)
+        return(tibble(
+          original_uri = uri,
+          author = character(),
+          text = character(),
+          uri = character()
+        ))
+      }
     }
-  })
+  )
   if (is.null(thread) || length(thread) == 0) {
     return(tibble(
       original_uri = uri,
@@ -281,8 +311,8 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
   all_threads <- list()
 
   # Load existing partial results if resuming
-  reposts_checkpoint_path <- sprintf(".data/%s_hydrated_reposts.parquet", tag)
-  threads_checkpoint_path <- sprintf(".data/%s_hydrated_threads.parquet", tag)
+  reposts_checkpoint_path <- sprintf("data/%s_hydrated_reposts.parquet", tag)
+  threads_checkpoint_path <- sprintf("data/%s_hydrated_threads.parquet", tag)
 
   if (file.exists(reposts_checkpoint_path)) {
     all_reposts <- list(arrow::read_parquet(reposts_checkpoint_path))
@@ -313,7 +343,7 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
       {
         readr::write_csv(
           part,
-          sprintf(".data/reposts_batch_%s_%03d.csv", tag, i)
+          sprintf("data/reposts_batch_%s_%03d.csv", tag, i)
         )
       },
       error = function(e) message("Failed to write reposts batch: ", e$message)
@@ -352,7 +382,7 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
       {
         readr::write_csv(
           part,
-          sprintf(".data/threads_batch_%s_%03d.csv", tag, i)
+          sprintf("data/threads_batch_%s_%03d.csv", tag, i)
         )
       },
       error = function(e) message("Failed to write threads batch: ", e$message)
@@ -388,19 +418,19 @@ posts_df <- deep_search_posts(
   "Speirgorm",
   hard_limit = 50000,
   chunk_limit = 100,
-  checkpoint_path = ".data/speirgorm_posts.parquet"
+  checkpoint_path = "data/speirgorm_posts.parquet"
 )
 
 
-readr::write_csv(posts_df, ".data/speirgorm_posts.csv")
+readr::write_csv(posts_df, "data/speirgorm_posts.csv")
 
 # Load existing reposts/threads or start fresh
 reposts_df <- tryCatch(
-  arrow::read_parquet(".data/speirgorm_reposts.parquet"),
+  arrow::read_parquet("data/speirgorm_reposts.parquet"),
   error = function(e) tibble(original_uri = character())
 )
 threads_df <- tryCatch(
-  arrow::read_parquet(".data/speirgorm_threads.parquet"),
+  arrow::read_parquet("data/speirgorm_threads.parquet"),
   error = function(e) tibble(original_uri = character())
 )
 
@@ -409,8 +439,8 @@ posts_to_hydrate <- posts_df %>%
   filter(!(uri %in% c(reposts_df$original_uri, threads_df$original_uri)))
 
 # Check for partial hydration checkpoints and load if available
-hydrated_reposts_checkpoint <- ".data/speirgorm_hydrated_reposts.parquet"
-hydrated_threads_checkpoint <- ".data/speirgorm_hydrated_threads.parquet"
+hydrated_reposts_checkpoint <- "data/speirgorm_hydrated_reposts.parquet"
+hydrated_threads_checkpoint <- "data/speirgorm_hydrated_threads.parquet"
 
 if (file.exists(hydrated_reposts_checkpoint)) {
   message("Found existing hydrated reposts checkpoint; loading...")
@@ -469,10 +499,10 @@ reposts_df <- bind_rows(reposts_df, hydrated$reposts_df) %>%
 threads_df <- bind_rows(threads_df, hydrated$threads_df) %>%
   distinct(original_uri, author, uri, .keep_all = TRUE)
 
-arrow::write_parquet(reposts_df, ".data/speirgorm_reposts.parquet")
-arrow::write_parquet(threads_df, ".data/speirgorm_threads.parquet")
-readr::write_csv(reposts_df, ".data/speirgorm_reposts.csv")
-readr::write_csv(threads_df, ".data/speirgorm_threads.csv")
+arrow::write_parquet(reposts_df, "data/speirgorm_reposts.parquet")
+arrow::write_parquet(threads_df, "data/speirgorm_threads.parquet")
+readr::write_csv(reposts_df, "data/speirgorm_reposts.csv")
+readr::write_csv(threads_df, "data/speirgorm_threads.csv")
 
 # Build edges: reposter -> author (original)
 edges <- reposts_df %>%
@@ -516,8 +546,8 @@ nodes <- bind_rows(
   distinct(name, .keep_all = TRUE) %>%
   mutate(repost_count = replace_na(as.integer(table(edges$to)[name]), 0L))
 
-readr::write_csv(edges, ".graphs/speirgorm_edges.csv")
-readr::write_csv(nodes, ".graphs/speirgorm_nodes.csv")
+readr::write_csv(edges, "graphs/speirgorm_edges.csv")
+readr::write_csv(nodes, "graphs/speirgorm_nodes.csv")
 
 # Step 12: Plot enriched network with ggraph
 g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
@@ -532,7 +562,6 @@ cat("Final graph summary:\n")
 print(summary(g))
 write_graph(
   g,
-  ".graphs/bluesky enriched Speirgorm Network.graphml",
+  "graphs/bluesky enriched Speirgorm Network.graphml",
   format = "graphml"
 )
-

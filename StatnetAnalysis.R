@@ -9,8 +9,8 @@ library(ggraph)
 library(statnet)
 
 # Step 1: Load data
-posts_df <- read.csv(".data/speirgorm_posts.csv")
-reposts_df <- read.csv(".data/speirgorm_reposts.csv")
+posts_df <- read.csv("data/speirgorm_posts.csv")
+reposts_df <- read.csv("data/speirgorm_reposts.csv")
 
 # Step 2: Build edge list (who reposted whom)
 edges <- reposts_df |>

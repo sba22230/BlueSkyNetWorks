@@ -14,11 +14,11 @@ library(rgexf)
 
 # Step 1: Load data
 
-posts_df <- read.csv(".data/speirgorm_posts.csv")
+posts_df <- read.csv("data/speirgorm_posts.csv")
 
-reposts_df <- read.csv(".data/speirgorm_reposts.csv")
+reposts_df <- read.csv("data/speirgorm_reposts.csv")
 
-#threads_df <- read.csv(".data/speirgorm_threads.csv")
+#threads_df <- read.csv("data/speirgorm_threads.csv")
 
 cat("Reposts dataframe rows:", nrow(reposts_df), "\n")
 #cat("Threads dataframe rows:", nrow(threads_df), "\n")
@@ -116,7 +116,7 @@ cat("Final graph summary:\n")
 print(summary(g2))
 write_graph(
   g2,
-  ".graphs/bluesky enriched Speirgorm Network.graphml",
+  "graphs/bluesky enriched Speirgorm Network.graphml",
   format = "graphml"
 )
 
