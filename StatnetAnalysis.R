@@ -8,6 +8,7 @@ library(tidyr)
 library(tibble)
 library(ggraph)
 library(statnet)
+library(sna)
 
 # Step 1: Load data
 posts_df <- read.csv("data/speirgorm_posts.csv")
@@ -44,6 +45,7 @@ reposts_df <- reposts_df_sampled
 edges <- reposts_df |>
   transmute(from = handle, to = original_uri) |>
   distinct()
+
 cat("Edges count:", nrow(edges), "\n")
 
 # Step 3: Build node list (unique actors and posts)
@@ -69,7 +71,7 @@ cat("Enriched edges count:", nrow(edges), "\n")
 # Step 5: Enrich nodes with metadata
 nodes <- bind_rows(
   reposts_df |> select(name = handle, display_name, avatar, did),
-  posts_df |> select(name = author_handle, text)
+  posts_df |> select(name = author_handle, repost_count)
 ) |>
   distinct(name, .keep_all = TRUE)
 
@@ -97,3 +99,20 @@ print(summary(g2))
 # Convert igraph to statnet
 library(network)
 bluSkynet <- asNetwork(g2)
+summary(bluSkynet)
+
+bluSkynet%v%"vertex.names"
+bluSkynet[,]
+list.edge.attributes(bluSkynet)
+bluSkynet %e% "created_at"
+#as.sociomatrix.sna(bluSkynet, "created_at")
+sna::gplot(bluSkynet)
+
+plot(bluSkynet, displaylabels = T)
+
+gplot(bluSkynet, label.cex - 0.2, label.col = "blue", displaylabels = TRUE)
+
+network.dyadcount(bluSkynet)
+network.edgecount(bluSkynet)
+network.size(bluSkynet)
+degree(bluSkynet)
