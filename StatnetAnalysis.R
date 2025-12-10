@@ -13,6 +13,33 @@ library(statnet)
 posts_df <- read.csv("data/speirgorm_posts.csv")
 reposts_df <- read.csv("data/speirgorm_reposts.csv")
 
+
+# --- Optional: sample reposted posts and filter reposts_df -----------------
+# Filter posts that have been reposted, sample them reproducibly, then
+# keep only repost records for those sampled original posts. Adjust
+# `sample_n_posts` as desired (or set to NULL to keep all reposts).
+set.seed(22230)
+sample_n_posts <- 100
+# change to desired sample size; set NULL to skip sampling# Posts that have one or more reposts according to metadata
+reposted_posts <- posts_df %>% filter(repost_count > 0)
+
+if (!is.null(sample_n_posts) && nrow(reposted_posts) > 0) {
+  sampled_posts <- reposted_posts %>%
+    slice_sample(n = min(sample_n_posts, nrow(reposted_posts)))
+} else {
+  sampled_posts <- reposted_posts
+}
+
+sampled_uris <- sampled_posts$uri
+
+# Filter reposts_df to only include reposts of the sampled original posts
+reposts_df_sampled <- reposts_df %>%
+  filter(original_uri %in% sampled_uris)
+posts_df_org <- posts_df
+posts_df <- sampled_posts
+reposts_df_org <- reposts_df
+reposts_df <- reposts_df_sampled
+
 # Step 2: Build edge list (who reposted whom)
 edges <- reposts_df |>
   transmute(from = handle, to = original_uri) |>
@@ -67,5 +94,6 @@ cat("Final graph summary:\n")
 print(summary(g2))
 
 # Start of Statnet analysis
-# Convert igraph to statnet network
+# Convert igraph to statnet
+library(network)
 bluSkynet <- asNetwork(g2)
