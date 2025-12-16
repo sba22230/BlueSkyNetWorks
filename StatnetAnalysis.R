@@ -14,13 +14,12 @@ library(sna)
 posts_df <- read.csv("data/speirgorm_posts.csv")
 reposts_df <- read.csv("data/speirgorm_reposts.csv")
 
-
 # --- Optional: sample reposted posts and filter reposts_df -----------------
 # Filter posts that have been reposted, sample them reproducibly, then
 # keep only repost records for those sampled original posts. Adjust
 # `sample_n_posts` as desired (or set to NULL to keep all reposts).
 set.seed(22230)
-sample_n_posts <- 100
+sample_n_posts <- 10000
 # change to desired sample size; set NULL to skip sampling# Posts that have one or more reposts according to metadata
 reposted_posts <- posts_df %>% filter(repost_count > 0)
 
@@ -101,7 +100,7 @@ library(network)
 bluSkynet <- asNetwork(g2)
 summary(bluSkynet)
 
-bluSkynet%v%"vertex.names"
+bluSkynet %v% "vertex.names"
 bluSkynet[,]
 list.edge.attributes(bluSkynet)
 bluSkynet %e% "created_at"
