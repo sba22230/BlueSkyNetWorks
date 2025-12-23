@@ -10,7 +10,8 @@ library(ggraph)
 library(visNetwork)
 library(retry)
 library(rgexf)
-## library(statnet) # this needs to be loaded later otherwise it interferes with previous packages
+## library(statnet) # this needs to be loaded later otherwise it
+# interferes with previous packages
 
 # Step 1: Load data
 
@@ -204,7 +205,8 @@ visNetwork(vis_nodes, vis_edges, width = "1040px", height = "800px") |>
   visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE) |>
   visPhysics(enabled = TRUE)
 
-# Export the Visnetwork into GEXF format and visualise it again - check performance of Gephi
+# Export the Visnetwork into GEXF format and visualise it again -
+#check performance of Gephi
 # Nodes table
 ge_nodes <- data.frame(
   id = vis_nodes$id,
@@ -213,8 +215,9 @@ ge_nodes <- data.frame(
   y = vis_nodes$y
 )
 
-# Node attributes (include everything else, including x/y coords, degree, community, isolated)
-ge_nodesAtt <- vis_nodes %>%
+# Node attributes (include everything else, including x/y coords,
+# degree, community, isolated)
+ge_nodesAtt <- vis_nodes |>
   transmute(
     degree = ifelse(is.na(degree), 0L, as.integer(degree)),
     repost_count = ifelse(is.na(repost_count), 0L, as.integer(repost_count)),
@@ -237,10 +240,13 @@ ge_edgesAtt <- vis_edges |>
   )) |>
   mutate(across(where(is.character), ~ stri_trans_general(., "Latin-ASCII")))
 
-#ge_nodesAtt <- ge_nodesAtt %>% mutate(across(where(is.character), ~ replace_na(., "")))
-#ge_nodesAtt <- ge_nodesAtt %>% mutate(across(where(is.character), ~ gsub("[\r\n\t]", " ", .)))
-#ge_nodesAtt <- ge_nodesAtt %>% mutate(repost_count = ifelse(is.na(repost_count), 0L, repost_count))
-ge_edgesAtt <- ge_edgesAtt %>%
+#ge_nodesAtt <- ge_nodesAtt |> mutate(across(where(is.character),
+# ~ replace_na(., "")))
+#ge_nodesAtt <- ge_nodesAtt |> mutate(across(where(is.character),
+# ~ gsub("[\r\n\t]", " ", .)))
+#ge_nodesAtt <- ge_nodesAtt |> mutate(repost_count = ifelse(is.na(repost_count),
+# 0L, repost_count))
+ge_edgesAtt <- ge_edgesAtt |>
   mutate(across(where(is.character), ~ replace_na(., "")))
 
 # Create a palette with enough distinct colours
