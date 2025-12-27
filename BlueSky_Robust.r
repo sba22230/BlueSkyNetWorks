@@ -540,7 +540,7 @@ edges <- edges %>%
 
 # Nodes
 nodes <- bind_rows(
-  reposts_df %>% select(name = handle, display_name, avatar, did),
+  reposts_df %>% select(name = handle, display_name, avatar, did, uri),
   posts_df %>% select(name = author_handle, text)
 ) %>%
   distinct(name, .keep_all = TRUE) %>%
