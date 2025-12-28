@@ -66,7 +66,6 @@ ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
     max.overlaps = 100
   )
 
-
 # Step 10: Enrich edges with author info
 edges <- reposts_df |>
   left_join(
