@@ -100,6 +100,16 @@ nodes <- nodes |>
 g2 <- graph_from_data_frame(d = edges,
                             vertices = nodes,
                             directed = TRUE)
+
+summary_df <- tibble(
+  total_users = vcount(g2),
+  total_replies = ecount(g2),
+  density = edge_density(g2),
+  most_replied_to = names(which.max(igraph::degree(g2, mode = "in"))),
+  most_active_replier = names(which.max(igraph::degree(g2, mode = "out")))
+)
+
+print(summary_df)
 coords2 <- layout_with_drl(g2) # heavy step, do once
 V(g2)$x <- coords2[, 1]
 V(g2)$y <- coords2[, 2]
@@ -153,7 +163,8 @@ ggraph(g2, layout = "nicely") +
 # Stress
 sg <- ggraph(g2, layout = "stress") +
   geom_edge_link(width = 0.2, colour = "grey") +
-  geom_node_point(col = "black", size = 0.3) +
+  geom_node_point(aes(size = like_count, color = repost_count)) +
+  scale_color_gradient(low = "lightblue", high = "red") +
   theme_graph()
 plot(sg)
 # Stress Majorization
