@@ -27,12 +27,23 @@ edges_org <- edges
 # reposted_posts <- posts_df %>% filter(repost_count > 0, !is.na(uri), !is.na(repost_count))
 #
 if (!is.null(sample_n_posts) && nrow(edges) > 0) {
-  sampled_posts <- edges %>%
-    slice_sample(n = min(sample_n_posts, nrow(edges)))
+  
+  edges_filtered <- edges %>%
+    dplyr::left_join(
+      nodes %>% dplyr::select(name, repost_count),
+      by = c("from" = "name")
+    ) %>%
+    dplyr::filter(repost_count > 0)
+  
+  sampled_posts <- edges_filtered %>%
+    slice_sample(n = min(sample_n_posts, nrow(edges_filtered)))
+  
 } else {
   sampled_posts <- posts
 }
+
 edges <- sampled_posts
+
 
 #
 #
