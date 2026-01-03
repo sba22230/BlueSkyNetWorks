@@ -416,6 +416,7 @@ plan(multisession, workers = wrkrs)
 # Run deep search
 posts_df <- deep_search_posts(
   "Speirgorm",
+  
   hard_limit = 50000,
   chunk_limit = 100,
   checkpoint_path = "data/speirgorm_posts.parquet"
@@ -499,18 +500,19 @@ reposts_df <- bind_rows(reposts_df, hydrated$reposts_df) |>
 threads_df <- bind_rows(threads_df, hydrated$threads_df) |>
   distinct(original_uri, author, uri, .keep_all = TRUE)
 
+arrow::write_parquet(posts_df, "data/speirgorm_posts.parquet")
 arrow::write_parquet(reposts_df, "data/speirgorm_reposts.parquet")
 arrow::write_parquet(threads_df, "data/speirgorm_threads.parquet")
 readr::write_csv(reposts_df, "data/speirgorm_reposts.csv")
 readr::write_csv(threads_df, "data/speirgorm_threads.csv")
 
-# Build edges: reposter -> author (original)
+# Build edges: author -> reposter 
 edges <- reposts_df |>
   left_join(
     posts_df |> select(uri, author_handle),
     by = c("original_uri" = "uri")
   ) |>
-  transmute(from = handle, to = author_handle, repost_uri = uri) |>
+  transmute(from = author_handle, to = handle, repost_uri = uri) |>
   filter(!is.na(from), !is.na(to)) |>
   distinct()
 
@@ -540,11 +542,15 @@ edges <- edges |>
 
 # Nodes
 nodes <- bind_rows(
-  reposts_df |> select(name = handle, display_name, avatar, did, uri),
-  posts_df |> select(name = author_handle, text)
+  reposts_df |> select(name = handle, display_name, did, uri),
+  posts_df   |> select(name = author_handle, text, uri)
 ) |>
-  distinct(name, .keep_all = TRUE) |>
-  mutate(repost_count = replace_na(as.integer(table(edges$to)[name]), 0L))
+  distinct(name, .keep_all = TRUE)
+nodes <- nodes |>
+  left_join(
+    posts_df |> select(name = author_handle, uri, like_count, repost_count),
+    by = c("name", "uri")
+  )
 
 readr::write_csv(edges, "graphs/speirgorm_edges.csv")
 readr::write_csv(nodes, "graphs/speirgorm_nodes.csv")
@@ -553,7 +559,7 @@ readr::write_csv(nodes, "graphs/speirgorm_nodes.csv")
 g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 ggraph::ggraph(g, layout = "drl") +
   geom_edge_link(alpha = 0.3) +
-  geom_node_point(aes(size = repost_count, color = repost_count)) +
+  geom_node_point(aes(size = like_count, color = repost_count)) +
   geom_node_text(aes(label = display_name), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +

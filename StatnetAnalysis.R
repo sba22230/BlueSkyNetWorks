@@ -11,8 +11,8 @@ library(statnet)
 library(sna)
 
 # Step 1: Load data
-# posts_df <- read.csv("data/speirgorm_posts.csv")
-# reposts_df <- read.csv("data/speirgorm_reposts.csv")
+posts_df <- read.csv("data/speirgorm_posts.csv")
+reposts_df <- read.csv("data/speirgorm_reposts.csv")
 edges <- read.csv("graphs/speirgorm_edges.csv")
 nodes <- read.csv("graphs/speirgorm_nodes.csv")
 # --- Optional: sample reposted posts and filter reposts_df -----------------
@@ -70,11 +70,15 @@ cat("Nodes count:", nrow(nodes), "\n")
 # cat("Enriched edges count:", nrow(edges), "\n")
 #
 # # Step 5: Enrich nodes with metadata
-# nodes <- bind_rows(
-#   reposts_df |> select(name = handle, display_name, avatar, did),
-#   posts_df |> select(name = author_handle, repost_count)
-# ) |>
-#   distinct(name, .keep_all = TRUE)
+metadata <- bind_rows(
+  reposts_df |> select(name = handle, display_name, did),
+  posts_df   |> select(name = author_handle, repost_count, like_count)
+) |>
+  distinct(name, .keep_all = TRUE)
+
+nodes <- nodes |> 
+  left_join(metadata, by = "name")
+
 #
 # # Add repost counts
 # nodes <- nodes |>
@@ -88,9 +92,9 @@ g2 <- graph_from_data_frame(d = edges,
 coords2 <- layout_with_drl(g2) # heavy step, do once
 V(g2)$x <- coords2[, 1]
 V(g2)$y <- coords2[, 2]
-ggraph(g2, layout = "manual") +
+ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
   geom_edge_link(alpha = 0.3) +
-  geom_node_point(aes(size = repost_count, color = repost_count)) +
+  geom_node_point(aes(size = like_count, color = repost_count)) +
   geom_node_text(aes(label = did), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +
@@ -130,8 +134,8 @@ library(graphlayouts)
 # Nicely
 ggraph(g2, layout = "nicely") +
   geom_edge_link(alpha = 0.3) +
-  #geom_node_point(aes(size = repost_count, color = repost_count)) +
-  #geom_node_text(aes(label = display_name), repel = TRUE) +
+  geom_node_point(aes(size = like_count, color = repost_count)) +
+  geom_node_text(aes(label = display_name), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +
   theme_void()
