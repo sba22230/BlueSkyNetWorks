@@ -7,6 +7,50 @@ library(igraph)
 library(ggraph)
 library(RevoScaleR) # RevoScaleR provides RxSqlServerData, rxDataStep, etc.
 
+# Edit these values for your environment
+sql_server <- "localhost" # e.g., "localhost\\SQLEXPRESS" or "sqlserver.domain.com"
+database <- "BlueSkyNet"
+use_trusted_connection <- TRUE # set FALSE if using SQL auth
+sql_user <- "your_sql_user" # only used if not using trusted connection
+sql_password <- "your_password" # only used if not using trusted connection
+orgicc <- rxGetComputeContext()
+rxSetComputeContext("localpar")
+
+if (use_trusted_connection) {
+  odbc_con <- dbConnect(odbc::odbc(),
+                        Driver   = "SQL Server",
+                        Server   = sql_server,
+                        Database = database,
+                        Trusted_Connection = "Yes")
+  
+  connStr <- paste0(
+    "Driver={SQL Server};Server=",
+    sql_server,
+    ";Database=",
+    database,
+    ";Trusted_Connection=Yes;"
+  )
+} else {
+  odbc_con <- dbConnect(odbc::odbc(),
+                        Driver   = "SQL Server",
+                        Server   = sql_server,
+                        Database = database,
+                        UID = sql_user,
+                        PWD = sql_password)
+  
+  connStr <- paste0(
+    "Driver={SQL Server};Server=",
+    sql_server,
+    ";Database=",
+    database,
+    ";Uid=",
+    sql_user,
+    ";Pwd=",
+    sql_password,
+    ";"
+  )
+}
+
 
 # ---------------------------
 # Step 6: Prepare RevoScaleR compute context (RxInSqlServer) and run statnet analysis remotely
@@ -65,7 +109,7 @@ statnet_remote <- function(person_table = "Person",
   edges_query <- paste0("
     SELECT f.name AS [from], t.name AS [to], r.repost_uri, r.created_at
     FROM ", person_table, " AS f, ", reposted_table, " AS r, ", person_table, " AS t
-    WHERE MATCH(f-(r)->t) and f.name = 'sugarcubedog.bsky.social'
+    WHERE MATCH(f-(r)->t)'
   ")
   
   edges_src <- RxSqlServerData(sqlQuery = edges_query, connectionString = connStrLocal, stringsAsFactors = FALSE)
