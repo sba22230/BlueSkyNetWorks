@@ -28,16 +28,14 @@ cat("Reposts dataframe rows:", nrow(reposts_df), "\n")
 print(head(reposts_df))
 
 # Step 7: Build edge list (who reposted whom)
-edges <- reposts_df |>
-  transmute(from = handle, to = original_uri) |>
-  distinct()
+edges <- read.csv("graphs/speirgorm_edges.csv")
 cat("Edges count:", nrow(edges), "\n")
 
 # Debug: inspect edges
 print(head(edges))
 
 # Step 8: Build node list (unique actors and posts)
-nodes <- tibble(name = unique(c(edges$from, edges$to)))
+nodes <- read.csv("graphs/speirgorm_nodes.csv")
 cat("Nodes count:", nrow(nodes), "\n")
 
 # Debug: inspect nodes
@@ -66,7 +64,6 @@ ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
     max.overlaps = 100
   )
 
-
 # Step 10: Enrich edges with author info
 edges <- reposts_df |>
   left_join(
@@ -88,8 +85,8 @@ print(head(edges))
 
 # Step 11: Enrich nodes with metadata
 nodes <- bind_rows(
-  reposts_df |> select(name = handle, display_name, avatar, did),
-  posts_df |> select(name = author_handle, text)
+  reposts_df |> select(name = handle, display_name, did),
+  posts_df |> select(name = author_handle, text, like_count, repost_count)
 ) |>
   distinct(name, .keep_all = TRUE)
 
@@ -106,10 +103,10 @@ g2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 coords2 <- layout_with_graphopt(g2, niter = 200) # heavy step, do once
 V(g2)$x <- coords2[, 1]
 V(g2)$y <- coords2[, 2]
-ggraph(g2, layout = "manual") +
+ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
   geom_edge_link(alpha = 0.3) +
-  geom_node_point(aes(size = repost_count, color = repost_count)) +
-  geom_node_text(aes(label = display_name), repel = TRUE) +
+  geom_node_point(aes(size = like_count, color = repost_count)) +
+  geom_node_text(aes(label = name), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +
   theme_void()
@@ -206,7 +203,7 @@ visNetwork(vis_nodes, vis_edges, width = "1040px", height = "800px") |>
   visPhysics(enabled = TRUE)
 
 # Export the Visnetwork into GEXF format and visualise it again -
-#check performance of Gephi
+# check performance of Gephi
 # Nodes table
 ge_nodes <- data.frame(
   id = vis_nodes$id,

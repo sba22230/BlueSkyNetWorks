@@ -26,8 +26,8 @@ safe_int <- function(x, ...) {
 
 # Deduplicate by URI
 dedup_posts <- function(posts) {
-  posts %>%
-    tibble::as_tibble() %>%
+  posts |>
+    tibble::as_tibble() |>
     distinct(uri, .keep_all = TRUE)
 }
 
@@ -142,7 +142,7 @@ deep_search_posts <- function(
 
     # Persist checkpoint every ~1k rows
     if (fetched %% 1000 < chunk_limit) {
-      out <- bind_rows(all_rows) %>% distinct(uri, .keep_all = TRUE)
+      out <- bind_rows(all_rows) |> distinct(uri, .keep_all = TRUE)
       tryCatch(
         {
           arrow::write_parquet(out, checkpoint_path)
@@ -186,7 +186,7 @@ deep_search_posts <- function(
     Sys.sleep(runif(1, 0.5, 1.5))
   }
 
-  bind_rows(all_rows) %>% distinct(uri, .keep_all = TRUE)
+  bind_rows(all_rows) |> distinct(uri, .keep_all = TRUE)
 }
 
 get_reposts_df <- function(uri) {
@@ -295,13 +295,13 @@ get_thread_df <- function(uri) {
 chunk_vec <- function(x, size) split(x, ceiling(seq_along(x) / size))
 
 hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
-  uris_reposts <- posts_df %>%
-    filter(repost_count > 0) %>%
-    pull(uri) %>%
+  uris_reposts <- posts_df |>
+    filter(repost_count > 0) |>
+    pull(uri) |>
     unique()
-  uris_threads <- posts_df %>%
-    filter(reply_count > 0) %>%
-    pull(uri) %>%
+  uris_threads <- posts_df |>
+    filter(reply_count > 0) |>
+    pull(uri) |>
     unique()
 
   rep_chunks <- chunk_vec(uris_reposts, batch_size)
@@ -350,7 +350,7 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
     )
 
     # Checkpoint combined reposts (for resume capability)
-    combined <- bind_rows(all_reposts) %>%
+    combined <- bind_rows(all_reposts) |>
       distinct(original_uri, handle, uri, .keep_all = TRUE)
     tryCatch(
       {
@@ -389,7 +389,7 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
     )
 
     # Checkpoint combined threads (for resume capability)
-    combined <- bind_rows(all_threads) %>%
+    combined <- bind_rows(all_threads) |>
       distinct(original_uri, author, uri, .keep_all = TRUE)
     tryCatch(
       {
@@ -403,9 +403,9 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
 
   plan(sequential)
 
-  reposts_df <- bind_rows(all_reposts) %>%
+  reposts_df <- bind_rows(all_reposts) |>
     distinct(original_uri, handle, uri, .keep_all = TRUE)
-  threads_df <- bind_rows(all_threads) %>%
+  threads_df <- bind_rows(all_threads) |>
     distinct(original_uri, author, uri, .keep_all = TRUE)
 
   list(reposts_df = reposts_df, threads_df = threads_df)
@@ -416,6 +416,7 @@ plan(multisession, workers = wrkrs)
 # Run deep search
 posts_df <- deep_search_posts(
   "Speirgorm",
+  
   hard_limit = 50000,
   chunk_limit = 100,
   checkpoint_path = "data/speirgorm_posts.parquet"
@@ -435,7 +436,7 @@ threads_df <- tryCatch(
 )
 
 # Filter to only hydrate new posts
-posts_to_hydrate <- posts_df %>%
+posts_to_hydrate <- posts_df |>
   filter(!(uri %in% c(reposts_df$original_uri, threads_df$original_uri)))
 
 # Check for partial hydration checkpoints and load if available
@@ -445,7 +446,7 @@ hydrated_threads_checkpoint <- "data/speirgorm_hydrated_threads.parquet"
 if (file.exists(hydrated_reposts_checkpoint)) {
   message("Found existing hydrated reposts checkpoint; loading...")
   hydrated_reposts_partial <- arrow::read_parquet(hydrated_reposts_checkpoint)
-  posts_to_hydrate <- posts_to_hydrate %>%
+  posts_to_hydrate <- posts_to_hydrate |>
     filter(!(uri %in% hydrated_reposts_partial$original_uri))
   message(
     "Filtered to ",
@@ -457,7 +458,7 @@ if (file.exists(hydrated_reposts_checkpoint)) {
 if (file.exists(hydrated_threads_checkpoint)) {
   message("Found existing hydrated threads checkpoint; loading...")
   hydrated_threads_partial <- arrow::read_parquet(hydrated_threads_checkpoint)
-  posts_to_hydrate <- posts_to_hydrate %>%
+  posts_to_hydrate <- posts_to_hydrate |>
     filter(!(uri %in% hydrated_threads_partial$original_uri))
   message(
     "Filtered to ",
@@ -494,33 +495,34 @@ hydrated <- tryCatch(
   }
 )
 
-reposts_df <- bind_rows(reposts_df, hydrated$reposts_df) %>%
+reposts_df <- bind_rows(reposts_df, hydrated$reposts_df) |>
   distinct(original_uri, handle, uri, .keep_all = TRUE)
-threads_df <- bind_rows(threads_df, hydrated$threads_df) %>%
+threads_df <- bind_rows(threads_df, hydrated$threads_df) |>
   distinct(original_uri, author, uri, .keep_all = TRUE)
 
+arrow::write_parquet(posts_df, "data/speirgorm_posts.parquet")
 arrow::write_parquet(reposts_df, "data/speirgorm_reposts.parquet")
 arrow::write_parquet(threads_df, "data/speirgorm_threads.parquet")
 readr::write_csv(reposts_df, "data/speirgorm_reposts.csv")
 readr::write_csv(threads_df, "data/speirgorm_threads.csv")
 
-# Build edges: reposter -> author (original)
-edges <- reposts_df %>%
+# Build edges: author -> reposter 
+edges <- reposts_df |>
   left_join(
-    posts_df %>% select(uri, author_handle),
+    posts_df |> select(uri, author_handle),
     by = c("original_uri" = "uri")
-  ) %>%
-  transmute(from = handle, to = author_handle, repost_uri = uri) %>%
-  filter(!is.na(from), !is.na(to)) %>%
+  ) |>
+  transmute(from = author_handle, to = handle, repost_uri = uri) |>
+  filter(!is.na(from), !is.na(to)) |>
   distinct()
 
 # Minimal DID/handle normalization if available
-did_map <- reposts_df %>%
-  select(handle, did) %>%
-  filter(!is.na(handle), !is.na(did)) %>%
-  distinct() %>%
-  group_by(did) %>%
-  slice_tail(n = 1) %>% # prefer the latest handle seen for DID
+did_map <- reposts_df |>
+  select(handle, did) |>
+  filter(!is.na(handle), !is.na(did)) |>
+  distinct() |>
+  group_by(did) |>
+  slice_tail(n = 1) |> # prefer the latest handle seen for DID
   ungroup()
 
 normalize_handle <- function(h) {
@@ -535,16 +537,20 @@ normalize_handle <- function(h) {
   h
 }
 
-edges <- edges %>%
+edges <- edges |>
   mutate(from = normalize_handle(from), to = normalize_handle(to))
 
 # Nodes
 nodes <- bind_rows(
-  reposts_df %>% select(name = handle, display_name, avatar, did),
-  posts_df %>% select(name = author_handle, text)
-) %>%
-  distinct(name, .keep_all = TRUE) %>%
-  mutate(repost_count = replace_na(as.integer(table(edges$to)[name]), 0L))
+  reposts_df |> select(name = handle, display_name, did, uri),
+  posts_df   |> select(name = author_handle, text, uri)
+) |>
+  distinct(name, .keep_all = TRUE)
+nodes <- nodes |>
+  left_join(
+    posts_df |> select(name = author_handle, uri, like_count, repost_count),
+    by = c("name", "uri")
+  )
 
 readr::write_csv(edges, "graphs/speirgorm_edges.csv")
 readr::write_csv(nodes, "graphs/speirgorm_nodes.csv")
@@ -553,7 +559,7 @@ readr::write_csv(nodes, "graphs/speirgorm_nodes.csv")
 g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 ggraph::ggraph(g, layout = "drl") +
   geom_edge_link(alpha = 0.3) +
-  geom_node_point(aes(size = repost_count, color = repost_count)) +
+  geom_node_point(aes(size = like_count, color = repost_count)) +
   geom_node_text(aes(label = display_name), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +
