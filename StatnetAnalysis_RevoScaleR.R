@@ -26,6 +26,21 @@ computeCtx <- tryCatch({
 })
 rxSetComputeContext(computeCtx)
 
+# ---------------------------
+# Configuration: SQL Server
+# ---------------------------
+# Edit these values for your environment
+sql_server <- "localhost" # e.g., "localhost\\SQLEXPRESS" or "sqlserver.domain.com"
+database <- "BlueSkyNet"
+use_trusted_connection <- TRUE
+connStr <- paste0(
+  "Driver={SQL Server};Server=",
+  sql_server,
+  ";Database=",
+  database,
+  ";Trusted_Connection=Yes;"
+)
+
 # Remote function to run on server via rxExec
 statnet_remote <- function(person_table = "Person",
                            reposted_table = "Reposted",
@@ -50,7 +65,7 @@ statnet_remote <- function(person_table = "Person",
   edges_query <- paste0("
     SELECT f.name AS [from], t.name AS [to], r.repost_uri, r.created_at
     FROM ", person_table, " AS f, ", reposted_table, " AS r, ", person_table, " AS t
-    WHERE MATCH(f-(r)->t)
+    WHERE MATCH(f-(r)->t) and f.name = 'sugarcubedog.bsky.social'
   ")
   
   edges_src <- RxSqlServerData(sqlQuery = edges_query, connectionString = connStrLocal, stringsAsFactors = FALSE)
@@ -68,7 +83,7 @@ statnet_remote <- function(person_table = "Person",
   el[] <- lapply(el, as.character)
   
   # Create network with directed = TRUE
-  net <- network::network(el, directed = TRUE, vertex.attr = nodes_df, loops = TRUE, multiple = TRUE, ignore.eval = FALSE, names.eval = NULL)
+  net <- network::network(el, directed = TRUE, vertex.attr = nodes_df, loops = TRUE, multiple = TRUE, ignore.eval = FALSE)
   
   # Compute node-level metrics (server-side)
   deg_in  <- sna::degree(net, gmode = "digraph", cmode = "indegree")
