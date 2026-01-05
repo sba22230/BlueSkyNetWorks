@@ -89,7 +89,12 @@ statnet_remote <- function(person_table = "Person",
   deg_in  <- sna::degree(net, gmode = "digraph", cmode = "indegree")
   deg_out <- sna::degree(net, gmode = "digraph", cmode = "outdegree")
   # Component membership (weak components)
-  comps <- sna::components.sna(as.sociomatrix.sna(net), connected = "weak")$membership
+  library(intergraph)
+  library(igraph)
+  ig <- intergraph::asIgraph(net)
+  
+  # Weak components
+  comps <- igraph::components(ig, mode = "weak")$membership
   
   # Centrality measures (example: betweenness)
   btw <- tryCatch(sna::betweenness(net), error = function(e) rep(NA, network::network.size(net)))
