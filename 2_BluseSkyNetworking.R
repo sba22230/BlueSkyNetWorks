@@ -13,19 +13,19 @@ library(rgexf)
 ## library(statnet) # this needs to be loaded later otherwise it
 # interferes with previous packages
 
-# Step 1: Load data
+# Step 1: Load data - I do not need these for the moment
 
-posts_df <- read.csv("data/speirgorm_posts.csv")
+#posts_df <- read.csv("data/speirgorm_posts.csv")
 
-reposts_df <- read.csv("data/speirgorm_reposts.csv")
+#reposts_df <- read.csv("data/speirgorm_reposts.csv")
 
 #threads_df <- read.csv("data/speirgorm_threads.csv")
 
-cat("Reposts dataframe rows:", nrow(reposts_df), "\n")
+#cat("Reposts dataframe rows:", nrow(reposts_df), "\n")
 #cat("Threads dataframe rows:", nrow(threads_df), "\n")
 
 # Debug: check reposts_df structure
-print(head(reposts_df))
+#print(head(reposts_df))
 
 # Step 7: Build edge list (who reposted whom)
 edges <- read.csv("graphs/speirgorm_edges.csv")
@@ -65,34 +65,36 @@ ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
   )
 
 # Step 10: Enrich edges with author info
-edges <- reposts_df |>
-  left_join(
-    posts_df |> select(uri, author_handle),
-    by = c("original_uri" = "uri")
-  ) |>
-  transmute(
-    from = handle,
-    to = author_handle,
-    repost_uri = uri,
-    created_at = created_at
-  ) |>
-  filter(!is.na(from) & !is.na(to)) |>
-  distinct()
+# this step is unnecessary - the edges already have author info - need to add created_at 
+# edges <- reposts_df |>
+#   left_join(
+#     posts_df |> select(uri, author_handle),
+#     by = c("original_uri" = "uri")
+#   ) |>
+#   transmute(
+#     from = handle,
+#     to = author_handle,
+#     repost_uri = uri,
+#     created_at = created_at
+#   ) |>
+#   filter(!is.na(from) & !is.na(to)) |>
+#   distinct()
 cat("Enriched edges count:", nrow(edges), "\n")
 
 # Debug: enriched edges
 print(head(edges))
 
 # Step 11: Enrich nodes with metadata
-nodes <- bind_rows(
-  reposts_df |> select(name = handle, display_name, did),
-  posts_df |> select(name = author_handle, text, like_count, repost_count)
-) |>
-  distinct(name, .keep_all = TRUE)
+# This doesn't need to be done either 
+# nodes <- bind_rows(
+#  reposts_df |> select(name = handle, display_name, did),
+#  posts_df |> select(name = author_handle, text, like_count, repost_count)
+# ) |>
+#  distinct(name, .keep_all = TRUE)
 
 # Add repost counts
-nodes <- nodes |>
-  mutate(repost_count = table(edges$to)[name] |> as.integer())
+# nodes <- nodes |>
+#   mutate(repost_count = table(edges$to)[name] |> as.integer())
 cat("Enriched nodes count:", nrow(nodes), "\n")
 
 # Debug: enriched nodes
@@ -100,7 +102,7 @@ print(head(nodes))
 
 # Step 12: Plot enriched network with ggraph
 g2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-coords2 <- layout_with_graphopt(g2, niter = 200) # heavy step, do once
+coords2 <- layout_with_graphopt(g2, niter = 20) # heavy step, do once
 V(g2)$x <- coords2[, 1]
 V(g2)$y <- coords2[, 2]
 ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
