@@ -24,6 +24,9 @@ extract_edges <- function(reply_list, parent_author) {
   })
 }
 
+https://www.trutschnig.net/Slides_igraph_Grossegesse_Hoehn_Holzleitner.pdf - read this and use it to help guide the project outcomes
+
+
 # 4. Extract root author and nested reply edges
 root_author <- thread$thread$post$author$handle
 edges <- extract_edges(thread$thread$replies, root_author)
