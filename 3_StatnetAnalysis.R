@@ -113,7 +113,7 @@ print(summary_df)
 coords2 <- layout_with_drl(g2) # heavy step, do once
 V(g2)$x <- coords2[, 1]
 V(g2)$y <- coords2[, 2]
-ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
+g3 <- ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
   geom_edge_link(alpha = 0.3) +
   geom_node_point(aes(size = like_count, color = repost_count)) +
   geom_node_text(aes(label = did), repel = TRUE) +
@@ -122,7 +122,7 @@ ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
   theme_void()
 cat("Final graph summary:\n")
 print(summary(g2))
-plot(g2)
+plot(g3)
 
 # Start of Statnet analysis
 # Convert igraph to statnet
@@ -169,6 +169,8 @@ sg <- ggraph(g2, layout = "stress") +
 plot(sg)
 # Stress Majorization
 sg1 <- ggraph(g2, layout = "stress", bbox = 15) +
+  geom_node_point(aes(size = like_count, color = repost_count)) +
+  geom_node_text(aes(label = display_name), repel = TRUE) +
   geom_edge_link0() +
   geom_node_point() +
   theme_graph()
