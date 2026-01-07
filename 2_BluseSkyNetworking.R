@@ -61,7 +61,7 @@ ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
   geom_node_text(
     aes(label = ifelse(name %in% top_nodes, name, "")),
     repel = TRUE,
-    max.overlaps = 100
+    max.overlaps = 1000
   )
 
 # Step 10: Enrich edges with author info
