@@ -142,7 +142,7 @@ plot(bluSkynet, displaylabels = F)
 gplot(bluSkynet,
       label.cex - 0.2,
       label.col = "blue",
-      displaylabels = FALSE)
+      displaylabels = FALSE) # graph is very messy with labels
 
 network.dyadcount(bluSkynet)
 network.edgecount(bluSkynet)
@@ -154,7 +154,7 @@ degree(bluSkynet)
 library(graphlayouts)
 # Nicely
 ggraph(g2, layout = "nicely") +
-  geom_edge_link(alpha = 0.3) +
+  geom_edge_link(width = 0.2, colour = "grey") +
   geom_node_point(aes(size = like_count, color = repost_count)) +
   geom_node_text(aes(label = display_name), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
@@ -171,7 +171,8 @@ plot(sg)
 sg1 <- ggraph(g2, layout = "stress", bbox = 15) +
   geom_node_point(aes(size = like_count, color = repost_count)) +
   geom_node_text(aes(label = display_name), repel = TRUE) +
-  geom_edge_link0() +
-  geom_node_point() +
+  geom_edge_link(width = 0.2, colour = "grey") +
+  scale_size_continuous(range = c(3, 12)) +
+  scale_color_gradient(low = "lightblue", high = "red") +
   theme_graph()
 plot(sg1)
