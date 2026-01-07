@@ -20,22 +20,22 @@ nodes <- read.csv("graphs/speirgorm_nodes.csv")
 # keep only repost records for those sampled original posts. Adjust
 # `sample_n_posts` as desired (or set to NULL to keep all reposts).
 set.seed(22230)
-sample_n_posts <- 5000
+sample_n_posts <- 1000
 nodes_org <- nodes
 edges_org <- edges
 # # change to desired sample size; set NULL to skip sampling# Posts that have one or more reposts according to metadata
-# reposted_posts <- posts_df %>% filter(repost_count > 0, !is.na(uri), !is.na(repost_count))
+# reposted_posts <- posts_df |> filter(repost_count > 0, !is.na(uri), !is.na(repost_count))
 #
 if (!is.null(sample_n_posts) && nrow(edges) > 0) {
   
-  edges_filtered <- edges %>%
+  edges_filtered <- edges |>
     dplyr::left_join(
-      nodes %>% dplyr::select(name, repost_count),
+      nodes |> dplyr::select(name, repost_count),
       by = c("from" = "name")
-    ) %>%
+    ) |>
     dplyr::filter(repost_count > 0)
   
-  sampled_posts <- edges_filtered %>%
+  sampled_posts <- edges_filtered |>
     slice_sample(n = min(sample_n_posts, nrow(edges_filtered)))
   
 } else {
@@ -43,7 +43,6 @@ if (!is.null(sample_n_posts) && nrow(edges) > 0) {
 }
 
 edges <- sampled_posts
-
 
 #
 #
@@ -137,6 +136,8 @@ bluSkynet %e% "created_at"
 #as.sociomatrix.sna(bluSkynet, "created_at")
 sna::gplot(bluSkynet)
 
+# sna::gplot(bluSkynet, displaylabels = T, mode = "target") # very low
+
 plot(bluSkynet, displaylabels = F)
 
 gplot(bluSkynet,
@@ -148,6 +149,40 @@ network.dyadcount(bluSkynet)
 network.edgecount(bluSkynet)
 network.size(bluSkynet)
 degree(bluSkynet)
+
+ideg <- degree(bluSkynet, cmode = "indegree")
+odeg <- degree(bluSkynet, cmode = "outdegree")
+
+plot(ideg, odeg, type = "n", xlab = "Incoming", ylab = "Outgoing")
+abline(0, 1, lty=3)
+text(jitter(ideg), jitter(odeg),
+     network.vertex.names(bluSkynet),
+     cex = 0.5, col =2)
+
+hist(ideg, xlab = "Indegree", 
+     main = "Indgree Distribution", prob = TRUE)
+hist(odeg, xlab = "Outdegree", 
+     main = "Outdgree Distribution", prob = TRUE)
+
+gplot(bluSkynet, vertex.cex = (ideg+odeg)^0.5,
+      vertex.sides = 50, label.cex = 0.4,
+      vertex.col = rgb(odeg/max(odeg), 0, ideg/max(ideg)),
+      displaylabels = TRUE, displayisolates = FALSE)
+
+bet <- betweenness(bluSkynet, gmode = "graph")
+bet
+gplot(bluSkynet, vertex.cex = sqrt(bet)/25,
+      gmode = "graph")
+
+clo <- closeness(bluSkynet, cmode = "suminvundir")
+clo
+
+cen <- centralization(bluSkynet, degree, cmode = "indegree")
+ceneig <- centralization(bluSkynet, evcent)
+
+gden(bluSkynet)
+grecip(bluSkynet)
+grecip(bluSkynet, measure = "edgewise")
 
 # Graph Layouts
 
@@ -175,3 +210,5 @@ sg1 <- ggraph(g2, layout = "stress", bbox = 15) +
   geom_node_point() +
   theme_graph()
 plot(sg1)
+
+# tsna to go here 
