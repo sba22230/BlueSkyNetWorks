@@ -512,7 +512,8 @@ edges <- reposts_df |>
     posts_df |> select(uri, author_handle),
     by = c("original_uri" = "uri")
   ) |>
-  transmute(from = author_handle, to = handle, repost_uri = uri) |>
+  transmute(from = author_handle, to = handle, repost_uri = uri ,
+                created_at = created_at) |>
   filter(!is.na(from), !is.na(to)) |>
   distinct()
 
