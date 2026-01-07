@@ -10,6 +10,7 @@ library(ggraph)
 library(visNetwork)
 library(retry)
 library(rgexf)
+
 ## library(statnet) # this needs to be loaded later otherwise it
 # interferes with previous packages
 
@@ -79,7 +80,7 @@ ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
 #   ) |>
 #   filter(!is.na(from) & !is.na(to)) |>
 #   distinct()
-cat("Enriched edges count:", nrow(edges), "\n")
+# cat("Enriched edges count:", nrow(edges), "\n")
 
 # Debug: enriched edges
 print(head(edges))
@@ -95,7 +96,7 @@ print(head(edges))
 # Add repost counts
 # nodes <- nodes |>
 #   mutate(repost_count = table(edges$to)[name] |> as.integer())
-cat("Enriched nodes count:", nrow(nodes), "\n")
+# cat("Enriched nodes count:", nrow(nodes), "\n")
 
 # Debug: enriched nodes
 print(head(nodes))
