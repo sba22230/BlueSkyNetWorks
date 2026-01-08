@@ -127,11 +127,13 @@ bluSkynet[, ]
 list.edge.attributes(bluSkynet)
 bluSkynet %e% "created_at"
 #as.sociomatrix.sna(bluSkynet, "created_at")
+
 save_graph_svg(
   plot_or_expr = function() {
 sna::gplot(bluSkynet) },
     filename = "1_bluSkynet_sna.svg"
 )
+
 save_graph_svg(
   plot_or_expr = function() {
 sna::gplot(bluSkynet, displaylabels = T, mode = "target") # very slow
@@ -184,6 +186,7 @@ hist(ideg, xlab = "Indegree",
   },
 filename = "indegree_dist.svg"
 )
+
 save_graph_svg(
   plot_or_expr = function() {
 hist(odeg, xlab = "Outdegree", 
@@ -201,8 +204,10 @@ gplot(bluSkynet, vertex.cex = (ideg+odeg)^0.5,
   },
 filename = "5_bluSkynet.svg"
 )
+
 bet <- betweenness(bluSkynet, gmode = "graph")
 bet
+
 gplot(bluSkynet, vertex.cex = sqrt(bet)/25,
       gmode = "graph")
 
@@ -228,6 +233,7 @@ sg0 <- ggraph(g2, layout = "nicely") +
   scale_color_gradient(low = "lightblue", high = "red") +
   theme_void()
 save_graph_svg(sg0, "graphLayout_1.svg")
+
 # Stress
 sg <- ggraph(g2, layout = "stress") +
   geom_edge_link(width = 0.2, colour = "grey") +
