@@ -1,48 +1,21 @@
-library(dplyr)
-library(lubridate)
-library(igraph)
-library(stringr)
-library(stringi)
-library(tidyr)
-library(purrr)
-library(tibble)
-library(ggraph)
-library(visNetwork)
-library(retry)
-library(rgexf)
 
-## library(statnet) # this needs to be loaded later otherwise it
-# interferes with previous packages
+source("0_functions.R")
 
-# Step 1: Load data - I do not need these for the moment
-
-#posts_df <- read.csv("data/speirgorm_posts.csv")
-
-#reposts_df <- read.csv("data/speirgorm_reposts.csv")
-
-#threads_df <- read.csv("data/speirgorm_threads.csv")
-
-#cat("Reposts dataframe rows:", nrow(reposts_df), "\n")
-#cat("Threads dataframe rows:", nrow(threads_df), "\n")
-
-# Debug: check reposts_df structure
-#print(head(reposts_df))
-
-# Step 7: Build edge list (who reposted whom)
+# Step 1: Build edge list (who reposted whom)
 edges <- read.csv("graphs/speirgorm_edges.csv")
 cat("Edges count:", nrow(edges), "\n")
 
 # Debug: inspect edges
 print(head(edges))
 
-# Step 8: Build node list (unique actors and posts)
+# Step 2: Build node list (unique actors and posts)
 nodes <- read.csv("graphs/speirgorm_nodes.csv")
 cat("Nodes count:", nrow(nodes), "\n")
 
 # Debug: inspect nodes
 print(head(nodes))
 
-# Step 9: Build igraph object and plot basic network
+# Step 3: Build igraph object and plot basic network
 g1 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 cat("Graph summary:\n")
 print(summary(g1))
@@ -65,7 +38,7 @@ ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
     max.overlaps = 1000
   )
 
-# Step 10: Enrich edges with author info
+# Step 4: Enrich edges with author info
 # this step is unnecessary - the edges already have author info - need to add created_at 
 # edges <- reposts_df |>
 #   left_join(
@@ -101,7 +74,7 @@ print(head(edges))
 # Debug: enriched nodes
 print(head(nodes))
 
-# Step 12: Plot enriched network with ggraph
+# Step 5: Plot enriched network with ggraph
 g2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 coords2 <- layout_with_graphopt(g2, niter = 20) # heavy step, do once
 V(g2)$x <- coords2[, 1]
@@ -121,7 +94,7 @@ write_graph(
   format = "graphml"
 )
 
-# Step 13: Interactive visualization with visNetwork
+# Step 6: Interactive visualization with visNetwork
 vis_nodes <- nodes |>
   mutate(
     id = name,

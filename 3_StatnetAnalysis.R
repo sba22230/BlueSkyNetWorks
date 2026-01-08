@@ -1,18 +1,10 @@
-library(dplyr)
-library(lubridate)
-library(intergraph)
-library(igraph)
-library(stringr)
-library(stringi)
-library(tidyr)
-library(tibble)
-library(ggraph)
-library(statnet)
-library(sna)
+
+
+source("0_functions.R")
 
 # Step 1: Load data
-posts_df <- read.csv("data/speirgorm_posts.csv")
-reposts_df <- read.csv("data/speirgorm_reposts.csv")
+posts_df <- read_parquet("data/speirgorm_posts.parquet")
+reposts_df <- read_parquet("data/speirgorm_reposts.parquet")
 edges <- read.csv("graphs/speirgorm_edges.csv")
 nodes <- read.csv("graphs/speirgorm_nodes.csv")
 # --- Optional: sample reposted posts and filter reposts_df -----------------
@@ -122,6 +114,7 @@ g3 <- ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
 cat("Final graph summary:\n")
 print(summary(g2))
 plot(g3)
+save_graph_svg(g3, "g3_with_drl.svg")
 
 # Start of Statnet analysis
 # Convert igraph to statnet
@@ -134,16 +127,34 @@ bluSkynet[, ]
 list.edge.attributes(bluSkynet)
 bluSkynet %e% "created_at"
 #as.sociomatrix.sna(bluSkynet, "created_at")
-sna::gplot(bluSkynet)
+save_graph_svg(
+  plot_or_expr = function() {
+sna::gplot(bluSkynet) },
+    filename = "1_bluSkynet_sna.svg"
+)
+save_graph_svg(
+  plot_or_expr = function() {
+sna::gplot(bluSkynet, displaylabels = T, mode = "target") # very slow
+  },
+filename = "2_bluSkynet_sna.svg"
+)
 
-# sna::gplot(bluSkynet, displaylabels = T, mode = "target") # very low
-
+save_graph_svg(
+  plot_or_expr = function() {
 plot(bluSkynet, displaylabels = F)
+  },
+filename = "3_bluSkynet_sna.svg"
+)
 
+save_graph_svg(
+  plot_or_expr = function() {
 gplot(bluSkynet,
       label.cex - 0.2,
       label.col = "blue",
       displaylabels = FALSE) # graph is very messy with labels
+  },
+filename = "4_bluSkynet_sna.svg"
+)
 
 network.dyadcount(bluSkynet)
 network.edgecount(bluSkynet)
@@ -153,22 +164,43 @@ degree(bluSkynet)
 ideg <- degree(bluSkynet, cmode = "indegree")
 odeg <- degree(bluSkynet, cmode = "outdegree")
 
+save_graph_svg(
+  plot_or_expr = function() {
 plot(ideg, odeg, type = "n", xlab = "Incoming", ylab = "Outgoing")
-abline(0, 1, lty=3)
-text(jitter(ideg), jitter(odeg),
-     network.vertex.names(bluSkynet),
-     cex = 0.5, col =2)
+abline(0, 1, lty = 3)
+text(
+  jitter(ideg), jitter(odeg),
+  labels = network.vertex.names(bluSkynet),
+  cex = 0.5, col = 2
+)
+  },
+filename = "degree_scatter.svg"
+)
 
+save_graph_svg(
+  plot_or_expr = function() {
 hist(ideg, xlab = "Indegree", 
      main = "Indgree Distribution", prob = TRUE)
+  },
+filename = "indegree_dist.svg"
+)
+save_graph_svg(
+  plot_or_expr = function() {
 hist(odeg, xlab = "Outdegree", 
      main = "Outdgree Distribution", prob = TRUE)
+  },
+filename = "outdegree_dist.svg"
+)
 
+save_graph_svg(
+  plot_or_expr = function() {
 gplot(bluSkynet, vertex.cex = (ideg+odeg)^0.5,
       vertex.sides = 50, label.cex = 0.4,
       vertex.col = rgb(odeg/max(odeg), 0, ideg/max(ideg)),
       displaylabels = TRUE, displayisolates = FALSE)
-
+  },
+filename = "5_bluSkynet.svg"
+)
 bet <- betweenness(bluSkynet, gmode = "graph")
 bet
 gplot(bluSkynet, vertex.cex = sqrt(bet)/25,
@@ -188,13 +220,14 @@ grecip(bluSkynet, measure = "edgewise")
 
 library(graphlayouts)
 # Nicely
-ggraph(g2, layout = "nicely") +
+sg0 <- ggraph(g2, layout = "nicely") +
   geom_edge_link(width = 0.2, colour = "grey") +
   geom_node_point(aes(size = like_count, color = repost_count)) +
   geom_node_text(aes(label = display_name), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +
   theme_void()
+save_graph_svg(sg0, "graphLayout_1.svg")
 # Stress
 sg <- ggraph(g2, layout = "stress") +
   geom_edge_link(width = 0.2, colour = "grey") +
@@ -202,6 +235,8 @@ sg <- ggraph(g2, layout = "stress") +
   scale_color_gradient(low = "lightblue", high = "red") +
   theme_graph()
 plot(sg)
+save_graph_svg(sg, "graphLayout_2.svg")
+
 # Stress Majorization
 sg1 <- ggraph(g2, layout = "stress", bbox = 15) +
   geom_node_point(aes(size = like_count, color = repost_count)) +
@@ -211,5 +246,5 @@ sg1 <- ggraph(g2, layout = "stress", bbox = 15) +
   scale_color_gradient(low = "lightblue", high = "red") +
   theme_graph()
 plot(sg1)
-
+save_graph_svg(sg1, "graphLayout_3.svg")
 # tsna to go here 
