@@ -1063,85 +1063,86 @@
 <circle cx='171.26' cy='452.89' r='6.37' style='stroke-width: 0.71; stroke: #C0CBD1; fill: #C0CBD1;' />
 <circle cx='1033.46' cy='470.00' r='4.96' style='stroke-width: 0.71; stroke: #B4D4DF; fill: #B4D4DF;' />
 <circle cx='732.01' cy='184.26' r='3.56' style='stroke-width: 0.71; stroke: #ADD8E6; fill: #ADD8E6;' />
-<line x1='875.34' y1='129.94' x2='891.83' y2='128.33' style='stroke-width: 1.07;' />
-<line x1='271.85' y1='501.29' x2='289.21' y2='515.83' style='stroke-width: 1.07;' />
-<line x1='294.20' y1='498.06' x2='290.40' y2='514.54' style='stroke-width: 1.07;' />
-<line x1='878.68' y1='140.43' x2='891.15' y2='129.49' style='stroke-width: 1.07;' />
-<line x1='90.40' y1='453.28' x2='78.98' y2='443.69' style='stroke-width: 1.07;' />
-<line x1='735.69' y1='579.58' x2='702.87' y2='583.28' style='stroke-width: 1.07;' />
-<line x1='908.89' y1='141.62' x2='895.94' y2='129.98' style='stroke-width: 1.07;' />
-<text x='683.41' y='576.03' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='93.81px' lengthAdjust='spacingAndGlyphs'>Galway Game Jam</text>
-<text x='481.31' y='230.77' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='31.91px' lengthAdjust='spacingAndGlyphs'>Kieran</text>
-<text x='839.50' y='133.91' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='68.09px' lengthAdjust='spacingAndGlyphs'>Aidan O’Brien</text>
-<text x='230.05' y='499.49' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='118.39px' lengthAdjust='spacingAndGlyphs'>Financial Justice Ireland</text>
-<text x='413.13' y='222.76' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='66.25px' lengthAdjust='spacingAndGlyphs'>Bruno Batista</text>
-<text x='481.92' y='566.25' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='142.30px' lengthAdjust='spacingAndGlyphs'>Blooms &amp; Barnacles Podcast</text>
-<text x='752.54' y='170.54' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='79.33px' lengthAdjust='spacingAndGlyphs'>Trevor Johnston</text>
-<text x='927.31' y='648.92' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='166.45px' lengthAdjust='spacingAndGlyphs'>Paul Broughall (Chickasso 🐥🎨)</text>
-<text x='262.48' y='837.30' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='39.86px' lengthAdjust='spacingAndGlyphs'>Claire D</text>
-<text x='415.37' y='645.94' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='59.50px' lengthAdjust='spacingAndGlyphs'>Kevin Burke</text>
-<text x='558.46' y='274.57' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='81.88px' lengthAdjust='spacingAndGlyphs'>Shane O'Connor</text>
-<text x='621.54' y='615.63' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='112.47px' lengthAdjust='spacingAndGlyphs'>Feliz Niamhidad 🤶🎄</text>
-<text x='542.35' y='52.22' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='50.92px' lengthAdjust='spacingAndGlyphs'>Paul Hoey</text>
-<text x='804.85' y='607.93' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='115.28px' lengthAdjust='spacingAndGlyphs'>Dublin Small Press Fair</text>
-<text x='720.49' y='598.61' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='37.42px' lengthAdjust='spacingAndGlyphs'>Cons.ie</text>
-<text x='646.91' y='247.14' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='15.14px' lengthAdjust='spacingAndGlyphs'>Val</text>
-<text x='398.43' y='187.80' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='65.02px' lengthAdjust='spacingAndGlyphs'>Tom Gleeson</text>
-<text x='887.77' y='558.51' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='40.05px' lengthAdjust='spacingAndGlyphs'>Tim Bak</text>
-<text x='223.74' y='582.88' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='89.64px' lengthAdjust='spacingAndGlyphs'>Jack o'Lantern 🎃</text>
-<text x='365.62' y='596.69' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='179.72px' lengthAdjust='spacingAndGlyphs'>Mykalin Jones/Mícheáilín Nic Sheoin</text>
-<text x='494.59' y='189.75' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='69.56px' lengthAdjust='spacingAndGlyphs'>Dave O'Grady</text>
-<text x='337.94' y='500.34' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='83.88px' lengthAdjust='spacingAndGlyphs'>Nessan Vaughan</text>
-<text x='395.22' y='205.11' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='65.64px' lengthAdjust='spacingAndGlyphs'>Anne Murphy</text>
-<text x='292.34' y='532.33' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='39.88px' lengthAdjust='spacingAndGlyphs'>Darragh</text>
-<text x='859.71' y='150.13' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='70.94px' lengthAdjust='spacingAndGlyphs'>Nam Talmbout</text>
-<text x='248.97' y='515.30' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='70.55px' lengthAdjust='spacingAndGlyphs'>Niamh Goggin</text>
-<text x='533.61' y='628.96' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='42.91px' lengthAdjust='spacingAndGlyphs'>Near FM</text>
-<text x='495.58' y='584.31' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='65.61px' lengthAdjust='spacingAndGlyphs'>monica, MLitt</text>
-<text x='897.08' y='118.86' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='125.77px' lengthAdjust='spacingAndGlyphs'>Piston Hondo my beloved</text>
-<text x='174.13' y='565.64' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='74.83px' lengthAdjust='spacingAndGlyphs'>Michelle Maher</text>
-<text x='707.84' y='512.35' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='133.67px' lengthAdjust='spacingAndGlyphs'>Grouchy Marx (aka Rupert)</text>
-<text x='36.91' y='452.63' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='66.25px' lengthAdjust='spacingAndGlyphs'>Ó Fionnachta</text>
-<text x='942.01' y='505.03' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='104.02px' lengthAdjust='spacingAndGlyphs'>Christmas Miriam 🎄</text>
-<text x='102.87' y='305.44' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='82.83px' lengthAdjust='spacingAndGlyphs'>BlackVelvetBand</text>
-<text x='334.93' y='640.52' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='63.39px' lengthAdjust='spacingAndGlyphs'>Trina Golden</text>
-<text x='991.54' y='407.80' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='89.56px' lengthAdjust='spacingAndGlyphs'>Orla Egan she/her</text>
-<text x='1039.12' y='296.88' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='73.66px' lengthAdjust='spacingAndGlyphs'>Susan Lanigan</text>
-<text x='188.26' y='128.76' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='63.20px' lengthAdjust='spacingAndGlyphs'>John Connor</text>
-<text x='48.05' y='255.84' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='79.09px' lengthAdjust='spacingAndGlyphs'>Maitiú Ó Coimín</text>
-<text x='663.64' y='592.97' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='62.34px' lengthAdjust='spacingAndGlyphs'>bunny | LFW</text>
-<text x='580.46' y='253.26' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='15.33px' lengthAdjust='spacingAndGlyphs'>KD</text>
-<text x='78.64' y='322.92' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='104.55px' lengthAdjust='spacingAndGlyphs'>...the surname "they."</text>
-<text x='480.21' y='211.63' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='52.73px' lengthAdjust='spacingAndGlyphs'>Bren Berry</text>
-<text x='356.38' y='574.16' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='34.95px' lengthAdjust='spacingAndGlyphs'>Allyn H</text>
-<text x='514.73' y='314.77' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='52.16px' lengthAdjust='spacingAndGlyphs'>Lamhfada </text>
-<text x='768.75' y='567.41' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='22.67px' lengthAdjust='spacingAndGlyphs'>Mick</text>
-<text x='438.05' y='628.50' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='73.61px' lengthAdjust='spacingAndGlyphs'>Richard Jacob </text>
-<text x='618.92' y='380.20' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='86.30px' lengthAdjust='spacingAndGlyphs'>Siobhán McElduff</text>
-<text x='413.63' y='529.59' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='118.36px' lengthAdjust='spacingAndGlyphs'>Flipturns    🏊‍♀️   📷   🦋</text>
-<text x='1004.40' y='245.41' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='101.41px' lengthAdjust='spacingAndGlyphs'>Viktor 🇵🇸🍉🦘🦘🪃</text>
-<text x='860.22' y='233.92' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='106.14px' lengthAdjust='spacingAndGlyphs'>Save Redland Library</text>
-<text x='828.01' y='59.09' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='126.39px' lengthAdjust='spacingAndGlyphs'>Cis PeeBee🏳️‍⚧️🏳️‍🌈BLM🍉</text>
-<text x='712.04' y='41.51' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='52.95px' lengthAdjust='spacingAndGlyphs'>Ben Walsh</text>
-<text x='117.71' y='462.97' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='81.56px' lengthAdjust='spacingAndGlyphs'>John Flynn Artist</text>
-<text x='594.53' y='359.95' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='30.06px' lengthAdjust='spacingAndGlyphs'>Conor</text>
-<text x='180.74' y='185.64' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='46.62px' lengthAdjust='spacingAndGlyphs'>BBJRan8</text>
-<text x='624.59' y='36.25' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='76.70px' lengthAdjust='spacingAndGlyphs'>Susan Madigan</text>
-<text x='939.08' y='443.60' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='40.52px' lengthAdjust='spacingAndGlyphs'>Siobhan</text>
-<text x='89.60' y='437.46' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='80.19px' lengthAdjust='spacingAndGlyphs'>🦇❄️Caz❄️🦇</text>
-<text x='59.97' y='368.31' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='62.70px' lengthAdjust='spacingAndGlyphs'>Brónagh 🇮🇪🇵🇸</text>
-<text x='302.58' y='515.88' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='11.66px' lengthAdjust='spacingAndGlyphs'>Jo</text>
-<text x='519.98' y='34.61' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='73.00px' lengthAdjust='spacingAndGlyphs'>John Edwards </text>
-<text x='802.75' y='625.51' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='77.94px' lengthAdjust='spacingAndGlyphs'>Daniel Kennedy</text>
-<text x='42.12' y='192.44' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='61.30px' lengthAdjust='spacingAndGlyphs'>What If Cork</text>
-<text x='918.58' y='135.31' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='31.91px' lengthAdjust='spacingAndGlyphs'>Goldie</text>
-<text x='281.32' y='128.84' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='48.69px' lengthAdjust='spacingAndGlyphs'>Tuppence</text>
-<text x='652.89' y='364.70' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='72.38px' lengthAdjust='spacingAndGlyphs'>Bluetigermusic</text>
-<text x='794.69' y='583.49' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='114.41px' lengthAdjust='spacingAndGlyphs'>INDIEGAMES 🏴‍☠️ WTF</text>
-<text x='137.21' y='515.54' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='71.77px' lengthAdjust='spacingAndGlyphs'>Krampusaurus</text>
-<text x='189.90' y='447.60' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='62.59px' lengthAdjust='spacingAndGlyphs'>an sasanach</text>
-<text x='912.07' y='151.32' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='19.02px' lengthAdjust='spacingAndGlyphs'>Kev</text>
-<text x='971.18' y='474.50' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='113.27px' lengthAdjust='spacingAndGlyphs'>🌊 Cork Coast, Ireland</text>
+<line x1='878.14' y1='130.13' x2='891.83' y2='128.36' style='stroke-width: 1.07;' />
+<line x1='288.75' y1='495.12' x2='290.04' y2='515.55' style='stroke-width: 1.07;' />
+<line x1='292.11' y1='498.05' x2='290.28' y2='514.53' style='stroke-width: 1.07;' />
+<line x1='879.46' y1='140.06' x2='891.17' y2='129.50' style='stroke-width: 1.07;' />
+<line x1='89.49' y1='452.45' x2='78.98' y2='443.69' style='stroke-width: 1.07;' />
+<line x1='906.28' y1='131.08' x2='895.05' y2='128.76' style='stroke-width: 1.07;' />
+<line x1='735.29' y1='578.45' x2='702.86' y2='583.24' style='stroke-width: 1.07;' />
+<line x1='906.38' y1='145.93' x2='895.70' y2='130.12' style='stroke-width: 1.07;' />
+<text x='682.61' y='578.35' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='93.81px' lengthAdjust='spacingAndGlyphs'>Galway Game Jam</text>
+<text x='481.14' y='230.64' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='31.91px' lengthAdjust='spacingAndGlyphs'>Kieran</text>
+<text x='842.30' y='134.10' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='68.09px' lengthAdjust='spacingAndGlyphs'>Aidan O’Brien</text>
+<text x='227.75' y='497.63' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='118.39px' lengthAdjust='spacingAndGlyphs'>Financial Justice Ireland</text>
+<text x='413.34' y='222.87' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='66.25px' lengthAdjust='spacingAndGlyphs'>Bruno Batista</text>
+<text x='481.76' y='566.38' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='142.30px' lengthAdjust='spacingAndGlyphs'>Blooms &amp; Barnacles Podcast</text>
+<text x='752.50' y='170.44' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='79.33px' lengthAdjust='spacingAndGlyphs'>Trevor Johnston</text>
+<text x='927.29' y='648.99' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='166.45px' lengthAdjust='spacingAndGlyphs'>Paul Broughall (Chickasso 🐥🎨)</text>
+<text x='262.22' y='837.38' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='39.86px' lengthAdjust='spacingAndGlyphs'>Claire D</text>
+<text x='415.55' y='645.79' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='59.50px' lengthAdjust='spacingAndGlyphs'>Kevin Burke</text>
+<text x='558.64' y='274.43' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='81.88px' lengthAdjust='spacingAndGlyphs'>Shane O'Connor</text>
+<text x='621.77' y='615.56' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='112.47px' lengthAdjust='spacingAndGlyphs'>Feliz Niamhidad 🤶🎄</text>
+<text x='542.62' y='52.30' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='50.92px' lengthAdjust='spacingAndGlyphs'>Paul Hoey</text>
+<text x='804.64' y='608.10' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='115.28px' lengthAdjust='spacingAndGlyphs'>Dublin Small Press Fair</text>
+<text x='720.69' y='597.45' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='37.42px' lengthAdjust='spacingAndGlyphs'>Cons.ie</text>
+<text x='646.73' y='247.28' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='15.14px' lengthAdjust='spacingAndGlyphs'>Val</text>
+<text x='398.20' y='187.86' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='65.02px' lengthAdjust='spacingAndGlyphs'>Tom Gleeson</text>
+<text x='888.00' y='558.45' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='40.05px' lengthAdjust='spacingAndGlyphs'>Tim Bak</text>
+<text x='223.74' y='582.87' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='89.64px' lengthAdjust='spacingAndGlyphs'>Jack o'Lantern 🎃</text>
+<text x='365.83' y='596.68' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='179.72px' lengthAdjust='spacingAndGlyphs'>Mykalin Jones/Mícheáilín Nic Sheoin</text>
+<text x='494.41' y='189.90' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='69.56px' lengthAdjust='spacingAndGlyphs'>Dave O'Grady</text>
+<text x='335.84' y='500.29' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='83.88px' lengthAdjust='spacingAndGlyphs'>Nessan Vaughan</text>
+<text x='394.98' y='205.04' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='65.64px' lengthAdjust='spacingAndGlyphs'>Anne Murphy</text>
+<text x='297.35' y='532.26' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='39.88px' lengthAdjust='spacingAndGlyphs'>Darragh</text>
+<text x='865.03' y='149.75' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='70.94px' lengthAdjust='spacingAndGlyphs'>Nam Talmbout</text>
+<text x='248.66' y='514.21' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='70.55px' lengthAdjust='spacingAndGlyphs'>Niamh Goggin</text>
+<text x='533.84' y='628.90' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='42.91px' lengthAdjust='spacingAndGlyphs'>Near FM</text>
+<text x='495.48' y='584.20' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='65.61px' lengthAdjust='spacingAndGlyphs'>monica, MLitt</text>
+<text x='893.31' y='119.05' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='125.77px' lengthAdjust='spacingAndGlyphs'>Piston Hondo my beloved</text>
+<text x='174.31' y='565.78' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='74.83px' lengthAdjust='spacingAndGlyphs'>Michelle Maher</text>
+<text x='707.74' y='512.40' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='133.67px' lengthAdjust='spacingAndGlyphs'>Grouchy Marx (aka Rupert)</text>
+<text x='36.73' y='452.83' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='66.25px' lengthAdjust='spacingAndGlyphs'>Ó Fionnachta</text>
+<text x='941.83' y='505.17' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='104.02px' lengthAdjust='spacingAndGlyphs'>Christmas Miriam 🎄</text>
+<text x='102.76' y='305.55' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='82.83px' lengthAdjust='spacingAndGlyphs'>BlackVelvetBand</text>
+<text x='334.75' y='640.66' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='63.39px' lengthAdjust='spacingAndGlyphs'>Trina Golden</text>
+<text x='991.63' y='407.99' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='89.56px' lengthAdjust='spacingAndGlyphs'>Orla Egan she/her</text>
+<text x='1038.98' y='296.97' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='73.66px' lengthAdjust='spacingAndGlyphs'>Susan Lanigan</text>
+<text x='187.97' y='128.85' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='63.20px' lengthAdjust='spacingAndGlyphs'>John Connor</text>
+<text x='47.82' y='255.90' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='79.09px' lengthAdjust='spacingAndGlyphs'>Maitiú Ó Coimín</text>
+<text x='663.40' y='594.48' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='62.34px' lengthAdjust='spacingAndGlyphs'>bunny | LFW</text>
+<text x='580.69' y='253.20' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='15.33px' lengthAdjust='spacingAndGlyphs'>KD</text>
+<text x='78.54' y='323.12' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='104.55px' lengthAdjust='spacingAndGlyphs'>...the surname "they."</text>
+<text x='480.03' y='211.66' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='52.73px' lengthAdjust='spacingAndGlyphs'>Bren Berry</text>
+<text x='356.54' y='574.28' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='34.95px' lengthAdjust='spacingAndGlyphs'>Allyn H</text>
+<text x='514.54' y='314.92' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='52.16px' lengthAdjust='spacingAndGlyphs'>Lamhfada </text>
+<text x='767.68' y='566.14' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='22.67px' lengthAdjust='spacingAndGlyphs'>Mick</text>
+<text x='438.13' y='628.31' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='73.61px' lengthAdjust='spacingAndGlyphs'>Richard Jacob </text>
+<text x='619.04' y='380.15' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='86.30px' lengthAdjust='spacingAndGlyphs'>Siobhán McElduff</text>
+<text x='413.45' y='529.45' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='118.36px' lengthAdjust='spacingAndGlyphs'>Flipturns    🏊‍♀️   📷   🦋</text>
+<text x='1004.75' y='245.43' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='101.41px' lengthAdjust='spacingAndGlyphs'>Viktor 🇵🇸🍉🦘🦘🪃</text>
+<text x='860.50' y='234.10' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='106.14px' lengthAdjust='spacingAndGlyphs'>Save Redland Library</text>
+<text x='828.24' y='59.16' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='126.39px' lengthAdjust='spacingAndGlyphs'>Cis PeeBee🏳️‍⚧️🏳️‍🌈BLM🍉</text>
+<text x='711.81' y='41.45' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='52.95px' lengthAdjust='spacingAndGlyphs'>Ben Walsh</text>
+<text x='117.79' y='462.14' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='81.56px' lengthAdjust='spacingAndGlyphs'>John Flynn Artist</text>
+<text x='594.69' y='360.02' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='30.06px' lengthAdjust='spacingAndGlyphs'>Conor</text>
+<text x='180.56' y='185.49' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='46.62px' lengthAdjust='spacingAndGlyphs'>BBJRan8</text>
+<text x='624.47' y='36.01' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='76.70px' lengthAdjust='spacingAndGlyphs'>Susan Madigan</text>
+<text x='939.16' y='443.41' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='40.52px' lengthAdjust='spacingAndGlyphs'>Siobhan</text>
+<text x='89.66' y='437.44' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='80.19px' lengthAdjust='spacingAndGlyphs'>🦇❄️Caz❄️🦇</text>
+<text x='60.06' y='368.12' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='62.70px' lengthAdjust='spacingAndGlyphs'>Brónagh 🇮🇪🇵🇸</text>
+<text x='301.96' y='515.63' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='11.66px' lengthAdjust='spacingAndGlyphs'>Jo</text>
+<text x='520.10' y='34.72' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='73.00px' lengthAdjust='spacingAndGlyphs'>John Edwards </text>
+<text x='802.34' y='625.30' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='77.94px' lengthAdjust='spacingAndGlyphs'>Daniel Kennedy</text>
+<text x='42.28' y='192.33' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='61.30px' lengthAdjust='spacingAndGlyphs'>What If Cork</text>
+<text x='924.03' y='135.12' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='31.91px' lengthAdjust='spacingAndGlyphs'>Goldie</text>
+<text x='281.50' y='128.69' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='48.69px' lengthAdjust='spacingAndGlyphs'>Tuppence</text>
+<text x='652.86' y='364.89' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='72.38px' lengthAdjust='spacingAndGlyphs'>Bluetigermusic</text>
+<text x='794.30' y='582.31' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='114.41px' lengthAdjust='spacingAndGlyphs'>INDIEGAMES 🏴‍☠️ WTF</text>
+<text x='137.30' y='515.42' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='71.77px' lengthAdjust='spacingAndGlyphs'>Krampusaurus</text>
+<text x='196.95' y='447.70' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='62.59px' lengthAdjust='spacingAndGlyphs'>an sasanach</text>
+<text x='917.69' y='151.28' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='19.02px' lengthAdjust='spacingAndGlyphs'>Kev</text>
+<text x='971.15' y='474.51' text-anchor='middle' style='font-size: 11.04px; font-family: "Arial";' textLength='113.27px' lengthAdjust='spacingAndGlyphs'>🌊 Cork Coast, Ireland</text>
 </g>
 <g clip-path='url(#cpMC4wMHwxMTUyLjAwfDAuMDB8ODY0LjAw)'>
 <text x='1088.34' y='329.74' style='font-size: 11.00px; font-family: "Arial";' textLength='49.56px' lengthAdjust='spacingAndGlyphs'>like_count</text>

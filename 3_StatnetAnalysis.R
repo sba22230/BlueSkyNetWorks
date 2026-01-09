@@ -12,7 +12,7 @@ nodes <- read.csv("graphs/speirgorm_nodes.csv")
 # keep only repost records for those sampled original posts. Adjust
 # `sample_n_posts` as desired (or set to NULL to keep all reposts).
 set.seed(22230)
-sample_n_posts <- 1000
+sample_n_posts <- 29051
 nodes_org <- nodes
 edges_org <- edges
 # # change to desired sample size; set NULL to skip sampling# Posts that have one or more reposts according to metadata
