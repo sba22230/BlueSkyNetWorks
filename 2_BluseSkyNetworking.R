@@ -1,4 +1,3 @@
-
 source("0_functions.R")
 
 # Step 1: Build edge list (who reposted whom)
@@ -39,7 +38,7 @@ ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
   )
 
 # Step 4: Enrich edges with author info
-# this step is unnecessary - the edges already have author info - need to add created_at 
+# this step is unnecessary - the edges already have author info - need to add created_at
 # edges <- reposts_df |>
 #   left_join(
 #     posts_df |> select(uri, author_handle),
@@ -59,7 +58,7 @@ ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
 print(head(edges))
 
 # Step 11: Enrich nodes with metadata
-# This doesn't need to be done either 
+# This doesn't need to be done either
 # nodes <- bind_rows(
 #  reposts_df |> select(name = handle, display_name, did),
 #  posts_df |> select(name = author_handle, text, like_count, repost_count)

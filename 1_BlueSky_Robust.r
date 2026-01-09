@@ -98,20 +98,13 @@ arrow::write_parquet(threads_df, "data/speirgorm_threads.parquet")
 #readr::write_csv(reposts_df, "data/speirgorm_reposts.csv") # this file is too big for git
 readr::write_csv(threads_df, "data/speirgorm_threads.csv")
 
-# Build edges: author -> reposter
-edges <- reposts_df |>
-  left_join(
-    posts_df |> select(uri, author_handle),
-    by = c("original_uri" = "uri")
-  ) |>
-  transmute(
-    from = author_handle,
-    to = handle,
-    repost_uri = uri,
-    created_at = created_at
-  ) |>
-  filter(!is.na(from), !is.na(to)) |>
-  distinct()
+source("1a_load network data into SQL.r")
+
+edges <- read_parquet("graphs/speirgorm_edges.parquet")
+nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
+
+
+# Step 12: Plot enriched network with ggraph
 
 # Minimal DID/handle normalization if available
 did_map <- reposts_df |>
@@ -122,43 +115,12 @@ did_map <- reposts_df |>
   slice_tail(n = 1) |> # prefer the latest handle seen for DID
   ungroup()
 
-normalize_handle <- function(h) {
-  if (length(h) > 1) {
-    # Vectorized handling: replace NA values with NA_character_ safely
-    h[is.na(h)] <- NA_character_
-    return(h)
-  }
-  if (is.na(h)) {
-    return(NA_character_)
-  }
-  h
-}
 
-edges <- edges |>
-  mutate(from = normalize_handle(from), to = normalize_handle(to))
-
-# Nodes
-nodes <- bind_rows(
-  reposts_df |> select(name = handle, display_name, did, uri),
-  posts_df |> select(name = author_handle, text, uri)
-) |>
-  distinct(name, .keep_all = TRUE)
-nodes <- nodes |>
-  left_join(
-    posts_df |> select(name = author_handle, uri, like_count, repost_count),
-    by = c("name", "uri")
-  )
-
-write_parquet(edges, "graphs/speirgorm_edges.parquet")
-write_parquet(nodes, "graphs/speirgorm_nodes.parquet")
-
-
-# Step 12: Plot enriched network with ggraph
 g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 g1 <- ggraph::ggraph(g, layout = "drl") +
   geom_edge_link(alpha = 0.3) +
-  geom_node_point(aes(size = like_count, color = repost_count)) +
-  geom_node_text(aes(label = display_name), repel = TRUE) +
+  geom_node_point(aes(size = reposts_made, color = reposts_received)) +
+  geom_node_text(aes(label = name), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +
   theme_void()

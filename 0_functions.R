@@ -464,3 +464,15 @@ save_graph_svg <- function(
   message("Saved base/igraph/sna/network SVG to: ", filepath)
   invisible(filepath)
 }
+
+normalize_handle <- function(h) {
+  if (length(h) > 1) {
+    # Vectorized handling: replace NA values with NA_character_ safely
+    h[is.na(h)] <- NA_character_
+    return(h)
+  }
+  if (is.na(h)) {
+    return(NA_character_)
+  }
+  h
+}

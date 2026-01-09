@@ -256,7 +256,7 @@ dbExecute(odbc_con, populate_reposted_sql)
 # # Step 5: Create edges and nodes csv files for later
 # #   Create table: repost_counts (to, repost_count)
 # # ---------------------------
-nodes_df <- dbGetQuery(
+nodes <- dbGetQuery(
   odbc_con,
   "SELECT [handle] AS name
       ,[first_seen] AS earliestPost
@@ -270,8 +270,14 @@ nodes_df <- dbGetQuery(
   FROM [BlueSkyNet].[dbo].[Person];"
 )
 
-write_parquet(nodes_df, "graphs/speirgorm_nodes.parquet")
-edges_df <- dbGetQuery(
+nodes <- nodes |>
+  mutate(across(
+    where(is.character),
+    ~ gsub("[[:cntrl:]]", "", .)
+  ))
+
+write_parquet(nodes, "graphs/speirgorm_nodes.parquet")
+edges <- dbGetQuery(
   odbc_con,
   "SELECT 
     f.handle AS [from],
@@ -292,4 +298,12 @@ JOIN dbo.Person AS t
 ORDER BY r.posted_on DESC;
 "
 )
-write_parquet(edges_df, "graphs/speirgorm_edges.parquet")
+
+edges <- edges |>
+  mutate(from = normalize_handle(from), to = normalize_handle(to)) |>
+  mutate(across(
+    where(is.character),
+    ~ gsub("[[:cntrl:]]", "", .)
+  ))
+
+write_parquet(edges, "graphs/speirgorm_edges.parquet")
