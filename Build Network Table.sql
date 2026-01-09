@@ -1,5 +1,4 @@
-SELECT 
-P.uri AS Post , 
+SELECT P.uri AS Post , 
 P.author_handle AS PostedBy,  
 CAST(P.indexedAt AS date) AS PostedOn, P.text, 
 P.bookmark_count, P.like_count, p.reply_count, P.repost_count,
