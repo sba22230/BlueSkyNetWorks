@@ -1,13 +1,7 @@
 # Rewritten to load network data into SQL Server (BlueSkyNet) and run calculations on the server
 # Requires: RevoScaleR, DBI/odbc (optional for direct checks), igraph/ggraph for local plotting
 
-library(DBI)
-library(odbc)
-library(dplyr)
-library(lubridate)
-library(igraph)
-library(ggraph)
-library(RevoScaleR) # RevoScaleR provides RxSqlServerData, rxDataStep, etc.
+source("0_functions.R")
 
 # ---------------------------
 # Configuration: SQL Server
@@ -22,12 +16,14 @@ orgicc <- rxGetComputeContext()
 rxSetComputeContext("localpar")
 
 if (use_trusted_connection) {
-  odbc_con <- dbConnect(odbc::odbc(),
-                        Driver   = "SQL Server",
-                        Server   = sql_server,
-                        Database = database,
-                        Trusted_Connection = "Yes")
-  
+  odbc_con <- dbConnect(
+    odbc::odbc(),
+    Driver = "SQL Server",
+    Server = sql_server,
+    Database = database,
+    Trusted_Connection = "Yes"
+  )
+
   connStr <- paste0(
     "Driver={SQL Server};Server=",
     sql_server,
@@ -36,13 +32,15 @@ if (use_trusted_connection) {
     ";Trusted_Connection=Yes;"
   )
 } else {
-  odbc_con <- dbConnect(odbc::odbc(),
-                        Driver   = "SQL Server",
-                        Server   = sql_server,
-                        Database = database,
-                        UID = sql_user,
-                        PWD = sql_password)
-  
+  odbc_con <- dbConnect(
+    odbc::odbc(),
+    Driver = "SQL Server",
+    Server = sql_server,
+    Database = database,
+    UID = sql_user,
+    PWD = sql_password
+  )
+
   connStr <- paste0(
     "Driver={SQL Server};Server=",
     sql_server,
@@ -65,14 +63,18 @@ rx_sql_table <- function(table_name, connectionString = connStr) {
   )
 }
 # shareDir must be accessible by SQL Server compute context
-shareDir <- paste("H:\\AllShare\\",Sys.getenv("USERNAME"),sep="")  # change to a path accessible by SQL Server machine
+shareDir <- paste("H:\\AllShare\\", Sys.getenv("USERNAME"), sep = "") # change to a path accessible by SQL Server machine
 
 # ---------------------------
 # Step 0: Read CSVs locally
 # ---------------------------
-posts_local <- read.csv("/../../Source/Repos/BlueSkyNetWorks/data/speirgorm_posts.csv", stringsAsFactors = FALSE)
-reposts_local <- read.csv(
-  "/../../Source/Repos/BlueSkyNetWorks/data/speirgorm_reposts.csv",
+posts_local <- read_parquet(
+  "/../../Source/Repos/BlueSkyNetWorks/data/speirgorm_posts.parquet",
+  stringsAsFactors = FALSE
+)
+reposts_local <- arrow::read_parquet(
+  "/../../Source/Repos/BlueSkyNetWorks/data/speirgorm_reposts.parquet",
+
   stringsAsFactors = FALSE
 )
 

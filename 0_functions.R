@@ -17,6 +17,9 @@ library(stringr)
 library(tibble)
 library(tidyr)
 library(visNetwork)
+library(DBI)
+library(odbc)
+library(RevoScaleR) # RevoScaleR provides RxSqlServerData, rxDataStep, etc.
 
 
 safe_chr <- function(x, ...) {
@@ -58,14 +61,14 @@ get_posts_from_resp <- function(resp) {
     resp$posts
   } else if (
     is.list(resp) &&
-    length(resp) > 0 &&
-    all(vapply(resp, function(x) is.list(x) && !is.null(x$posts), logical(1)))
+      length(resp) > 0 &&
+      all(vapply(resp, function(x) is.list(x) && !is.null(x$posts), logical(1)))
   ) {
     flatten(map(resp, "posts"))
   } else if (
     is.list(resp) &&
-    length(resp) > 0 &&
-    all(vapply(resp, function(x) !is.null(x$uri), logical(1)))
+      length(resp) > 0 &&
+      all(vapply(resp, function(x) !is.null(x$uri), logical(1)))
   ) {
     resp
   } else {
@@ -75,10 +78,10 @@ get_posts_from_resp <- function(resp) {
 
 # Deep pagination with "until" anchoring by last indexedAt
 deep_search_posts <- function(
-    query,
-    hard_limit = 50000,
-    chunk_limit = 100,
-    checkpoint_path = "data/speirgorm_posts.parquet"
+  query,
+  hard_limit = 50000,
+  chunk_limit = 100,
+  checkpoint_path = "data/speirgorm_posts.parquet"
 ) {
   all_rows <- list()
   cursor <- NULL
@@ -105,14 +108,14 @@ deep_search_posts <- function(
       query <- paste0(query, " since:", since)
     }
   }
-  
+
   while (fetched < hard_limit) {
     iter <- iter + 1
     q <- if (!is.null(until)) paste0(query, " until:", until) else query
-    
+
     resp <- search_page(q, cursor = cursor, limit = chunk_limit)
     posts <- get_posts_from_resp(resp)
-    
+
     if (length(posts) == 0) {
       # No posts: attempt to push further back if we have an anchor
       if (!is.null(until)) {
@@ -124,7 +127,7 @@ deep_search_posts <- function(
         break
       }
     }
-    
+
     df <- tibble(
       uri = map_chr(posts, ~ safe_chr(.x, "uri")),
       indexedAt = map_chr(posts, ~ safe_chr(.x, "indexedAt")),
@@ -139,11 +142,11 @@ deep_search_posts <- function(
         ~ safe_chr(.x, "record", "reply", "parent", "uri")
       )
     )
-    
+
     all_rows <- append(all_rows, list(df))
     fetched <- nrow(bind_rows(all_rows))
     message(sprintf("[Iter %d] Fetched %d total rows", iter, fetched))
-    
+
     # Persist checkpoint every ~1k rows
     if (fetched %% 1000 < chunk_limit) {
       out <- bind_rows(all_rows) |> distinct(uri, .keep_all = TRUE)
@@ -157,10 +160,10 @@ deep_search_posts <- function(
         }
       )
     }
-    
+
     # Update cursor and potential "until" anchor
     cursor <- resp$cursor %||% NULL
-    
+
     if (is.null(cursor)) {
       # If the server ended this window,
       # push the anchor back using the oldest indexedAt
@@ -185,11 +188,11 @@ deep_search_posts <- function(
         break
       }
     }
-    
+
     # Gentle pacing
     Sys.sleep(runif(1, 0.5, 1.5))
   }
-  
+
   bind_rows(all_rows) |> distinct(uri, .keep_all = TRUE)
 }
 
@@ -308,17 +311,17 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
     filter(reply_count > 0) |>
     pull(uri) |>
     unique()
-  
+
   rep_chunks <- chunk_vec(uris_reposts, batch_size)
   thr_chunks <- chunk_vec(uris_threads, batch_size)
-  
+
   all_reposts <- list()
   all_threads <- list()
-  
+
   # Load existing partial results if resuming
   reposts_checkpoint_path <- sprintf("data/%s_hydrated_reposts.parquet", tag)
   threads_checkpoint_path <- sprintf("data/%s_hydrated_threads.parquet", tag)
-  
+
   if (file.exists(reposts_checkpoint_path)) {
     all_reposts <- list(arrow::read_parquet(reposts_checkpoint_path))
     message("Loaded existing reposts checkpoint: ", reposts_checkpoint_path)
@@ -327,7 +330,7 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
     all_threads <- list(arrow::read_parquet(threads_checkpoint_path))
     message("Loaded existing threads checkpoint: ", threads_checkpoint_path)
   }
-  
+
   for (i in seq_along(rep_chunks)) {
     message(sprintf(
       "Hydrating reposts batch %d/%d (%d uris)",
@@ -342,7 +345,7 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
       .options = furrr_options(seed = 22230)
     )
     all_reposts <- append(all_reposts, list(part))
-    
+
     # Write batch CSV
     tryCatch(
       {
@@ -353,7 +356,7 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
       },
       error = function(e) message("Failed to write reposts batch: ", e$message)
     )
-    
+
     # Checkpoint combined reposts (for resume capability)
     combined <- bind_rows(all_reposts) |>
       distinct(original_uri, handle, uri, .keep_all = TRUE)
@@ -363,10 +366,10 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
       },
       error = function(e) message("Failed to checkpoint reposts: ", e$message)
     )
-    
+
     Sys.sleep(runif(1, 3, 6))
   }
-  
+
   for (i in seq_along(thr_chunks)) {
     message(sprintf(
       "Hydrating threads batch %d/%d (%d uris)",
@@ -381,7 +384,7 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
       .options = furrr_options(seed = 22230)
     )
     all_threads <- append(all_threads, list(part))
-    
+
     # Write batch CSV
     tryCatch(
       {
@@ -392,7 +395,7 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
       },
       error = function(e) message("Failed to write threads batch: ", e$message)
     )
-    
+
     # Checkpoint combined threads (for resume capability)
     combined <- bind_rows(all_threads) |>
       distinct(original_uri, author, uri, .keep_all = TRUE)
@@ -402,34 +405,35 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
       },
       error = function(e) message("Failed to checkpoint threads: ", e$message)
     )
-    
+
     Sys.sleep(runif(1, 3, 6))
   }
-  
+
   plan(sequential)
-  
+
   reposts_df <- bind_rows(all_reposts) |>
     distinct(original_uri, handle, uri, .keep_all = TRUE)
   threads_df <- bind_rows(all_threads) |>
     distinct(original_uri, author, uri, .keep_all = TRUE)
-  
+
   list(reposts_df = reposts_df, threads_df = threads_df)
 }
 
-# Step 0 - setup functions 
-save_graph_svg <- function(plot_or_expr,
-                           filename = "plot.svg",
-                           folder = "images",
-                           width = 16,
-                           height = 12) {
-  
+# Step 0 - setup functions
+save_graph_svg <- function(
+  plot_or_expr,
+  filename = "plot.svg",
+  folder = "images",
+  width = 16,
+  height = 12
+) {
   # Ensure folder exists
   if (!dir.exists(folder)) {
     dir.create(folder, recursive = TRUE)
   }
-  
+
   filepath <- file.path(folder, filename)
-  
+
   # Case 1: ggplot/ggraph object
   if (inherits(plot_or_expr, "ggplot")) {
     ggplot2::ggsave(
@@ -443,10 +447,10 @@ save_graph_svg <- function(plot_or_expr,
     message("Saved ggplot/ggraph SVG to: ", filepath)
     return(invisible(filepath))
   }
-  
+
   # Case 2: Base R / igraph / sna / network plotting expression
   svg(filepath, width = width, height = height)
-  
+
   # Evaluate the expression
   if (is.expression(plot_or_expr) || is.call(plot_or_expr)) {
     eval(plot_or_expr)
@@ -455,7 +459,7 @@ save_graph_svg <- function(plot_or_expr,
   } else {
     stop("Input must be a ggplot object or a plotting expression/function.")
   }
-  
+
   dev.off()
   message("Saved base/igraph/sna/network SVG to: ", filepath)
   invisible(filepath)

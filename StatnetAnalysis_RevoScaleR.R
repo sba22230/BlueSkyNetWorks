@@ -1,11 +1,5 @@
 # BlueSkyNet_RevoScaleR.R
-library(DBI)
-library(odbc)
-library(dplyr)
-library(lubridate)
-library(igraph)
-library(ggraph)
-library(RevoScaleR) # RevoScaleR provides RxSqlServerData, rxDataStep, etc.
+source("0_functions.R")
 
 # Edit these values for your environment
 sql_server <- "localhost" # e.g., "localhost\\SQLEXPRESS" or "sqlserver.domain.com"
@@ -17,12 +11,14 @@ orgicc <- rxGetComputeContext()
 rxSetComputeContext("localpar")
 
 if (use_trusted_connection) {
-  odbc_con <- dbConnect(odbc::odbc(),
-                        Driver   = "SQL Server",
-                        Server   = sql_server,
-                        Database = database,
-                        Trusted_Connection = "Yes")
-  
+  odbc_con <- dbConnect(
+    odbc::odbc(),
+    Driver = "SQL Server",
+    Server = sql_server,
+    Database = database,
+    Trusted_Connection = "Yes"
+  )
+
   connStr <- paste0(
     "Driver={SQL Server};Server=",
     sql_server,
@@ -31,13 +27,15 @@ if (use_trusted_connection) {
     ";Trusted_Connection=Yes;"
   )
 } else {
-  odbc_con <- dbConnect(odbc::odbc(),
-                        Driver   = "SQL Server",
-                        Server   = sql_server,
-                        Database = database,
-                        UID = sql_user,
-                        PWD = sql_password)
-  
+  odbc_con <- dbConnect(
+    odbc::odbc(),
+    Driver = "SQL Server",
+    Server = sql_server,
+    Database = database,
+    UID = sql_user,
+    PWD = sql_password
+  )
+
   connStr <- paste0(
     "Driver={SQL Server};Server=",
     sql_server,
@@ -62,12 +60,15 @@ if (use_trusted_connection) {
 # ---------------------------
 
 # Create compute context (RxInSqlServer). If not available, fallback to RxLocalParallel.
-computeCtx <- tryCatch({
-  RxInSqlServer(connectionString = connStr, shareDir = shareDir)
-}, error = function(e) {
-  message("RxInSqlServer not available; falling back to RxLocalParallel.")
-  RxLocalParallel()
-})
+computeCtx <- tryCatch(
+  {
+    RxInSqlServer(connectionString = connStr, shareDir = shareDir)
+  },
+  error = function(e) {
+    message("RxInSqlServer not available; falling back to RxLocalParallel.")
+    RxLocalParallel()
+  }
+)
 rxSetComputeContext(computeCtx)
 
 # ---------------------------
@@ -86,84 +87,124 @@ connStr <- paste0(
 )
 
 # Remote function to run on server via rxExec
-statnet_remote <- function(person_table = "Person",
-                           reposted_table = "Reposted",
-                           node_metrics_table = "node_metrics",
-                           component_table = "component_membership",
-                           network_summary_table = "network_summary") {
+statnet_remote <- function(
+  person_table = "Person",
+  reposted_table = "Reposted",
+  node_metrics_table = "node_metrics",
+  component_table = "component_membership",
+  network_summary_table = "network_summary"
+) {
   # Load packages on the remote compute node
   library(RevoScaleR)
-  library(network)   # statnet network object
-  library(sna)       # network analysis helpers
+  library(network) # statnet network object
+  library(sna) # network analysis helpers
   # If you need ergm or other statnet packages, load them here (must be installed on server)
   library(ergm)
-  
+
   # Build adjacency by selecting from graph tables using MATCH
   connStrLocal <- Sys.getenv("R_RX_SQLSERVER_CONNECTIONSTRING")
   if (is.null(connStrLocal) || connStrLocal == "") {
     # fallback to connStr from closure if present
     connStrLocal <- connStr
   }
-  
+
   # Use MATCH to get edges with names
-  edges_query <- paste0("
+  edges_query <- paste0(
+    "
     SELECT f.name AS [from], t.name AS [to], r.repost_uri, r.created_at
-    FROM ", person_table, " AS f, ", reposted_table, " AS r, ", person_table, " AS t
+    FROM ",
+    person_table,
+    " AS f, ",
+    reposted_table,
+    " AS r, ",
+    person_table,
+    " AS t
     WHERE MATCH(f-(r)->t)'
-  ")
-  
-  edges_src <- RxSqlServerData(sqlQuery = edges_query, connectionString = connStrLocal, stringsAsFactors = FALSE)
+  "
+  )
+
+  edges_src <- RxSqlServerData(
+    sqlQuery = edges_query,
+    connectionString = connStrLocal,
+    stringsAsFactors = FALSE
+  )
   edges_df <- rxImport(edges_src)
-  
+
   # Import node attributes from Person
-  nodes_src <- RxSqlServerData(table = person_table, connectionString = connStrLocal, stringsAsFactors = FALSE)
+  nodes_src <- RxSqlServerData(
+    table = person_table,
+    connectionString = connStrLocal,
+    stringsAsFactors = FALSE
+  )
   nodes_df <- rxImport(nodes_src)
-  
+
   # Build network object (statnet)
   # network::network() expects a data.frame of edges or adjacency matrix
   # We'll create a two-column edgelist and pass vertex.attr
   el <- edges_df[, c("from", "to")]
   # Ensure factors/characters are consistent
   el[] <- lapply(el, as.character)
-  
+
   # Create network with directed = TRUE
-  net <- network::network(el, directed = TRUE, vertex.attr = nodes_df, loops = TRUE, multiple = TRUE, ignore.eval = FALSE)
-  
+  net <- network::network(
+    el,
+    directed = TRUE,
+    vertex.attr = nodes_df,
+    loops = TRUE,
+    multiple = TRUE,
+    ignore.eval = FALSE
+  )
+
   # Compute node-level metrics (server-side)
-  deg_in  <- sna::degree(net, gmode = "digraph", cmode = "indegree")
+  deg_in <- sna::degree(net, gmode = "digraph", cmode = "indegree")
   deg_out <- sna::degree(net, gmode = "digraph", cmode = "outdegree")
   # Component membership (weak components)
   library(intergraph)
   library(igraph)
   ig <- intergraph::asIgraph(net)
-  
+
   # Weak components
   comps <- igraph::components(ig, mode = "weak")$membership
-  
+
   # Centrality measures (example: betweenness)
-  btw <- tryCatch(sna::betweenness(net), error = function(e) rep(NA, network::network.size(net)))
-  
+  btw <- tryCatch(sna::betweenness(net), error = function(e) {
+    rep(NA, network::network.size(net))
+  })
+
   # Build node metrics data.frame
   node_metrics <- data.frame(
     name = network::get.vertex.attribute(net, "name"),
     display_name = network::get.vertex.attribute(net, "display_name"),
-    repost_count = as.integer(network::get.vertex.attribute(net, "repost_count")),
+    repost_count = as.integer(network::get.vertex.attribute(
+      net,
+      "repost_count"
+    )),
     indegree = as.integer(deg_in),
     outdegree = as.integer(deg_out),
     betweenness = as.numeric(btw),
     component = as.integer(comps),
     stringsAsFactors = FALSE
   )
-  
+
   # Persist node_metrics to SQL Server
-  node_metrics_out <- RxSqlServerData(table = node_metrics_table, connectionString = connStrLocal)
-  rxDataStep(inData = node_metrics, outFile = node_metrics_out, overwrite = TRUE)
-  
+  node_metrics_out <- RxSqlServerData(
+    table = node_metrics_table,
+    connectionString = connStrLocal
+  )
+  rxDataStep(
+    inData = node_metrics,
+    outFile = node_metrics_out,
+    overwrite = TRUE
+  )
+
   # Persist component membership (list nodes per component)
   component_df <- node_metrics[, c("name", "component")]
-  component_out <- RxSqlServerData(table = component_table, connectionString = connStrLocal)
+  component_out <- RxSqlServerData(
+    table = component_table,
+    connectionString = connStrLocal
+  )
   rxDataStep(inData = component_df, outFile = component_out, overwrite = TRUE)
-  
+
   # Compute network-level summary
   net_summary <- data.frame(
     nodes = network::network.size(net),
@@ -173,29 +214,38 @@ statnet_remote <- function(person_table = "Person",
     mean_outdegree = mean(deg_out, na.rm = TRUE),
     stringsAsFactors = FALSE
   )
-  
-  net_summary_out <- RxSqlServerData(table = network_summary_table, connectionString = connStrLocal)
+
+  net_summary_out <- RxSqlServerData(
+    table = network_summary_table,
+    connectionString = connStrLocal
+  )
   rxDataStep(inData = net_summary, outFile = net_summary_out, overwrite = TRUE)
-  
+
   # Optionally run ERGM (commented out; requires ergm installed and may be heavy)
   # ergm_fit <- ergm::ergm(net ~ edges + gwdegree(0.5, fixed=TRUE))
   # Save ergm summary as text table if desired
-  
+
   # Return a small summary to the client
-  list(nodes = nrow(nodes_df), edges = nrow(edges_df), node_metrics_table = node_metrics_table)
+  list(
+    nodes = nrow(nodes_df),
+    edges = nrow(edges_df),
+    node_metrics_table = node_metrics_table
+  )
 }
 
 
 # Execute the remote function once on the server compute context
 # Ensure connStr is available in the remote environment via execObjects
-res <- rxExec(statnet_remote,
-              person_table = "Person",
-              reposted_table = "Reposted",
-              node_metrics_table = "node_metrics",
-              component_table = "component_membership",
-              network_summary_table = "network_summary",
-              execObjects = c("connStr"),
-              packagesToLoad = c("network", "sna", "RevoScaleR"))
+res <- rxExec(
+  statnet_remote,
+  person_table = "Person",
+  reposted_table = "Reposted",
+  node_metrics_table = "node_metrics",
+  component_table = "component_membership",
+  network_summary_table = "network_summary",
+  execObjects = c("connStr"),
+  packagesToLoad = c("network", "sna", "RevoScaleR")
+)
 
 print(res)
 
@@ -268,70 +318,93 @@ print(nodes_count)
 
 # BlueSkyNet_rxExec_graph.R
 library(RevoScaleR)
-library(igraph)   # must be installed on server compute context
+library(igraph) # must be installed on server compute context
 # ggraph not needed on server; only compute coords server-side
 
-
 if (use_trusted_connection) {
-  connStr <- paste0("Driver={SQL Server};Server=", sql_server,
-                    ";Database=", database, ";Trusted_Connection=Yes;")
+  connStr <- paste0(
+    "Driver={SQL Server};Server=",
+    sql_server,
+    ";Database=",
+    database,
+    ";Trusted_Connection=Yes;"
+  )
 } else {
-  connStr <- paste0("Driver={SQL Server};Server=", sql_server,
-                    ";Database=", database,
-                    ";Uid=", sql_user, ";Pwd=", sql_password, ";")
+  connStr <- paste0(
+    "Driver={SQL Server};Server=",
+    sql_server,
+    ";Database=",
+    database,
+    ";Uid=",
+    sql_user,
+    ";Pwd=",
+    sql_password,
+    ";"
+  )
 }
 
 
 # Create the RxInSqlServer compute context
 # If RxInSqlServer is not available, replace with RxLocalParallel() as fallback
-computeCtx <- tryCatch({
-  RxInSqlServer(connectionString = connStr, shareDir = shareDir)
-}, error = function(e) {
-  message("RxInSqlServer not available; falling back to RxLocalParallel.")
-  RxLocalParallel()
-})
+computeCtx <- tryCatch(
+  {
+    RxInSqlServer(connectionString = connStr, shareDir = shareDir)
+  },
+  error = function(e) {
+    message("RxInSqlServer not available; falling back to RxLocalParallel.")
+    RxLocalParallel()
+  }
+)
 
 rxSetComputeContext(computeCtx)
 
 # --- Function to run on the compute node(s) ---
 # This function will be serialized and executed remotely by rxExec.
- build_graph_and_save_coords <- function(edges_table_name = "edges",
-                                        nodes_table_name = "top_nodes",
-                                        coords_table_name = "node_coords") {
+build_graph_and_save_coords <- function(
+  edges_table_name = "edges",
+  nodes_table_name = "top_nodes",
+  coords_table_name = "node_coords"
+) {
   # Load packages inside remote function
   library(RevoScaleR)
   library(igraph)
-  
+
   # Build RxSqlServerData sources to read server-side tables
   connStrLocal <- Sys.getenv("R_RX_SQLSERVER_CONNECTIONSTRING")
   if (is.null(connStrLocal) || connStrLocal == "") {
     # Fallback to using the connection string passed via closure (rxExec will serialize it)
     connStrLocal <- connStr
   }
-  
-  edges_src <- RxSqlServerData(table = edges_table_name, connectionString = connStrLocal,
-                               stringsAsFactors = FALSE)
-  nodes_src <- RxSqlServerData(table = nodes_table_name, connectionString = connStrLocal,
-                               stringsAsFactors = FALSE)
-  
+
+  edges_src <- RxSqlServerData(
+    table = edges_table_name,
+    connectionString = connStrLocal,
+    stringsAsFactors = FALSE
+  )
+  nodes_src <- RxSqlServerData(
+    table = nodes_table_name,
+    connectionString = connStrLocal,
+    stringsAsFactors = FALSE
+  )
+
   # Import the (filtered) tables into the compute process memory (should be on server)
   edges_df <- rxImport(edges_src)
   nodes_df <- rxImport(nodes_src)
-  
+
   # Build igraph and compute layout
   g <- graph_from_data_frame(d = edges_df, vertices = nodes_df, directed = TRUE)
-  
+
   # Use DRL layout (heavy). You can choose other layouts if desired.
   coords <- layout_with_drl(g)
-  
+
   # Create a data.frame of coordinates keyed by vertex name
   coords_df <- data.frame(
     name = V(g)$name,
-    x = coords[,1],
-    y = coords[,2],
+    x = coords[, 1],
+    y = coords[, 2],
     stringsAsFactors = FALSE
   )
-  
+
   # Optionally include node attributes (e.g., repost_count, display_name) if present
   if (!is.null(V(g)$repost_count)) {
     coords_df$repost_count <- as.integer(V(g)$repost_count)
@@ -339,24 +412,33 @@ rxSetComputeContext(computeCtx)
   if (!is.null(V(g)$display_name)) {
     coords_df$display_name <- as.character(V(g)$display_name)
   }
-  
+
   # Persist coords_df back to SQL Server as coords_table_name
-  coords_out <- RxSqlServerData(table = coords_table_name, connectionString = connStrLocal)
+  coords_out <- RxSqlServerData(
+    table = coords_table_name,
+    connectionString = connStrLocal
+  )
   rxDataStep(inData = coords_df, outFile = coords_out, overwrite = TRUE)
-  
+
   # Return a small summary (this will be returned to the client)
-  list(n_nodes = vcount(g), n_edges = ecount(g), coords_table = coords_table_name)
+  list(
+    n_nodes = vcount(g),
+    n_edges = ecount(g),
+    coords_table = coords_table_name
+  )
 }
 
 # --- Execute remotely with rxExec ---
 # Pass any objects needed by the remote function via execObjects or closures.
 # packagesToLoad ensures igraph is loaded on the remote worker.
-res <- rxExec(build_graph_and_save_coords,
-              edges_table_name = "edges",
-              nodes_table_name = "top_nodes",
-              coords_table_name = "node_coords",
-              execObjects = c("connStr"),   # ensure connStr is available on remote side
-              packagesToLoad = c("igraph", "RevoScaleR"))
+res <- rxExec(
+  build_graph_and_save_coords,
+  edges_table_name = "edges",
+  nodes_table_name = "top_nodes",
+  coords_table_name = "node_coords",
+  execObjects = c("connStr"), # ensure connStr is available on remote side
+  packagesToLoad = c("igraph", "RevoScaleR")
+)
 
 print(res)
 
@@ -372,7 +454,11 @@ library(ggplot2)
 
 # Reconstruct a small igraph locally using edges_for_top_local and top_nodes_local
 # (Assumes you have edges_for_top_local and top_nodes_local imported earlier)
-g_local <- graph_from_data_frame(d = edges_for_top_local, vertices = top_nodes_local, directed = TRUE)
+g_local <- graph_from_data_frame(
+  d = edges_for_top_local,
+  vertices = top_nodes_local,
+  directed = TRUE
+)
 
 # Attach server-computed coords to local graph vertices
 coords_local <- coords_local[match(V(g_local)$name, coords_local$name), ]
