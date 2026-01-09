@@ -1,14 +1,14 @@
 source("0_functions.R")
 
 # Step 1: Build edge list (who reposted whom)
-edges <- read.csv("graphs/speirgorm_edges.csv")
+edges <- read_parquet("graphs/speirgorm_edges.parquet")
 cat("Edges count:", nrow(edges), "\n")
 
 # Debug: inspect edges
 print(head(edges))
 
 # Step 2: Build node list (unique actors and posts)
-nodes <- read.csv("graphs/speirgorm_nodes.csv")
+nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
 cat("Nodes count:", nrow(nodes), "\n")
 
 # Debug: inspect nodes
@@ -24,11 +24,11 @@ V(g1)$x <- coords[, 1]
 V(g1)$y <- coords[, 2]
 
 # Select top N nodes to label (e.g., top 50 by degree)
-deg <- degree(g1)
+deg <- igraph::degree(g1)
 top_nodes <- names(sort(deg, decreasing = TRUE))[1:50]
 
 # Faster ggraph call
-ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
+gtn <- ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
   geom_edge_link(alpha = 0.3) +
   geom_node_point(size = 5) +
   geom_node_text(
@@ -37,6 +37,7 @@ ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
     max.overlaps = 1000
   )
 
+save_graph_svg(gtn, "TopNodes_Speirgorm_Network.svg")
 # Step 4: Enrich edges with author info
 # this step is unnecessary - the edges already have author info - need to add created_at
 # edges <- reposts_df |>
@@ -80,7 +81,7 @@ V(g2)$x <- coords2[, 1]
 V(g2)$y <- coords2[, 2]
 ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
   geom_edge_link(alpha = 0.3) +
-  geom_node_point(aes(size = like_count, color = repost_count)) +
+  geom_node_point(aes(size = reposts_made, color = reposts_received)) +
   geom_node_text(aes(label = name), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +
@@ -89,7 +90,7 @@ cat("Final graph summary:\n")
 print(summary(g2))
 write_graph(
   g2,
-  "graphs/bluesky enriched Speirgorm Network.graphml",
+  "graphs/bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
   format = "graphml"
 )
 
@@ -103,7 +104,8 @@ vis_nodes <- nodes |>
       display_name
     ), # nolint: line_length_linter.
     title = paste0("Name: ", name, "\nText: ", text), # hover tooltip
-    value = ifelse(is.na(repost_count), 0, repost_count), # size by repost_count # nolint: line_length_linter.
+    value = ifelse(is.na(repost_count), 0, repost_count),
+    # size by repost_count # nolint: line_length_linter.
     group = name
   ) |>
   distinct(id, .keep_all = TRUE)
