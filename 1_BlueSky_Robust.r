@@ -1,9 +1,9 @@
+source("0_functions.R")
+
 # Connect to bluesky
 bs_user <- bs_get_user()
 bs_pass <- bs_get_pass()
 bs_auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
-
-source("0_functions.R")
 
 wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.3))
 plan(multisession, workers = wrkrs)
@@ -98,14 +98,18 @@ arrow::write_parquet(threads_df, "data/speirgorm_threads.parquet")
 #readr::write_csv(reposts_df, "data/speirgorm_reposts.csv") # this file is too big for git
 readr::write_csv(threads_df, "data/speirgorm_threads.csv")
 
-# Build edges: author -> reposter 
+# Build edges: author -> reposter
 edges <- reposts_df |>
   left_join(
     posts_df |> select(uri, author_handle),
     by = c("original_uri" = "uri")
   ) |>
-  transmute(from = author_handle, to = handle, repost_uri = uri ,
-                created_at = created_at) |>
+  transmute(
+    from = author_handle,
+    to = handle,
+    repost_uri = uri,
+    created_at = created_at
+  ) |>
   filter(!is.na(from), !is.na(to)) |>
   distinct()
 
@@ -136,7 +140,7 @@ edges <- edges |>
 # Nodes
 nodes <- bind_rows(
   reposts_df |> select(name = handle, display_name, did, uri),
-  posts_df   |> select(name = author_handle, text, uri)
+  posts_df |> select(name = author_handle, text, uri)
 ) |>
   distinct(name, .keep_all = TRUE)
 nodes <- nodes |>
@@ -145,12 +149,13 @@ nodes <- nodes |>
     by = c("name", "uri")
   )
 
-readr::write_csv(edges, "graphs/speirgorm_edges.csv")
-readr::write_csv(nodes, "graphs/speirgorm_nodes.csv")
+write_parquet(edges, "graphs/speirgorm_edges.parquet")
+write_parquet(nodes, "graphs/speirgorm_nodes.parquet")
+
 
 # Step 12: Plot enriched network with ggraph
 g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-ggraph::ggraph(g, layout = "drl") +
+g1 <- ggraph::ggraph(g, layout = "drl") +
   geom_edge_link(alpha = 0.3) +
   geom_node_point(aes(size = like_count, color = repost_count)) +
   geom_node_text(aes(label = display_name), repel = TRUE) +
@@ -159,6 +164,7 @@ ggraph::ggraph(g, layout = "drl") +
   theme_void()
 cat("Final graph summary:\n")
 print(summary(g))
+save_graph_svg(g1, "bluesky enriched Speirgorm Network.svg")
 write_graph(
   g,
   "graphs/bluesky enriched Speirgorm Network.graphml",
