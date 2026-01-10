@@ -277,6 +277,7 @@ nodes <- nodes |>
   ))
 
 write_parquet(nodes, "graphs/speirgorm_nodes.parquet")
+
 edges <- dbGetQuery(
   odbc_con,
   "SELECT 
