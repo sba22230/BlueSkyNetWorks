@@ -476,7 +476,7 @@ normalize_handle <- function(h) {
   h
 }
 
-# helper: parse various color formats into integer r,g,b and numeric a (0-1)
+# helper: parse rgba(), rgb(), hex and named colors into r,g,b,a
 parse_color_to_rgba <- function(cols, fallback = c(170, 170, 170, 1)) {
   res <- lapply(cols, function(cl) {
     if (is.na(cl) || cl == "") {
@@ -511,7 +511,7 @@ parse_color_to_rgba <- function(cols, fallback = c(170, 170, 170, 1)) {
     if (length(m2) > 0) {
       return(c(as.integer(m2[2]), as.integer(m2[3]), as.integer(m2[4]), 1))
     }
-    # hex or named color via col2rgb
+    # try col2rgb for hex/named
     rgb_mat <- tryCatch(col2rgb(cl), error = function(e) NULL)
     if (!is.null(rgb_mat)) {
       return(c(
@@ -521,10 +521,61 @@ parse_color_to_rgba <- function(cols, fallback = c(170, 170, 170, 1)) {
         1
       ))
     }
-    # fallback
     fallback
   })
   mat <- do.call(rbind, res)
   colnames(mat) <- c("r", "g", "b", "a")
   as.data.frame(mat)
+}
+
+# parallel single-item parser (returns named numeric vector r,g,b,a)
+parse_color_single <- function(
+  cl,
+  fallback = c(r = 170, g = 170, b = 170, a = 1)
+) {
+  if (is.na(cl) || cl == "") {
+    return(fallback)
+  }
+  m <- regmatches(
+    cl,
+    regexec(
+      "^\\s*rgba\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*,\\s*(0|1|0?\\.\\d+)\\s*\\)\\s*$",
+      cl,
+      perl = TRUE
+    )
+  )[[1]]
+  if (length(m) > 0) {
+    return(c(
+      r = as.integer(m[2]),
+      g = as.integer(m[3]),
+      b = as.integer(m[4]),
+      a = as.numeric(m[5])
+    ))
+  }
+  m2 <- regmatches(
+    cl,
+    regexec(
+      "^\\s*rgb\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*\\)\\s*$",
+      cl,
+      perl = TRUE
+    )
+  )[[1]]
+  if (length(m2) > 0) {
+    return(c(
+      r = as.integer(m2[2]),
+      g = as.integer(m2[3]),
+      b = as.integer(m2[4]),
+      a = 1
+    ))
+  }
+  rgb_mat <- tryCatch(col2rgb(cl), error = function(e) NULL)
+  if (!is.null(rgb_mat)) {
+    return(c(
+      r = as.integer(rgb_mat[1, 1]),
+      g = as.integer(rgb_mat[2, 1]),
+      b = as.integer(rgb_mat[3, 1]),
+      a = 1
+    ))
+  }
+  fallback
 }

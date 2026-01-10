@@ -204,103 +204,104 @@ htmlwidgets::saveWidget(
 )
 
 ## Export the Visnetwork into GEXF with visual encodings preserved
-# Nodes table (basic)
+# Nodes (basic)
 ge_nodes <- data.frame(
   id = vis_nodes$id,
   label = ifelse(is.na(vis_nodes$label), vis_nodes$id, vis_nodes$label),
   x = vis_nodes$x,
-  y = vis_nodes$y
+  y = vis_nodes$y,
+  stringsAsFactors = FALSE
 )
 
-# Node attributes (metrics + display flags)
+# Node attributes (metrics + flags) — preserve your existing metrics
 ge_nodesAtt <- vis_nodes |>
   transmute(
     degree = ifelse(is.na(degree), 0L, as.integer(degree)),
-    repost_count = ifelse(
-      is.na(reposts_received),
-      0L,
-      as.integer(reposts_received)
-    ),
+    repost_count = ifelse(is.na(reposts_received), 0L, as.integer(reposts_received)),
     community = as.integer(community),
     isolated = ifelse(isolated, "TRUE", "FALSE"),
     label_shown = !is.na(label),
     value = ifelse(is.na(value), 1, as.numeric(value))
   )
 
-# Normalize node colors (supporting hex or NA)
-hex_cols <- ifelse(
-  is.na(vis_nodes$color.background),
-  "#878787",
-  vis_nodes$color.background
-)
 
-# Nodes viz attributes for GEXF
-nodesVizAtt <- list(
-  position = data.frame(
-    x = vis_nodes$x,
-    y = vis_nodes$y,
-    z = rep(0, nrow(vis_nodes))
-  ),
-  size = as.numeric(ifelse(
-    is.na(vis_nodes$value),
-    ge_nodesAtt$value,
-    vis_nodes$value
-  )),
+# Node visual attributes for GEXF
+node_hex <- ifelse(is.na(vis_nodes$color.background), "#878787", vis_nodes$color.background)
+# parallel parse nodes
+node_rgba_df <- furrr::future_map_dfr(
+  node_hex,
+  function(cl) {
+    v <- parse_color_single(cl)
+    tibble::tibble(r = v["r"], g = v["g"], b = v["b"], a = v["a"])
+  },
+  .progress = TRUE,
+  .options = furrr::furrr_options(seed = 1234)
+)
+ge_nodesVizAtt <- list(
+  position = data.frame(x = vis_nodes$x, y = vis_nodes$y, z = rep(0, nrow(vis_nodes))),
+  size = as.numeric(ifelse(is.na(vis_nodes$value), ge_nodesAtt$value, vis_nodes$value)),
   color = data.frame(
-    r = as.integer(rgb_mat[, 1]),
-    g = as.integer(rgb_mat[, 2]),
-    b = as.integer(rgb_mat[, 3]),
-    a = node_alpha
+    r = as.integer(node_rgba_df$r),
+    g = as.integer(node_rgba_df$g),
+    b = as.integer(node_rgba_df$b),
+    a = as.numeric(node_rgba_df$a)
   )
 )
-node_rgba_df <- parse_color_to_rgba(hex_cols)
-nodesVizAtt$color <- data.frame(
-  r = as.integer(node_rgba_df$r),
-  g = as.integer(node_rgba_df$g),
-  b = as.integer(node_rgba_df$b),
-  a = as.numeric(node_rgba_df$a)
+
+# Edges and attributes (preserve width/weight and color)
+ge_edges <- data.frame(source = vis_edges$from, target = vis_edges$to, stringsAsFactors = FALSE)
+# Safe edge attributes (handles missing width/weight/color)
+if (any(c("width", "weight", "color") %in% names(vis_edges))) {
+  ge_edgesAtt <- vis_edges |>
+    mutate(
+      weight = if ("width" %in% names(.)) {
+        ifelse(is.na(width), 1, as.numeric(width))
+      } else if ("weight" %in% names(.)) {
+        ifelse(is.na(weight), 1, as.numeric(weight))
+      } else 1,
+      color_raw = if ("color" %in% names(.)) {
+        ifelse(is.na(color) | color == "", "#AAAAAA", color)
+      } else "#AAAAAA"
+    ) |>
+    select(-from, -to, -any_of(c("width", "weight", "color")))
+} else {
+  ge_edgesAtt <- vis_edges |>
+    mutate(weight = 1, color_raw = "#AAAAAA") |>
+    select(-from, -to)
+}
+
+# safe color parsing for edges
+# parallel parse edges
+edge_rgba_df <- furrr::future_map_dfr(
+  ge_edgesAtt$color_raw,
+  function(cl) {
+    v <- parse_color_single(cl)
+    tibble::tibble(r = v["r"], g = v["g"], b = v["b"], a = v["a"])
+  },
+  .progress = TRUE,
+  .options = furrr::furrr_options(seed = 1234)
 )
-# Edges table & attributes (carry width/weight and color)
-ge_edges <- data.frame(source = vis_edges$from, target = vis_edges$to)
-
-ge_edgesAtt <- vis_edges |>
-  mutate(
-    weight = ifelse(is.na(width), 1, as.numeric(width)),
-    color_hex = ifelse(is.na(color), "#AAAAAA", color)
-  ) |>
-  select(-from, -to) |>
-  mutate(across(
-    where(is.character),
-    ~ stri_replace_all_regex(., "[&<>]", " ")
-  )) |>
-  mutate(across(where(is.character), ~ stri_trans_general(., "Latin-ASCII"))) |>
-  mutate(color_hex = ifelse(is.na(color_hex), "#AAAAAA", color_hex))
-
-# Convert edge hex colors to RGB columns expected by GEXF writer
-edge_hex <- ge_edgesAtt$color_hex
-# replace the failing conversion with:
-edge_rgba_df <- parse_color_to_rgba(ifelse(
-  is.na(ge_edgesAtt$color_hex),
-  "#AAAAAA",
-  ge_edgesAtt$color_hex
-))
-edge_color_df <- data.frame(
+ge_edgesVizColor <- data.frame(
   r = as.integer(edge_rgba_df$r),
   g = as.integer(edge_rgba_df$g),
   b = as.integer(edge_rgba_df$b),
   a = as.numeric(edge_rgba_df$a)
 )
 
+posts_df <- read_parquet("data/speirgorm_network.parquet")
+
+
+
 # Use write.gexf, passing nodes, edges, attributes and viz attributes
 gexf_obj <- write.gexf(
   nodes = ge_nodes[, c("id", "label")],
   edges = ge_edges,
   nodesAtt = ge_nodesAtt,
-  edgesAtt = ge_edgesAtt %>% select(-color_hex),
-  nodesVizAtt = nodesVizAtt,
+  edgesAtt = ge_edgesAtt |> select(-color_raw),
+  nodesVizAtt = ge_nodesVizAtt,
   edgesVizAtt = list(
-    color = edge_color_df,
-    thickness = as.numeric(ge_edgesAtt$weight)
+    color = ge_edgesVizColor,
+    size = as.numeric(ge_edgesAtt$weight)
   ),
   defaultedgetype = "directed"
 )
@@ -317,13 +318,14 @@ rgexf::write.gexf(gexf_obj, output = file_name)
 plot(gexf_obj)
 
 cat("Interactive visualization ready with precomputed layout.\n")
+
 top_authors_reposted <- posts_df |>
-  group_by(author_handle) |>
+  group_by(PostedBy) |>
   summarise(total_reposts = sum(repost_count, na.rm = TRUE)) |>
   arrange(desc(total_reposts)) |>
   slice(1:10)
-top_reposters <- reposts_df |>
-  group_by(handle, display_name) |> # group by both
+top_reposters <- posts_df |>
+  group_by(RepostedBy) |> # group by both
   summarise(total_reposts_made = n(), .groups = "drop") |> # count reposts
   arrange(desc(total_reposts_made)) |> # sort descending
   slice(1:10) # top 10
