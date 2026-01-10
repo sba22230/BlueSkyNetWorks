@@ -92,6 +92,7 @@ reposts_df <- bind_rows(reposts_df, hydrated$reposts_df) |>
 threads_df <- bind_rows(threads_df, hydrated$threads_df) |>
   distinct(original_uri, author, uri, .keep_all = TRUE)
 
+plan(sequential)
 arrow::write_parquet(posts_df, "data/speirgorm_posts.parquet")
 arrow::write_parquet(reposts_df, "data/speirgorm_reposts.parquet")
 arrow::write_parquet(threads_df, "data/speirgorm_threads.parquet")
@@ -102,7 +103,6 @@ source("1a_load network data into SQL.r")
 
 edges <- read_parquet("graphs/speirgorm_edges.parquet")
 nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
-
 
 # Step 12: Plot enriched network with ggraph
 

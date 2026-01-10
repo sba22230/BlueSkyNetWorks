@@ -1,3 +1,4 @@
+plan(multisession, workers = wrkrs)
 source("0_functions.R")
 
 # Step 1: Build edge list (who reposted whom)
@@ -98,13 +99,9 @@ write_graph(
 vis_nodes <- nodes |>
   mutate(
     id = name,
-    label = ifelse(
-      is.na(display_name) | display_name == "",
-      name,
-      display_name
-    ), # nolint: line_length_linter.
-    title = paste0("Name: ", name, "\nText: ", text), # hover tooltip
-    value = ifelse(is.na(repost_count), 0, repost_count),
+    label = name,
+    title = paste0("Name: ", name, "\nTotal Likes: ", total_likes_on_posts), # hover tooltip
+    value = ifelse(is.na(reposts_received), 0, reposts_received),
     # size by repost_count # nolint: line_length_linter.
     group = name
   ) |>
@@ -121,7 +118,7 @@ vis_edges <- edges |>
 g3 <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
 
 # Compute degree for each node
-deg <- degree(g3, mode = "all")
+deg <- igraph::degree(g3, mode = "all")
 
 # Add degree to vis_nodes
 vis_nodes <- vis_nodes |>
@@ -133,15 +130,16 @@ sorted_ids <- vis_nodes |>
   pull(id)
 
 # --- Precompute layout coordinates with igraph ---
-comps <- components(g3)
-layouts <- lapply(unique(comps$membership), function(comp_id) {
-  subg <- induced_subgraph(g3, which(comps$membership == comp_id))
-  if (vcount(subg) > 100) {
-    layout_with_lgl(subg) # large component
-  } else {
-    layout_with_kk(subg) # smaller components
-  }
-})
+comps <- igraph::components(g3)
+layouts <- future_map(
+  unique(comps$membership),
+  function(comp_id) {
+    subg <- induced_subgraph(g3, which(comps$membership == comp_id))
+    if (vcount(subg) > 100) layout_with_lgl(subg) else layout_with_kk(subg)
+  },
+  .progress = TRUE,
+  .options = furrr_options(seed = 22230)
+)
 coords3 <- matrix(NA, nrow = vcount(g3), ncol = 2)
 offset <- 0
 
@@ -165,23 +163,47 @@ comm <- cluster_walktrap(g3) # works on directed graphs
 # Add community membership to nodes
 vis_nodes$community <- comm$membership
 
-# add isolation tag
+# ensure community is used as the visNetwork group and add colours
+vis_nodes$group <- as.character(vis_nodes$community)
 vis_nodes$isolated <- vis_nodes$degree == 0
 
+# assign a distinct colour per community
+comm_levels <- sort(unique(vis_nodes$group))
+pal <- grDevices::rainbow(length(comm_levels))
+group_cols <- setNames(pal, comm_levels)
+vis_nodes$color.background <- group_cols[vis_nodes$group]
+vis_nodes$color.border <- "black"
+
+# optional: shrink labels for non-top nodes (already computed earlier)
+vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
+
+
 # --- Use precomputed layout in visNetwork ---
-visNetwork(vis_nodes, vis_edges, width = "1040px", height = "800px") |>
+vis_obj <- visNetwork(
+  vis_nodes,
+  vis_edges,
+  width = "1440px",
+  height = "800px"
+) |>
+  visNodes(fixed = TRUE) |>
   visOptions(
     highlightNearest = TRUE,
     nodesIdSelection = list(values = sorted_ids)
   ) |>
-  visEdges(arrows = "to") |>
-  visGroups(groupname = unique(vis_nodes$community)) |>
+  visEdges(arrows = "to", smooth = FALSE) |>
+  visLegend(useGroups = TRUE, position = "right") |>
   visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE) |>
-  visPhysics(enabled = TRUE)
+  visPhysics(enabled = FALSE)
+# save HTML and capture as SVG (requires webshot2 and
+# a headless Chrome/Chromium)
+htmlwidgets::saveWidget(
+  vis_obj,
+  "graphs/visnetwork_tmp.html",
+  selfcontained = TRUE
+)
 
-# Export the Visnetwork into GEXF format and visualise it again -
-# check performance of Gephi
-# Nodes table
+## Export the Visnetwork into GEXF with visual encodings preserved
+# Nodes table (basic)
 ge_nodes <- data.frame(
   id = vis_nodes$id,
   label = ifelse(is.na(vis_nodes$label), vis_nodes$id, vis_nodes$label),
@@ -189,65 +211,95 @@ ge_nodes <- data.frame(
   y = vis_nodes$y
 )
 
-# Node attributes (include everything else, including x/y coords,
-# degree, community, isolated)
+# Node attributes (metrics + display flags)
 ge_nodesAtt <- vis_nodes |>
   transmute(
     degree = ifelse(is.na(degree), 0L, as.integer(degree)),
-    repost_count = ifelse(is.na(repost_count), 0L, as.integer(repost_count)),
+    repost_count = ifelse(
+      is.na(reposts_received),
+      0L,
+      as.integer(reposts_received)
+    ),
     community = as.integer(community),
-    isolated = ifelse(isolated, "TRUE", "FALSE")
+    isolated = ifelse(isolated, "TRUE", "FALSE"),
+    label_shown = !is.na(label),
+    value = ifelse(is.na(value), 1, as.numeric(value))
   )
 
-# Edges table
-ge_edges <- data.frame(
-  source = vis_edges$from,
-  target = vis_edges$to
+# Normalize node colors (supporting hex or NA)
+hex_cols <- ifelse(
+  is.na(vis_nodes$color.background),
+  "#878787",
+  vis_nodes$color.background
+)
+node_rgba_df <- parse_color_to_rgba(hex_cols)
+nodesVizAtt$color <- data.frame(
+  r = as.integer(node_rgba_df$r),
+  g = as.integer(node_rgba_df$g),
+  b = as.integer(node_rgba_df$b),
+  a = as.numeric(node_rgba_df$a)
+)
+# Nodes viz attributes for GEXF
+nodesVizAtt <- list(
+  position = data.frame(
+    x = vis_nodes$x,
+    y = vis_nodes$y,
+    z = rep(0, nrow(vis_nodes))
+  ),
+  size = as.numeric(ifelse(
+    is.na(vis_nodes$value),
+    ge_nodesAtt$value,
+    vis_nodes$value
+  )),
+  color = data.frame(
+    r = as.integer(rgb_mat[, 1]),
+    g = as.integer(rgb_mat[, 2]),
+    b = as.integer(rgb_mat[, 3]),
+    a = node_alpha
+  )
 )
 
-# Edge attributes (optional)
+# Edges table & attributes (carry width/weight and color)
+ge_edges <- data.frame(source = vis_edges$from, target = vis_edges$to)
+
 ge_edgesAtt <- vis_edges |>
+  mutate(
+    weight = ifelse(is.na(width), 1, as.numeric(width)),
+    color_hex = ifelse(is.na(color), "#AAAAAA", color)
+  ) |>
   select(-from, -to) |>
   mutate(across(
     where(is.character),
     ~ stri_replace_all_regex(., "[&<>]", " ")
   )) |>
-  mutate(across(where(is.character), ~ stri_trans_general(., "Latin-ASCII")))
+  mutate(across(where(is.character), ~ stri_trans_general(., "Latin-ASCII"))) |>
+  mutate(color_hex = ifelse(is.na(color_hex), "#AAAAAA", color_hex))
 
-#ge_nodesAtt <- ge_nodesAtt |> mutate(across(where(is.character),
-# ~ replace_na(., "")))
-#ge_nodesAtt <- ge_nodesAtt |> mutate(across(where(is.character),
-# ~ gsub("[\r\n\t]", " ", .)))
-#ge_nodesAtt <- ge_nodesAtt |> mutate(repost_count = ifelse(is.na(repost_count),
-# 0L, repost_count))
-ge_edgesAtt <- ge_edgesAtt |>
-  mutate(across(where(is.character), ~ replace_na(., "")))
-
-# Create a palette with enough distinct colours
-palette <- grDevices::rainbow(length(unique(vis_nodes$community)))
-
-# Map each node's community to a colour
-comm_colors <- data.frame(
-  r = col2rgb(palette[vis_nodes$community])[1, ],
-  g = col2rgb(palette[vis_nodes$community])[2, ],
-  b = col2rgb(palette[vis_nodes$community])[3, ],
-  a = rep(1, nrow(vis_nodes))
+# Convert edge hex colors to RGB columns expected by GEXF writer
+edge_hex <- ge_edgesAtt$color_hex
+# replace the failing conversion with:
+edge_rgba_df <- parse_color_to_rgba(ifelse(
+  is.na(ge_edgesAtt$color_hex),
+  "#AAAAAA",
+  ge_edgesAtt$color_hex
+))
+edge_color_df <- data.frame(
+  r = as.integer(edge_rgba_df$r),
+  g = as.integer(edge_rgba_df$g),
+  b = as.integer(edge_rgba_df$b),
+  a = as.numeric(edge_rgba_df$a)
 )
 
-# Create GEXF object
+# Use write.gexf, passing nodes, edges, attributes and viz attributes
 gexf_obj <- write.gexf(
-  nodes = ge_nodes[, c("id", "label")], # only 2 columns
+  nodes = ge_nodes[, c("id", "label")],
   edges = ge_edges,
   nodesAtt = ge_nodesAtt,
-  edgesAtt = ge_edgesAtt,
-  nodesVizAtt = list(
-    position = data.frame(
-      x = vis_nodes$x,
-      y = vis_nodes$y,
-      z = rep(0, nrow(vis_nodes)) # optional, Gephi expects 3D coords
-    ),
-    size = vis_nodes$value,
-    color = comm_colors
+  edgesAtt = ge_edgesAtt %>% select(-color_hex),
+  nodesVizAtt = nodesVizAtt,
+  edgesVizAtt = list(
+    color = edge_color_df,
+    thickness = as.numeric(ge_edgesAtt$weight)
   ),
   defaultedgetype = "directed"
 )
@@ -256,13 +308,9 @@ gexf_obj <- write.gexf(
 home_dir <- here::here()
 file_path <- file.path(home_dir, "graphs")
 file_name <- file.path(file_path, "visnetwork_export.gexf")
-
-# Make sure the directory exists
 if (!dir.exists(file_path)) {
   dir.create(file_path, recursive = TRUE)
 }
-
-# Write the GEXF object to file
 rgexf::write.gexf(gexf_obj, output = file_name)
 
 plot(gexf_obj)
