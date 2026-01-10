@@ -5,7 +5,7 @@ bs_user <- bs_get_user()
 bs_pass <- bs_get_pass()
 bs_auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
 
-wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.3))
+
 plan(multisession, workers = wrkrs)
 # Run deep search
 posts_df <- deep_search_posts(

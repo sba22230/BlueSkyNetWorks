@@ -1,5 +1,6 @@
-plan(multisession, workers = wrkrs)
+
 source("0_functions.R")
+plan(multisession, workers = wrkrs)
 
 # Step 1: Build edge list (who reposted whom)
 edges <- read_parquet("graphs/speirgorm_edges.parquet")
@@ -232,13 +233,7 @@ hex_cols <- ifelse(
   "#878787",
   vis_nodes$color.background
 )
-node_rgba_df <- parse_color_to_rgba(hex_cols)
-nodesVizAtt$color <- data.frame(
-  r = as.integer(node_rgba_df$r),
-  g = as.integer(node_rgba_df$g),
-  b = as.integer(node_rgba_df$b),
-  a = as.numeric(node_rgba_df$a)
-)
+
 # Nodes viz attributes for GEXF
 nodesVizAtt <- list(
   position = data.frame(
@@ -258,7 +253,13 @@ nodesVizAtt <- list(
     a = node_alpha
   )
 )
-
+node_rgba_df <- parse_color_to_rgba(hex_cols)
+nodesVizAtt$color <- data.frame(
+  r = as.integer(node_rgba_df$r),
+  g = as.integer(node_rgba_df$g),
+  b = as.integer(node_rgba_df$b),
+  a = as.numeric(node_rgba_df$a)
+)
 # Edges table & attributes (carry width/weight and color)
 ge_edges <- data.frame(source = vis_edges$from, target = vis_edges$to)
 

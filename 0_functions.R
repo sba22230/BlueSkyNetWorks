@@ -21,6 +21,7 @@ library(DBI)
 library(odbc)
 library(RevoScaleR) # RevoScaleR provides RxSqlServerData, rxDataStep, etc.
 
+wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.3))
 
 safe_chr <- function(x, ...) {
   val <- purrr::pluck(x, ..., .default = NA_character_)
