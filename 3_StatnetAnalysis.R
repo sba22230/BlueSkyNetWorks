@@ -1,90 +1,88 @@
 source("0_functions.R")
 
 # Step 1: Load data
-posts_df <- read_parquet("data/speirgorm_posts.parquet")
-reposts_df <- read_parquet("data/speirgorm_reposts.parquet")
-edges <- read_parquet("graphs/speirgorm_edges.parquet")
-nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
+posts_df <- read_parquet("data/speirgorm_network.parquet")
+# reposts_df <- read_parquet("data/speirgorm_reposts.parquet")
+# edges <- read_parquet("graphs/speirgorm_edges.parquet")
+# nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
 # --- Optional: sample reposted posts and filter reposts_df -----------------
 # Filter posts that have been reposted, sample them reproducibly, then
 # keep only repost records for those sampled original posts. Adjust
 # `sample_n_posts` as desired (or set to NULL to keep all reposts).
 
 set.seed(22230)
-sample_n_posts <- 100
-nodes_org <- nodes
-edges_org <- edges
-# # change to desired sample size; set NULL to skip sampling# Posts that have one or more reposts according to metadata
-# reposted_posts <- posts_df |> filter(repost_count > 0, !is.na(uri), !is.na(repost_count))
-#
-if (!is.null(sample_n_posts) && nrow(edges) > 0) {
-  edges_filtered <- edges |>
-    dplyr::left_join(
-      nodes |> dplyr::select(name, reposts_received),
-      by = c("from" = "name")
-    ) |>
-    dplyr::filter(repost_count > 0)
 
-  sampled_posts <- edges_filtered |>
-    slice_sample(n = min(sample_n_posts, nrow(edges_filtered)))
-} else {
-  sampled_posts <- posts
-}
+num_posts <- 500
+sampled_posts <- posts_df |>
+  dplyr::sample_n(num_posts) # or sample_frac(0.1)
 
-edges <- sampled_posts
+head(sampled_posts, 5)
 
-#
-#
-# Filter edges to only include reposts of the sampled original posts
-# posts_df_org <- posts_df
-# posts_df <- sampled_posts
-# reposts_df_org <- reposts_df
-# reposts_df <- reposts_df_sampled
-#
-# # Step 2: Build edge list (who reposted whom)
-# edges <- reposts_df |>
-#   transmute(from = handle, to = original_uri) |>
-#   distinct()
-#
-# cat("Edges count:", nrow(edges), "\n")
-#
-# # Step 3: Build node list (unique actors and posts)
-nodes <- tibble(name = unique(c(edges$from, edges$to)))
-cat("Nodes count:", nrow(nodes), "\n")
-#
-# # Step 4: Enrich edges with author info
-# edges <- reposts_df |>
-#   left_join(
-#     posts_df |> select(uri, author_handle),
-#     by = c("original_uri" = "uri")
-#   ) |>
-#   transmute(
-#     from = handle,
-#     to = author_handle,
-#     repost_uri = uri,
-#     created_at = created_at
-#   ) |>
-#   filter(!is.na(from) & !is.na(to)) |>
-#   distinct()
-# cat("Enriched edges count:", nrow(edges), "\n")
-#
-# # Step 5: Enrich nodes with metadata
-metadata <- bind_rows(
-  reposts_df |> select(name = handle, display_name, did),
-  posts_df |> select(name = author_handle, repost_count, like_count)
-) |>
-  distinct(name, .keep_all = TRUE)
+edges <- sampled_posts |>
+  dplyr::filter(!is.na(RepostedBy)) |>
+  dplyr::transmute(
+    from = RepostedBy,
+    to = PostedBy,
+    repost_uri = Post,
+    created_at = PostedOn,
+    like_count,
+    reply_count,
+    bookmark_count,
+    repost_count,
+    text,
+    reposts_received = repost_count, # or your own metric
+    edgeStarts = PostedOn,
+    edgeEnds = PostedOn # or NA if you prefer open-ended edges
+  )
+
+# 3A. Posts authored
+posts_authored <- sampled_posts |>
+  dplyr::group_by(PostedBy) |>
+  dplyr::summarise(
+    earliestPost = min(PostedOn, na.rm = TRUE),
+    latestPost = max(PostedOn, na.rm = TRUE),
+    posts_authored = dplyr::n(),
+    total_likes_on_posts = sum(like_count, na.rm = TRUE),
+    total_replies_on_posts = sum(reply_count, na.rm = TRUE),
+    total_bookmarks_on_posts = sum(bookmark_count, na.rm = TRUE)
+  ) |>
+  dplyr::rename(name = PostedBy)
+
+# 3B. Reposts made
+reposts_made <- sampled_posts |>
+  dplyr::filter(!is.na(RepostedBy)) |>
+  dplyr::count(RepostedBy, name = "reposts_made") |>
+  dplyr::rename(name = RepostedBy)
+
+# 3C. Reposts received
+reposts_received <- sampled_posts |>
+  dplyr::filter(!is.na(RepostedBy)) |>
+  dplyr::count(PostedBy, name = "reposts_received") |>
+  dplyr::rename(name = PostedBy)
+
+# 3D. Combine all node attributes
+nodes <- posts_authored |>
+  dplyr::left_join(reposts_made, by = "name") |>
+  dplyr::left_join(reposts_received, by = "name") |>
+  dplyr::mutate(
+    reposts_made = tidyr::replace_na(reposts_made, 0),
+    reposts_received = tidyr::replace_na(reposts_received, 0)
+  )
 
 nodes <- nodes |>
-  left_join(metadata, by = "name")
+  dplyr::mutate(
+    start = earliestPost,
+    end = latestPost
+  )
 
-#
-# # Add repost counts
-# nodes <- nodes |>
-#   mutate(repost_count = table(edges$to)[name] |> as.integer())
-# cat("Enriched nodes count:", nrow(nodes), "\n")
+nodes_set <- nodes$name
 
-# Step 6: Plot enriched network with ggraph
+edges <- edges |>
+  dplyr::filter(from %in% nodes_set, to %in% nodes_set)
+
+cat("Nodes count:", nrow(nodes), "\n")
+cat("Edges count:", nrow(edges), "\n")
+
 g2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 
 summary_df <- tibble(
@@ -101,8 +99,8 @@ V(g2)$x <- coords2[, 1]
 V(g2)$y <- coords2[, 2]
 g3 <- ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
   geom_edge_link(alpha = 0.3) +
-  geom_node_point(aes(size = like_count, color = repost_count)) +
-  geom_node_text(aes(label = did), repel = TRUE) +
+  geom_node_point(aes(size = total_likes_on_posts, color = reposts_received)) +
+  geom_node_text(aes(label = name), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +
   theme_void()
@@ -225,17 +223,16 @@ library(graphlayouts)
 # Nicely
 sg0 <- ggraph(g2, layout = "nicely") +
   geom_edge_link(width = 0.2, colour = "grey") +
-  geom_node_point(aes(size = like_count, color = repost_count)) +
-  geom_node_text(aes(label = display_name), repel = TRUE) +
+  geom_node_point(aes(size = total_likes_on_posts, color = reposts_received)) +
+  geom_node_text(aes(label = name), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +
   theme_void()
 save_graph_svg(sg0, "graphLayout_1.svg")
-
 # Stress
 sg <- ggraph(g2, layout = "stress") +
   geom_edge_link(width = 0.2, colour = "grey") +
-  geom_node_point(aes(size = like_count, color = repost_count)) +
+  geom_node_point(aes(size = total_likes_on_posts, color = reposts_received)) +
   scale_color_gradient(low = "lightblue", high = "red") +
   theme_graph()
 plot(sg)
@@ -243,8 +240,8 @@ save_graph_svg(sg, "graphLayout_2.svg")
 
 # Stress Majorization
 sg1 <- ggraph(g2, layout = "stress", bbox = 15) +
-  geom_node_point(aes(size = like_count, color = repost_count)) +
-  geom_node_text(aes(label = display_name), repel = TRUE) +
+  geom_node_point(aes(size = total_likes_on_posts, color = reposts_received)) +
+  geom_node_text(aes(label = name), repel = TRUE) +
   geom_edge_link(width = 0.2, colour = "grey") +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +
