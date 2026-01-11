@@ -62,6 +62,7 @@ rx_sql_table <- function(table_name, connectionString = connStr) {
     stringsAsFactors = FALSE
   )
 }
+
 # shareDir must be accessible by SQL Server compute context
 shareDir <- paste("H:\\AllShare\\", Sys.getenv("USERNAME"), sep = "") # change to a path accessible by SQL Server machine
 
@@ -103,7 +104,6 @@ posts_df <- rxImport(post_src)
 
 # save the network data frame for possible later use
 write_parquet(posts_df, "data/speirgorm_network.parquet")
-
 
 # ---------------------------
 # Step 2: Create deduplicated edges table on server

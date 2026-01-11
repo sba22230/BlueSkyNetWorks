@@ -1,4 +1,3 @@
-
 source("0_functions.R")
 plan(multisession, workers = wrkrs)
 
@@ -178,7 +177,6 @@ vis_nodes$color.border <- "black"
 # optional: shrink labels for non-top nodes (already computed earlier)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 
-
 # --- Use precomputed layout in visNetwork ---
 vis_obj <- visNetwork(
   vis_nodes,
@@ -217,7 +215,11 @@ ge_nodes <- data.frame(
 ge_nodesAtt <- vis_nodes |>
   transmute(
     degree = ifelse(is.na(degree), 0L, as.integer(degree)),
-    repost_count = ifelse(is.na(reposts_received), 0L, as.integer(reposts_received)),
+    repost_count = ifelse(
+      is.na(reposts_received),
+      0L,
+      as.integer(reposts_received)
+    ),
     community = as.integer(community),
     isolated = ifelse(isolated, "TRUE", "FALSE"),
     label_shown = !is.na(label),
@@ -226,7 +228,11 @@ ge_nodesAtt <- vis_nodes |>
 
 
 # Node visual attributes for GEXF
-node_hex <- ifelse(is.na(vis_nodes$color.background), "#878787", vis_nodes$color.background)
+node_hex <- ifelse(
+  is.na(vis_nodes$color.background),
+  "#878787",
+  vis_nodes$color.background
+)
 # parallel parse nodes
 node_rgba_df <- furrr::future_map_dfr(
   node_hex,
@@ -238,8 +244,16 @@ node_rgba_df <- furrr::future_map_dfr(
   .options = furrr::furrr_options(seed = 1234)
 )
 ge_nodesVizAtt <- list(
-  position = data.frame(x = vis_nodes$x, y = vis_nodes$y, z = rep(0, nrow(vis_nodes))),
-  size = as.numeric(ifelse(is.na(vis_nodes$value), ge_nodesAtt$value, vis_nodes$value)),
+  position = data.frame(
+    x = vis_nodes$x,
+    y = vis_nodes$y,
+    z = rep(0, nrow(vis_nodes))
+  ),
+  size = as.numeric(ifelse(
+    is.na(vis_nodes$value),
+    ge_nodesAtt$value,
+    vis_nodes$value
+  )),
   color = data.frame(
     r = as.integer(node_rgba_df$r),
     g = as.integer(node_rgba_df$g),
@@ -249,7 +263,11 @@ ge_nodesVizAtt <- list(
 )
 
 # Edges and attributes (preserve width/weight and color)
-ge_edges <- data.frame(source = vis_edges$from, target = vis_edges$to, stringsAsFactors = FALSE)
+ge_edges <- data.frame(
+  source = vis_edges$from,
+  target = vis_edges$to,
+  stringsAsFactors = FALSE
+)
 # Safe edge attributes (handles missing width/weight/color)
 if (any(c("width", "weight", "color") %in% names(vis_edges))) {
   ge_edgesAtt <- vis_edges |>
@@ -258,10 +276,14 @@ if (any(c("width", "weight", "color") %in% names(vis_edges))) {
         ifelse(is.na(width), 1, as.numeric(width))
       } else if ("weight" %in% names(.)) {
         ifelse(is.na(weight), 1, as.numeric(weight))
-      } else 1,
+      } else {
+        1
+      },
       color_raw = if ("color" %in% names(.)) {
         ifelse(is.na(color) | color == "", "#AAAAAA", color)
-      } else "#AAAAAA"
+      } else {
+        "#AAAAAA"
+      }
     ) |>
     select(-from, -to, -any_of(c("width", "weight", "color")))
 } else {
@@ -289,8 +311,6 @@ ge_edgesVizColor <- data.frame(
 )
 
 posts_df <- read_parquet("data/speirgorm_network.parquet")
-
-
 
 # Use write.gexf, passing nodes, edges, attributes and viz attributes
 gexf_obj <- write.gexf(

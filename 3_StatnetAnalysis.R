@@ -3,14 +3,15 @@ source("0_functions.R")
 # Step 1: Load data
 posts_df <- read_parquet("data/speirgorm_posts.parquet")
 reposts_df <- read_parquet("data/speirgorm_reposts.parquet")
-edges <- read.csv("graphs/speirgorm_edges.csv")
-nodes <- read.csv("graphs/speirgorm_nodes.csv")
+edges <- read_parquet("graphs/speirgorm_edges.parquet")
+nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
 # --- Optional: sample reposted posts and filter reposts_df -----------------
 # Filter posts that have been reposted, sample them reproducibly, then
 # keep only repost records for those sampled original posts. Adjust
 # `sample_n_posts` as desired (or set to NULL to keep all reposts).
+
 set.seed(22230)
-sample_n_posts <- 29051
+sample_n_posts <- 100
 nodes_org <- nodes
 edges_org <- edges
 # # change to desired sample size; set NULL to skip sampling# Posts that have one or more reposts according to metadata
@@ -19,7 +20,7 @@ edges_org <- edges
 if (!is.null(sample_n_posts) && nrow(edges) > 0) {
   edges_filtered <- edges |>
     dplyr::left_join(
-      nodes |> dplyr::select(name, repost_count),
+      nodes |> dplyr::select(name, reposts_received),
       by = c("from" = "name")
     ) |>
     dplyr::filter(repost_count > 0)
