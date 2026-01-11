@@ -5,7 +5,6 @@ bs_user <- bs_get_user()
 bs_pass <- bs_get_pass()
 bs_auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
 
-
 plan(multisession, workers = wrkrs)
 # Run deep search
 posts_df <- deep_search_posts(
@@ -114,7 +113,6 @@ did_map <- reposts_df |>
   group_by(did) |>
   slice_tail(n = 1) |> # prefer the latest handle seen for DID
   ungroup()
-
 
 g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 g1 <- ggraph::ggraph(g, layout = "drl") +
