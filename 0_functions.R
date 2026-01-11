@@ -1,14 +1,17 @@
 library(arrow)
 library(bskyr)
+library(DBI)
 library(dplyr)
 library(furrr)
 library(ggraph)
 library(igraph)
 library(intergraph)
 library(lubridate)
+library(odbc)
 library(purrr)
 library(readr)
 library(retry)
+library(RevoScaleR) # RevoScaleR provides RxSqlServerData, rxDataStep, etc.
 library(rgexf)
 library(sna)
 library(statnet)
@@ -17,9 +20,6 @@ library(stringr)
 library(tibble)
 library(tidyr)
 library(visNetwork)
-library(DBI)
-library(odbc)
-library(RevoScaleR) # RevoScaleR provides RxSqlServerData, rxDataStep, etc.
 
 wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.3))
 
