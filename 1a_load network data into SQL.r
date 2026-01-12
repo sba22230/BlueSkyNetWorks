@@ -7,11 +7,14 @@ source("0_functions.R")
 # Configuration: SQL Server
 # ---------------------------
 # Edit these values for your environment
-sql_server <- "localhost" # e.g., "localhost\\SQLEXPRESS" or "sqlserver.domain.com"
+sql_server <- "localhost" # e.g., "localhost\\SQLEXPRESS" or
+# "sqlserver.domain.com"
 database <- "BlueSkyNet"
 use_trusted_connection <- TRUE # set FALSE if using SQL auth
-#sql_user <- "your_sql_user" # only used if not using trusted connection
-#sql_password <- "your_password" # only used if not using trusted connection
+#sql_user <- "your_sql_user"
+# only used if not using trusted connection
+#sql_password <- "your_password"
+# only used if not using trusted connection
 orgicc <- rxGetComputeContext()
 rxSetComputeContext("localpar")
 
@@ -42,6 +45,7 @@ if (use_trusted_connection) {
   )
 
   connStr <- paste0(
+    # nolint: object_name_linter.
     "Driver={SQL Server};Server=",
     sql_server,
     ";Database=",
@@ -64,7 +68,8 @@ rx_sql_table <- function(table_name, connectionString = connStr) {
 }
 
 # shareDir must be accessible by SQL Server compute context
-shareDir <- paste("H:\\AllShare\\", Sys.getenv("USERNAME"), sep = "") # change to a path accessible by SQL Server machine
+shareDir <- paste("H:\\AllShare\\", Sys.getenv("USERNAME"), sep = "")
+# change to a path accessible by SQL Server machine
 
 # ---------------------------
 # Step 0: Read CSVs locally
