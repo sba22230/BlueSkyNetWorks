@@ -12,7 +12,7 @@ posts_df <- read_parquet("data/speirgorm_network.parquet")
 
 set.seed(22230)
 
-num_posts <- 500
+num_posts <- 5000
 sampled_posts <- posts_df |>
   dplyr::sample_n(num_posts) # or sample_frac(0.1)
 
@@ -103,7 +103,7 @@ g3 <- ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
   geom_node_text(aes(label = name), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +
-  theme_void()
+  theme_graph()
 cat("Final graph summary:\n")
 print(summary(g2))
 plot(g3)
@@ -128,12 +128,12 @@ save_graph_svg(
   filename = "1_bluSkynet_sna.svg"
 )
 
-save_graph_svg(
-  plot_or_expr = function() {
-    sna::gplot(bluSkynet, displaylabels = TRUE, mode = "target") # very slow
-  },
-  filename = "2_bluSkynet_sna.svg"
-)
+# save_graph_svg(
+#   plot_or_expr = function() {
+#     sna::gplot(bluSkynet, displaylabels = TRUE, mode = "target") # very slow
+#   },
+#   filename = "2_bluSkynet_sna.svg"
+# )
 
 save_graph_svg(
   plot_or_expr = function() {
@@ -227,7 +227,7 @@ sg0 <- ggraph(g2, layout = "nicely") +
   geom_node_text(aes(label = name), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +
-  theme_void()
+  theme_graph()
 save_graph_svg(sg0, "graphLayout_1.svg")
 # Stress
 sg <- ggraph(g2, layout = "stress") +

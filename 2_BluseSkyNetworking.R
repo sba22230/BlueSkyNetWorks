@@ -77,7 +77,7 @@ print(head(nodes))
 
 # Step 5: Plot enriched network with ggraph
 g2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-coords2 <- layout_with_graphopt(g2, niter = 20) # heavy step, do once
+coords2 <- layout_with_graphopt(g2, niter = 200) # heavy step, do once
 V(g2)$x <- coords2[, 1]
 V(g2)$y <- coords2[, 2]
 ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
@@ -108,12 +108,9 @@ vis_nodes <- nodes |>
   distinct(id, .keep_all = TRUE)
 
 vis_edges <- edges |>
-  transmute(
-    from = from,
-    to = to,
-    arrows = "from" # add arrow pointing to the reposter node
-  )
-
+  mutate(arrows = "from")
+ # add arrow pointing to the reposter node
+  
 # Build igraph object from edges
 g3 <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
 
@@ -181,8 +178,8 @@ vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 vis_obj <- visNetwork(
   vis_nodes,
   vis_edges,
-  width = "1440px",
-  height = "800px"
+  width = "1600px",
+  height = "1200px"
 ) |>
   visNodes(fixed = TRUE) |>
   visOptions(
@@ -225,7 +222,6 @@ ge_nodesAtt <- vis_nodes |>
     label_shown = !is.na(label),
     value = ifelse(is.na(value), 1, as.numeric(value))
   )
-
 
 # Node visual attributes for GEXF
 node_hex <- ifelse(
@@ -283,12 +279,20 @@ if (any(c("width", "weight", "color") %in% names(vis_edges))) {
         ifelse(is.na(color) | color == "", "#AAAAAA", color)
       } else {
         "#AAAAAA"
-      }
+      },
+      # NEW: keep dynamic info as attributes
+      edge_start = as.character(edgeStarts),
+      edge_end   = as.character(edgeEnds)
     ) |>
     select(-from, -to, -any_of(c("width", "weight", "color")))
 } else {
   ge_edgesAtt <- vis_edges |>
-    mutate(weight = 1, color_raw = "#AAAAAA") |>
+    mutate(
+      weight    = 1,
+      color_raw = "#AAAAAA",
+      edge_start = as.character(edgeStarts),
+      edge_end   = as.character(edgeEnds)
+    ) |>
     select(-from, -to)
 }
 
@@ -310,7 +314,12 @@ ge_edgesVizColor <- data.frame(
   a = as.numeric(edge_rgba_df$a)
 )
 
-posts_df <- read_parquet("data/speirgorm_network.parquet")
+ge_nodes$id    <- sanitize_xml(as.character(ge_nodes$id))
+ge_nodes$label <- sanitize_xml(as.character(ge_nodes$label))
+char_cols <- sapply(ge_nodesAtt, is.character)
+ge_nodesAtt[char_cols] <- lapply(ge_nodesAtt[char_cols], sanitize_xml)
+char_cols_e <- sapply(ge_edgesAtt, is.character)
+ge_edgesAtt[char_cols_e] <- lapply(ge_edgesAtt[char_cols_e], sanitize_xml)
 
 # Use write.gexf, passing nodes, edges, attributes and viz attributes
 gexf_obj <- write.gexf(
@@ -321,10 +330,11 @@ gexf_obj <- write.gexf(
   nodesVizAtt = ge_nodesVizAtt,
   edgesVizAtt = list(
     color = ge_edgesVizColor,
-    size = as.numeric(ge_edgesAtt$weight)
+    size  = as.numeric(ge_edgesAtt$weight)
   ),
   defaultedgetype = "directed"
 )
+
 
 # Save to file
 home_dir <- here::here()
@@ -339,6 +349,7 @@ plot(gexf_obj)
 
 cat("Interactive visualization ready with precomputed layout.\n")
 
+posts_df <- read_parquet("data/speirgorm_network.parquet")
 top_authors_reposted <- posts_df |>
   group_by(PostedBy) |>
   summarise(total_reposts = sum(repost_count, na.rm = TRUE)) |>
