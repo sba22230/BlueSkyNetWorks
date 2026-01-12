@@ -12,7 +12,7 @@ posts_df <- read_parquet("data/speirgorm_network.parquet")
 
 set.seed(22230)
 
-num_posts <- 5000
+num_posts <- 10000
 sampled_posts <- posts_df |>
   dplyr::sample_n(num_posts) # or sample_frac(0.1)
 
