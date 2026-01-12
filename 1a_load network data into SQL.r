@@ -300,10 +300,10 @@ edges <- dbGetQuery(
     r.like_count,
     r.reply_count,
     r.bookmark_count,
-    r.repost_count,
-    r.text ,
-    CAST(r.edgeStarts AS date) AS edgeStarts,
-    CAST(r.edgeEnds AS date) AS edgeEnds
+    r.repost_count
+    ,CAST(r.edgeStarts AS date) AS edgeStarts
+    ,CAST(r.edgeEnds AS date) AS edgeEnds
+    ,r.text 
 FROM dbo.Reposted AS r
 JOIN dbo.Person AS f
     ON r.$from_id = f.$node_id      -- reposter
@@ -319,5 +319,6 @@ edges <- edges |>
     where(is.character),
     ~ gsub("[[:cntrl:]]", "", .)
   ))
+names(edges)
 
 write_parquet(edges, "graphs/speirgorm_edges.parquet")
