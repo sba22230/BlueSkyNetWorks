@@ -128,8 +128,8 @@ CREATE TABLE dbo.Reposted (
     bookmark_count INT NULL,
     repost_count INT NULL,
     text NVARCHAR(MAX) NULL,
-    edgeStart DATETIME2 NULL,
-    edgeEnd DATETIME2 NULL
+    edgeStarts DATETIME2 NULL,
+    edgeEnds DATETIME2 NULL
 ) AS EDGE;
 "
 dbExecute(odbc_con, create_edges_sql)
@@ -218,7 +218,9 @@ WITH NetDF AS (
         P.like_count,
         P.reply_count,
         P.repost_count,
-        RP.handle AS RepostedBy
+        RP.handle AS RepostedBy,
+        CAST(P.indexedAt AS date) AS edgeStarts,
+        CAST(P.indexedAt AS date) AS edgeEnds
     FROM posts_raw AS P
     INNER JOIN reposts_raw AS RP ON P.uri = RP.uri
 )
@@ -232,7 +234,9 @@ INSERT INTO dbo.Reposted (
     reply_count,
     bookmark_count,
     repost_count,
-    text
+    text,
+    edgeStarts,
+    edgeEnds
 )
 SELECT
     f.$node_id,        -- RepostedBy (source)
@@ -243,7 +247,9 @@ SELECT
     r.reply_count,
     r.bookmark_count,
     r.repost_count,
-    r.text
+    r.text,
+    r.edgeStarts,
+    r.edgeEnds
 FROM NetDF AS r
 JOIN Person AS f ON f.handle = r.RepostedBy   -- reposter = FROM
 JOIN Person AS t ON t.handle = r.PostedBy     -- author = TO
@@ -290,7 +296,9 @@ edges <- dbGetQuery(
     r.reply_count,
     r.bookmark_count,
     r.repost_count,
-    r.text
+    r.text ,
+    CAST(r.edgeStarts AS date) AS edgeStarts,
+    CAST(r.edgeEnds AS date) AS edgeEnds
 FROM dbo.Reposted AS r
 JOIN dbo.Person AS f
     ON r.$from_id = f.$node_id      -- reposter

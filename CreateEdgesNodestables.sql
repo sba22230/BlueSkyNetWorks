@@ -5,25 +5,22 @@ BEGIN
 END
 GO
 -- 2. Create graph node table for persons
-CREATE TABLE Person (
-    handle NVARCHAR(255) NOT NULL,        -- unique user handle
-    display_name NVARCHAR(255) NULL,      -- optional metadata
-    avatar NVARCHAR(512) NULL,            -- optional metadata
-    did NVARCHAR(255) NULL,               -- Bluesky DID if available
-
-    first_seen DATE NULL,                 -- earliest appearance in dataset
-    last_seen DATE NULL,                  -- latest appearance
-
-    posts_authored INT DEFAULT 0,         -- count of posts they created
-    reposts_made INT DEFAULT 0,           -- count of reposts they performed
-    reposts_received INT DEFAULT 0,       -- count of reposts their posts received
-
-    total_likes_on_posts INT DEFAULT 0,   -- optional aggregate
-    total_replies_on_posts INT DEFAULT 0, -- optional aggregate
-    total_bookmarks_on_posts INT DEFAULT 0,
-
-    PRIMARY KEY (handle)
-) AS NODE;
+CREATE TABLE [dbo].[Person](
+	[handle] [nvarchar](255) NOT NULL,
+	[first_seen] [date] NULL,
+	[last_seen] [date] NULL,
+	[posts_authored] [int] NULL,
+	[reposts_made] [int] NULL,
+	[reposts_received] [int] NULL,
+	[total_likes_on_posts] [int] NULL,
+	[total_replies_on_posts] [int] NULL,
+	[total_bookmarks_on_posts] [int] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[handle] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [dataonly]
+)
+AS NODE ON [dataonly];
 
 
 
@@ -35,23 +32,19 @@ END
 GO
 
 -- 3. Create edge table for repost relationships
-CREATE TABLE dbo.Reposted (
-    post_uri NVARCHAR(512) NOT NULL,      -- the post being reposted
-    posted_on DATE NULL,                  -- when the post was originally created
-
-    repost_event_at DATETIME2 NULL,       -- timestamp of the repost event (if available)
-
-    like_count INT NULL,                  -- attributes of the original post
-    reply_count INT NULL,
-    bookmark_count INT NULL,
-    repost_count INT NULL,
-
-    text NVARCHAR(MAX) NULL,              -- optional: post text for topic modelling
-
-    edgeStart DATETIME2 NULL,             -- for Gephi timeline animation
-    edgeEnd DATETIME2 NULL                -- optional: usually NULL unless modelling decay
-) AS EDGE;
-GO
+CREATE TABLE [dbo].[Reposted](
+	[post_uri] [nvarchar](512) NOT NULL,
+	[posted_on] [date] NULL,
+	[repost_event_at] [datetime2](7) NULL,
+	[like_count] [int] NULL,
+	[reply_count] [int] NULL,
+	[bookmark_count] [int] NULL,
+	[repost_count] [int] NULL,
+	[text] [nvarchar](max) NULL,
+	[edgeStarts] [datetime2](7) NULL,
+	[edgeEnds] [datetime2](7) NULL
+)
+AS EDGE ON [dataonly] TEXTIMAGE_ON [dataonly]
 
 -- 3. Populate Person with distinct actors (from reposts and post authors)
 -- 3. Populate Person with distinct actors (from reposts and post authors)
@@ -112,7 +105,9 @@ WITH NetDF AS (
         P.like_count,
         P.reply_count,
         P.repost_count,
-        RP.handle AS RepostedBy
+        RP.handle AS RepostedBy,
+        CAST(P.indexedAt AS date) AS edgeStarts,
+        CAST(P.indexedAt AS date) AS edgeEnds
     FROM posts_raw AS P
     INNER JOIN reposts_raw AS RP ON P.uri = RP.uri
 )
@@ -126,7 +121,9 @@ INSERT INTO dbo.Reposted (
     reply_count,
     bookmark_count,
     repost_count,
-    text
+    text,
+    edgeStarts,
+    edgeEnds
 )
 SELECT
     f.$node_id,        -- RepostedBy (source)
@@ -137,7 +134,9 @@ SELECT
     r.reply_count,
     r.bookmark_count,
     r.repost_count,
-    r.text
+    r.text,
+    r.edgeStarts,
+    r.edgeEnds
 FROM NetDF AS r
 JOIN Person AS f ON f.handle = r.RepostedBy   -- reposter = FROM
 JOIN Person AS t ON t.handle = r.PostedBy     -- author = TO
