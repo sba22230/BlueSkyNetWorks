@@ -13,7 +13,7 @@ posts_df <- read_parquet("data/speirgorm_network.parquet")
 set.seed(22230)
 
 num_posts <- 50000
-n_iter <- num_posts/2
+n_iter <- num_posts / 2
 sampled_posts <- posts_df |>
   dplyr::sample_n(num_posts) # or sample_frac(0.1)
 
@@ -95,8 +95,12 @@ summary_df <- tibble(
 )
 
 print(summary_df)
-coords2 <- layout_with_drl(g2, use.seed = FALSE,
-                           seed = matrix(runif(vcount(g2) * 2), ncol = 2), options = list(init.iterations = n_iter)) # heavy step, do once
+coords2 <- layout_with_drl(
+  g2,
+  use.seed = FALSE,
+  seed = matrix(runif(vcount(g2) * 2), ncol = 2),
+  options = list(init.iterations = n_iter)
+) # heavy step, do once
 V(g2)$x <- coords2[, 1]
 V(g2)$y <- coords2[, 2]
 g3 <- ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
@@ -132,7 +136,11 @@ save_graph_svg(
 
 save_graph_svg(
   plot_or_expr = function() {
-    sna::gplot(bluSkynet, mode = "fruchtermanreingold", layout.par = list(niter = n_iter)) # very slow
+    sna::gplot(
+      bluSkynet,
+      mode = "fruchtermanreingold",
+      layout.par = list(niter = n_iter)
+    ) # very slow
   },
   filename = "2_bluSkynet_sna.svg"
 )
@@ -251,4 +259,4 @@ sg1 <- ggraph(g2, layout = "stress", bbox = 15) +
 plot(sg1)
 save_graph_svg(sg1, "graphLayout_3.svg")
 # tsna to go here
-
+library(ndtv)
