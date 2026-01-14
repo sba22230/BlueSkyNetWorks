@@ -170,7 +170,10 @@ INSERT INTO dbo.Person (
     last_seen,
     posts_authored,
     reposts_made,
-    reposts_received
+    reposts_received,
+    total_likes_on_posts,
+    total_replies_on_posts,
+    total_bookmarks_on_posts
 )
 SELECT
     handle,
@@ -180,18 +183,17 @@ SELECT
 
     SUM(CASE WHEN role = 'author' THEN 1 ELSE 0 END) AS posts_authored,
     SUM(CASE WHEN role = 'reposter' THEN 1 ELSE 0 END) AS reposts_made,
-    SUM(CASE WHEN role = 'author' THEN reposts_received ELSE 0 END) AS reposts_received 
+    SUM(CASE WHEN role = 'author' THEN reposts_received ELSE 0 END) AS reposts_received, 
+    MAX(like_count) AS total_likes_on_posts,
+    MAX(reply_count) AS total_replies_on_posts,
+    MAX(bookmark_count) AS total_bookmarks_on_posts
 FROM (
     --------------------------------------------------------------------
     -- Canonical network data frame
     --------------------------------------------------------------------
-    SELECT
-        P.author_handle AS handle,
-        CAST(P.indexedAt AS date) AS PostedOn,
-        'author' AS role,
-        1 AS reposts_received
-    FROM posts_raw AS P
-    INNER JOIN reposts_raw AS RP ON P.uri = RP.uri
+    SELECT  P.author_handle AS handle, CAST(P.indexedAt AS date) AS PostedOn, 'author' AS role, 1 AS reposts_received, P.like_count, P.reply_count, P.bookmark_count
+FROM      posts_raw AS P INNER JOIN
+                 reposts_raw AS RP ON P.uri = RP.uri
 
     UNION ALL
 
@@ -199,7 +201,7 @@ FROM (
         RP.handle AS handle,
         CAST(P.indexedAt AS date) AS PostedOn,
         'reposter' AS role,
-        0 AS reposts_received
+        0 AS reposts_received, P.like_count, P.reply_count, P.bookmark_count
     FROM posts_raw AS P
     INNER JOIN reposts_raw AS RP ON P.uri = RP.uri
 ) AS X
@@ -225,7 +227,11 @@ WITH NetDF AS (
         P.repost_count,
         RP.handle AS RepostedBy,
         CAST(P.indexedAt AS date) AS edgeStarts,
-        CAST(P.indexedAt AS date) AS edgeEnds
+        CASE 
+           WHEN TRY_CAST(RP.indexed_at AS date) IS NULL THEN CAST(P.indexedAt AS date)
+           WHEN TRY_CAST(RP.indexed_at AS date) < CAST(P.indexedAt AS date) THEN CAST(P.indexedAt AS date)
+           ELSE TRY_CAST(RP.indexed_at AS date)
+        END AS edgeEnds
     FROM posts_raw AS P
     INNER JOIN reposts_raw AS RP ON P.uri = RP.uri
 )
