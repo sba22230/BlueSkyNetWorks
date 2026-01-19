@@ -8,12 +8,23 @@ cat("Edges count:", nrow(edges), "\n")
 # Debug: inspect edges
 print(head(edges))
 
+# remove NAs 
+edges[is.na(edges)] <- "no text here"
+
+na_per_column <- colSums(is.na(edges))
+print("Number of NAs per column:")
+print(na_per_column)
+
 # Step 2: Build node list (unique actors and posts)
 nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
 cat("Nodes count:", nrow(nodes), "\n")
 
 # Debug: inspect nodes
 print(head(nodes))
+
+na_per_column <- colSums(is.na(nodes))
+print("Number of NAs per column:")
+print(na_per_column)
 
 # Step 3: Build igraph object and plot basic network
 g1 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
