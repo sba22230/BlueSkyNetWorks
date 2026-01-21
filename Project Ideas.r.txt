@@ -78,27 +78,27 @@ look into each line there is replies list
 
 
 # Build edges: author -> reposter
-edges <- reposts_df |>
+edges <- reposts_df %>%
   left_join(
-    posts_df |> select(uri, author_handle),
+    posts_df %>% select(uri, author_handle),
     by = c("original_uri" = "uri")
-  ) |>
+  ) %>%
   transmute(
     from = author_handle,
     to = handle,
     repost_uri = uri,
     created_at = created_at
-  ) |>
-  filter(!is.na(from), !is.na(to)) |>
+  ) %>%
+  filter(!is.na(from), !is.na(to)) %>%
   distinct()
 
 # Minimal DID/handle normalization if available
-did_map <- reposts_df |>
-  select(handle, did) |>
-  filter(!is.na(handle), !is.na(did)) |>
-  distinct() |>
-  group_by(did) |>
-  slice_tail(n = 1) |> # prefer the latest handle seen for DID
+did_map <- reposts_df %>%
+  select(handle, did) %>%
+  filter(!is.na(handle), !is.na(did)) %>%
+  distinct() %>%
+  group_by(did) %>%
+  slice_tail(n = 1) %>% # prefer the latest handle seen for DID
   ungroup()
 
 normalize_handle <- function(h) {
@@ -113,18 +113,18 @@ normalize_handle <- function(h) {
   h
 }
 
-edges <- edges |>
+edges <- edges %>%
   mutate(from = normalize_handle(from), to = normalize_handle(to))
 
 # Nodes
 nodes <- bind_rows(
-  reposts_df |> select(name = handle, display_name, did, uri),
-  posts_df |> select(name = author_handle, text, uri)
-) |>
+  reposts_df %>% select(name = handle, display_name, did, uri),
+  posts_df %>% select(name = author_handle, text, uri)
+) %>%
   distinct(name, .keep_all = TRUE)
-nodes <- nodes |>
+nodes <- nodes %>%
   left_join(
-    posts_df |> select(name = author_handle, uri, like_count, repost_count),
+    posts_df %>% select(name = author_handle, uri, like_count, repost_count),
     by = c("name", "uri")
   )
 

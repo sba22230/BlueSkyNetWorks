@@ -34,8 +34,8 @@ safe_int <- function(x, ...) {
 
 # Deduplicate by URI
 dedup_posts <- function(posts) {
-  posts |>
-    tibble::as_tibble() |>
+  posts %>%
+    tibble::as_tibble() %>%
     distinct(uri, .keep_all = TRUE)
 }
 
@@ -150,7 +150,7 @@ deep_search_posts <- function(
 
     # Persist checkpoint every ~1k rows
     if (fetched %% 1000 < chunk_limit) {
-      out <- bind_rows(all_rows) |> distinct(uri, .keep_all = TRUE)
+      out <- bind_rows(all_rows) %>% distinct(uri, .keep_all = TRUE)
       tryCatch(
         {
           arrow::write_parquet(out, checkpoint_path)
@@ -194,7 +194,7 @@ deep_search_posts <- function(
     Sys.sleep(runif(1, 0.5, 1.5))
   }
 
-  bind_rows(all_rows) |> distinct(uri, .keep_all = TRUE)
+  bind_rows(all_rows) %>% distinct(uri, .keep_all = TRUE)
 }
 
 get_reposts_df <- function(uri) {
@@ -304,13 +304,13 @@ get_thread_df <- function(uri) {
 chunk_vec <- function(x, size) split(x, ceiling(seq_along(x) / size))
 
 hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
-  uris_reposts <- posts_df |>
-    filter(repost_count > 0) |>
-    pull(uri) |>
+  uris_reposts <- posts_df %>%
+    filter(repost_count > 0) %>%
+    pull(uri) %>%
     unique()
-  uris_threads <- posts_df |>
-    filter(reply_count > 0) |>
-    pull(uri) |>
+  uris_threads <- posts_df %>%
+    filter(reply_count > 0) %>%
+    pull(uri) %>%
     unique()
 
   rep_chunks <- chunk_vec(uris_reposts, batch_size)
@@ -359,7 +359,7 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
     )
 
     # Checkpoint combined reposts (for resume capability)
-    combined <- bind_rows(all_reposts) |>
+    combined <- bind_rows(all_reposts) %>%
       distinct(original_uri, handle, uri, .keep_all = TRUE)
     tryCatch(
       {
@@ -398,7 +398,7 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
     )
 
     # Checkpoint combined threads (for resume capability)
-    combined <- bind_rows(all_threads) |>
+    combined <- bind_rows(all_threads) %>%
       distinct(original_uri, author, uri, .keep_all = TRUE)
     tryCatch(
       {
@@ -410,9 +410,9 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
     Sys.sleep(runif(1, 3, 6))
   }
 
-  reposts_df <- bind_rows(all_reposts) |>
+  reposts_df <- bind_rows(all_reposts) %>%
     distinct(original_uri, handle, uri, .keep_all = TRUE)
-  threads_df <- bind_rows(all_threads) |>
+  threads_df <- bind_rows(all_threads) %>%
     distinct(original_uri, author, uri, .keep_all = TRUE)
 
   list(reposts_df = reposts_df, threads_df = threads_df)

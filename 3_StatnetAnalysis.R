@@ -17,11 +17,11 @@ num_posts <- 61750
 # else we keep all reposts
 if (!is.null(num_posts) && nrow(posts_df) > num_posts) {
   n_iter <- num_posts / 2
-  sampled_posts <- posts_df |>
+  sampled_posts <- posts_df %>%
     dplyr::sample_n(num_posts) # or sample_frac(0.1)
   head(sampled_posts, 5)
-  edges <- sampled_posts |>
-    dplyr::filter(!is.na(RepostedBy)) |>
+  edges <- sampled_posts %>%
+    dplyr::filter(!is.na(RepostedBy)) %>%
     dplyr::transmute(
       from = RepostedBy,
       to = PostedBy,
@@ -38,8 +38,8 @@ if (!is.null(num_posts) && nrow(posts_df) > num_posts) {
     )
 
   # 3A. Posts authored
-  posts_authored <- sampled_posts |>
-    dplyr::group_by(PostedBy) |>
+  posts_authored <- sampled_posts %>%
+    dplyr::group_by(PostedBy) %>%
     dplyr::summarise(
       earliestPost = min(PostedOn, na.rm = TRUE),
       latestPost = max(PostedOn, na.rm = TRUE),
@@ -47,31 +47,31 @@ if (!is.null(num_posts) && nrow(posts_df) > num_posts) {
       total_likes_on_posts = sum(like_count, na.rm = TRUE),
       total_replies_on_posts = sum(reply_count, na.rm = TRUE),
       total_bookmarks_on_posts = sum(bookmark_count, na.rm = TRUE)
-    ) |>
+    ) %>%
     dplyr::rename(name = PostedBy)
 
   # 3B. Reposts made
-  reposts_made <- sampled_posts |>
-    dplyr::filter(!is.na(RepostedBy)) |>
-    dplyr::count(RepostedBy, name = "reposts_made") |>
+  reposts_made <- sampled_posts %>%
+    dplyr::filter(!is.na(RepostedBy)) %>%
+    dplyr::count(RepostedBy, name = "reposts_made") %>%
     dplyr::rename(name = RepostedBy)
 
   # 3C. Reposts received
-  reposts_received <- sampled_posts |>
-    dplyr::filter(!is.na(RepostedBy)) |>
-    dplyr::count(PostedBy, name = "reposts_received") |>
+  reposts_received <- sampled_posts %>%
+    dplyr::filter(!is.na(RepostedBy)) %>%
+    dplyr::count(PostedBy, name = "reposts_received") %>%
     dplyr::rename(name = PostedBy)
 
   # 3D. Combine all node attributes
-  nodes <- posts_authored |>
-    dplyr::left_join(reposts_made, by = "name") |>
-    dplyr::left_join(reposts_received, by = "name") |>
+  nodes <- posts_authored %>%
+    dplyr::left_join(reposts_made, by = "name") %>%
+    dplyr::left_join(reposts_received, by = "name") %>%
     dplyr::mutate(
       reposts_made = tidyr::replace_na(reposts_made, 0),
       reposts_received = tidyr::replace_na(reposts_received, 0)
     )
 
-  nodes <- nodes |>
+  nodes <- nodes %>%
     dplyr::mutate(
       start = earliestPost,
       end = latestPost
@@ -79,7 +79,7 @@ if (!is.null(num_posts) && nrow(posts_df) > num_posts) {
 
   nodes_set <- nodes$name
 
-  edges <- edges |>
+  edges <- edges %>%
     dplyr::filter(from %in% nodes_set, to %in% nodes_set)
 
   cat(
@@ -31086,14 +31086,14 @@ n <- nrow(nodes)
 
 name_to_id <- setNames(seq_len(n), nodes$name)
 stopifnot(!any(is.na(name_to_id[nodes$name])))
-edges2 <- edges |>
+edges2 <- edges %>%
   dplyr::mutate(
     from_id = name_to_id[from],
     to_id = name_to_id[to]
   )
 stopifnot(!any(is.na(edges2$from_id)))
 stopifnot(!any(is.na(edges2$to_id)))
-edges2 <- edges2 |>
+edges2 <- edges2 %>%
   dplyr::mutate(
     edgeStarts = edgeStarts,
     edgeEnds = edgeEnds # or NA if open-ended

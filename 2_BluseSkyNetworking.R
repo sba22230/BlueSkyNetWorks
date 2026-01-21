@@ -52,18 +52,18 @@ gtn <- ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
 save_graph_svg(gtn, "TopNodes_Speirgorm_Network.svg")
 # Step 4: Enrich edges with author info
 # this step is unnecessary - the edges already have author info - need to add created_at
-# edges <- reposts_df |>
+# edges <- reposts_df %>%
 #   left_join(
-#     posts_df |> select(uri, author_handle),
+#     posts_df %>% select(uri, author_handle),
 #     by = c("original_uri" = "uri")
-#   ) |>
+#   ) %>%
 #   transmute(
 #     from = handle,
 #     to = author_handle,
 #     repost_uri = uri,
 #     created_at = created_at
-#   ) |>
-#   filter(!is.na(from) & !is.na(to)) |>
+#   ) %>%
+#   filter(!is.na(from) & !is.na(to)) %>%
 #   distinct()
 # cat("Enriched edges count:", nrow(edges), "\n")
 
@@ -73,14 +73,14 @@ print(head(edges))
 # Step 11: Enrich nodes with metadata
 # This doesn't need to be done either
 # nodes <- bind_rows(
-#  reposts_df |> select(name = handle, display_name, did),
-#  posts_df |> select(name = author_handle, text, like_count, repost_count)
-# ) |>
+#  reposts_df %>% select(name = handle, display_name, did),
+#  posts_df %>% select(name = author_handle, text, like_count, repost_count)
+# ) %>%
 #  distinct(name, .keep_all = TRUE)
 
 # Add repost counts
-# nodes <- nodes |>
-#   mutate(repost_count = table(edges$to)[name] |> as.integer())
+# nodes <- nodes %>%
+#   mutate(repost_count = table(edges$to)[name] %>% as.integer())
 # cat("Enriched nodes count:", nrow(nodes), "\n")
 
 # Debug: enriched nodes
@@ -107,7 +107,7 @@ write_graph(
 )
 
 # Step 6: Interactive visualization with visNetwork
-vis_nodes <- nodes |>
+vis_nodes <- nodes %>%
   mutate(
     id = name,
     label = name,
@@ -115,10 +115,10 @@ vis_nodes <- nodes |>
     value = ifelse(is.na(reposts_received), 0, reposts_received),
     # size by repost_count # nolint: line_length_linter.
     group = name
-  ) |>
+  ) %>%
   distinct(id, .keep_all = TRUE)
 
-vis_edges <- edges |>
+vis_edges <- edges %>%
   mutate(arrows = "from")
  # add arrow pointing to the reposter node
   
@@ -129,12 +129,12 @@ g3 <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
 deg <- igraph::degree(g3, mode = "all")
 
 # Add degree to vis_nodes
-vis_nodes <- vis_nodes |>
+vis_nodes <- vis_nodes %>%
   mutate(degree = deg[id])
 
 # Sort IDs by degree (descending)
-sorted_ids <- vis_nodes |>
-  arrange(desc(degree)) |>
+sorted_ids <- vis_nodes %>%
+  arrange(desc(degree)) %>%
   pull(id)
 
 # --- Precompute layout coordinates with igraph ---
@@ -162,7 +162,7 @@ for (comp_id in unique(comps$membership)) {
 vis_nodes$x <- coords3[, 1]
 vis_nodes$y <- coords3[, 2]
 
-top_nodes <- vis_nodes |> arrange(desc(degree)) |> slice(1:50) |> pull(id)
+top_nodes <- vis_nodes %>% arrange(desc(degree)) %>% slice(1:50) %>% pull(id)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 
 # Community detection
@@ -191,15 +191,15 @@ vis_obj <- visNetwork(
   vis_edges,
   width = "1600px",
   height = "1200px"
-) |>
-  visNodes(fixed = TRUE) |>
+) %>%
+  visNodes(fixed = TRUE) %>%
   visOptions(
     highlightNearest = TRUE,
     nodesIdSelection = list(values = sorted_ids)
-  ) |>
-  visEdges(arrows = "to", smooth = FALSE) |>
-  visLegend(useGroups = TRUE, position = "right") |>
-  visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE) |>
+  ) %>%
+  visEdges(arrows = "to", smooth = FALSE) %>%
+  visLegend(useGroups = TRUE, position = "right") %>%
+  visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE) %>%
   visPhysics(enabled = FALSE)
 # save HTML and capture as SVG (requires webshot2 and
 # a headless Chrome/Chromium)
@@ -220,7 +220,7 @@ ge_nodes <- data.frame(
 )
 
 # Node attributes (metrics + flags) — preserve your existing metrics
-ge_nodesAtt <- vis_nodes |>
+ge_nodesAtt <- vis_nodes %>%
   transmute(
     degree = ifelse(is.na(degree), 0L, as.integer(degree)),
     repost_count = ifelse(
@@ -277,7 +277,7 @@ ge_edges <- data.frame(
 )
 # Safe edge attributes (handles missing width/weight/color)
 if (any(c("width", "weight", "color") %in% names(vis_edges))) {
-  ge_edgesAtt <- vis_edges |>
+  ge_edgesAtt <- vis_edges %>%
     mutate(
       weight = if ("width" %in% names(.)) {
         ifelse(is.na(width), 1, as.numeric(width))
@@ -294,16 +294,16 @@ if (any(c("width", "weight", "color") %in% names(vis_edges))) {
       # NEW: keep dynamic info as attributes
       edge_start = as.character(edgeStarts),
       edge_end   = as.character(edgeEnds)
-    ) |>
+    ) %>%
     select(-from, -to, -any_of(c("width", "weight", "color")))
 } else {
-  ge_edgesAtt <- vis_edges |>
+  ge_edgesAtt <- vis_edges %>%
     mutate(
       weight    = 1,
       color_raw = "#AAAAAA",
       edge_start = as.character(edgeStarts),
       edge_end   = as.character(edgeEnds)
-    ) |>
+    ) %>%
     select(-from, -to)
 }
 
@@ -337,7 +337,7 @@ gexf_obj <- write.gexf(
   nodes = ge_nodes[, c("id", "label")],
   edges = ge_edges,
   nodesAtt = ge_nodesAtt,
-  edgesAtt = ge_edgesAtt |> select(-color_raw),
+  edgesAtt = ge_edgesAtt %>% select(-color_raw),
   nodesVizAtt = ge_nodesVizAtt,
   edgesVizAtt = list(
     color = ge_edgesVizColor,
@@ -361,15 +361,15 @@ plot(gexf_obj)
 cat("Interactive visualization ready with precomputed layout.\n")
 
 posts_df <- read_parquet("data/speirgorm_network.parquet")
-top_authors_reposted <- posts_df |>
-  group_by(PostedBy) |>
-  summarise(total_reposts = sum(repost_count, na.rm = TRUE)) |>
-  arrange(desc(total_reposts)) |>
+top_authors_reposted <- posts_df %>%
+  group_by(PostedBy) %>%
+  summarise(total_reposts = sum(repost_count, na.rm = TRUE)) %>%
+  arrange(desc(total_reposts)) %>%
   slice(1:10)
-top_reposters <- posts_df |>
-  group_by(RepostedBy) |> # group by both
-  summarise(total_reposts_made = n(), .groups = "drop") |> # count reposts
-  arrange(desc(total_reposts_made)) |> # sort descending
+top_reposters <- posts_df %>%
+  group_by(RepostedBy) %>% # group by both
+  summarise(total_reposts_made = n(), .groups = "drop") %>% # count reposts
+  arrange(desc(total_reposts_made)) %>% # sort descending
   slice(1:10) # top 10
 
 library(DT)
