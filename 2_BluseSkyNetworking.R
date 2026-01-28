@@ -8,7 +8,7 @@ cat("Edges count:", nrow(edges), "\n")
 # Debug: inspect edges
 print(head(edges))
 
-# remove NAs 
+# remove NAs
 edges[is.na(edges)] <- "no text here"
 
 na_per_column <- colSums(is.na(edges))
@@ -120,8 +120,8 @@ vis_nodes <- nodes %>%
 
 vis_edges <- edges %>%
   mutate(arrows = "from")
- # add arrow pointing to the reposter node
-  
+# add arrow pointing to the reposter node
+
 # Build igraph object from edges
 g3 <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
 
@@ -170,6 +170,128 @@ comm <- cluster_walktrap(g3) # works on directed graphs
 
 # Add community membership to nodes
 vis_nodes$community <- comm$membership
+
+# ========================================================================
+# COMMUNITY CHARACTERIZATION & LABELING
+# ========================================================================
+# Analyze what defines each community to create meaningful labels
+
+cat("\n=== ANALYZING COMMUNITIES ===\n")
+
+# Get community member data
+community_analysis <- vis_nodes %>%
+  group_by(community) %>%
+  summarise(
+    # Size and structure
+    size = n(),
+    isolated_count = sum(isolated, na.rm = TRUE),
+    active_members = sum(!isolated, na.rm = TRUE),
+
+    # Connectivity metrics
+    avg_degree = mean(degree, na.rm = TRUE),
+    max_degree = max(degree, na.rm = TRUE),
+    median_degree = median(degree, na.rm = TRUE),
+
+    # Engagement metrics (from nodes attributes)
+    avg_repost_count = mean(value, na.rm = TRUE),
+    max_repost_count = max(value, na.rm = TRUE),
+
+    # Temporal reach (if available)
+    earliest_first_seen = min(start, na.rm = TRUE),
+    latest_last_seen = max(end, na.rm = TRUE),
+
+    # Top influencers in this community
+    top_member = paste(
+      head(name[order(desc(degree))], 3),
+      collapse = ", "
+    ),
+
+    .groups = "drop"
+  ) %>%
+  arrange(desc(size))
+
+cat("Community Statistics:\n")
+print(community_analysis)
+
+# Define community types based on characteristics
+community_labels <- community_analysis %>%
+  mutate(
+    # Label logic based on community characteristics
+    community_type = case_when(
+      # Large, highly connected communities (hubs)
+      size >= 50 &
+        avg_degree > median(community_analysis$avg_degree) * 1.5 ~ "Core Hub",
+
+      # Medium-sized, moderately connected
+      size >= 20 &
+        size < 50 &
+        avg_degree >= median(community_analysis$avg_degree) ~ "Active Circle",
+
+      # Smaller, tightly knit groups
+      size >= 10 &
+        size < 20 &
+        avg_degree > median(community_analysis$avg_degree) ~ "Tight Cluster",
+
+      # Small but highly engaged (high repost count relative to size)
+      size < 10 &
+        avg_repost_count >
+          quantile(
+            community_analysis$avg_repost_count,
+            0.75
+          ) ~ "Engaged Micro-Group",
+
+      # Isolated or low-engagement nodes
+      isolated_count >= active_members * 0.5 ~ "Peripheral",
+
+      # Default: catchall
+      TRUE ~ "Discussion Group"
+    ),
+
+    # Create descriptive label with name and characteristics
+    label = sprintf(
+      "Community %d: %s\n(%d members, avg degree: %.1f)",
+      community,
+      community_type,
+      size,
+      avg_degree
+    )
+  ) %>%
+  select(community, community_type, label, size, avg_degree, top_member)
+
+cat("\n=== COMMUNITY LABELS & TYPES ===\n")
+print(community_labels)
+
+# Map labels back to vis_nodes
+community_label_map <- setNames(
+  community_labels$label,
+  community_labels$community
+)
+
+community_type_map <- setNames(
+  community_labels$community_type,
+  community_labels$community
+)
+
+vis_nodes <- vis_nodes %>%
+  mutate(
+    community_label = community_label_map[as.character(community)],
+    community_type = community_type_map[as.character(community)]
+  )
+
+# Print community members for inspection
+cat("\n=== COMMUNITY MEMBERSHIP BREAKDOWN ===\n")
+for (comm_id in sort(unique(vis_nodes$community))) {
+  members <- vis_nodes %>%
+    filter(community == comm_id) %>%
+    arrange(desc(degree)) %>%
+    slice(1:10) %>%
+    pull(id)
+
+  comm_type <- unique(vis_nodes$community_type[vis_nodes$community == comm_id])
+  cat(sprintf("\nCommunity %d (%s) - Top 10 Members:\n", comm_id, comm_type))
+  cat(paste(members, collapse = ", "))
+  cat("\n")
+}
 
 # ensure community is used as the visNetwork group and add colours
 vis_nodes$group <- as.character(vis_nodes$community)
@@ -293,16 +415,16 @@ if (any(c("width", "weight", "color") %in% names(vis_edges))) {
       },
       # NEW: keep dynamic info as attributes
       edge_start = as.character(edgeStarts),
-      edge_end   = as.character(edgeEnds)
+      edge_end = as.character(edgeEnds)
     ) %>%
     select(-from, -to, -any_of(c("width", "weight", "color")))
 } else {
   ge_edgesAtt <- vis_edges %>%
     mutate(
-      weight    = 1,
+      weight = 1,
       color_raw = "#AAAAAA",
       edge_start = as.character(edgeStarts),
-      edge_end   = as.character(edgeEnds)
+      edge_end = as.character(edgeEnds)
     ) %>%
     select(-from, -to)
 }
@@ -325,7 +447,7 @@ ge_edgesVizColor <- data.frame(
   a = as.numeric(edge_rgba_df$a)
 )
 
-ge_nodes$id    <- sanitize_xml(as.character(ge_nodes$id))
+ge_nodes$id <- sanitize_xml(as.character(ge_nodes$id))
 ge_nodes$label <- sanitize_xml(as.character(ge_nodes$label))
 char_cols <- sapply(ge_nodesAtt, is.character)
 ge_nodesAtt[char_cols] <- lapply(ge_nodesAtt[char_cols], sanitize_xml)
@@ -341,7 +463,7 @@ gexf_obj <- write.gexf(
   nodesVizAtt = ge_nodesVizAtt,
   edgesVizAtt = list(
     color = ge_edgesVizColor,
-    size  = as.numeric(ge_edgesAtt$weight)
+    size = as.numeric(ge_edgesAtt$weight)
   ),
   defaultedgetype = "directed"
 )
