@@ -12,7 +12,7 @@ posts_df <- read_parquet("data/speirgorm_network.parquet")
 
 set.seed(22230)
 
-num_posts <- 64768
+num_posts <- 600
 # if tthe num_posts is set, then we sample that many posts
 # else we keep all reposts
 if (!is.null(num_posts) && nrow(posts_df) > num_posts) {
