@@ -1,5 +1,8 @@
+v <- R.Version()
+if (v$major == '4' && v$minor != '0.2') {
+  library(bskyr)
+}
 library(arrow)
-library(bskyr)
 library(DBI)
 library(dplyr)
 library(furrr)
@@ -582,10 +585,9 @@ parse_color_single <- function(
 
 sanitize_xml <- function(x) {
   x <- gsub("&", "&amp;", x, fixed = TRUE)
-  x <- gsub("<", "&lt;",  x, fixed = TRUE)
-  x <- gsub(">", "&gt;",  x, fixed = TRUE)
+  x <- gsub("<", "&lt;", x, fixed = TRUE)
+  x <- gsub(">", "&gt;", x, fixed = TRUE)
   x <- gsub("\"", "&quot;", x, fixed = TRUE)
   x <- gsub("'", "&apos;", x, fixed = TRUE)
   x
 }
-
