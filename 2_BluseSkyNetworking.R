@@ -8,12 +8,23 @@ cat("Edges count:", nrow(edges), "\n")
 # Debug: inspect edges
 print(head(edges))
 
+# remove NAs
+edges[is.na(edges)] <- "no text here"
+
+na_per_column <- colSums(is.na(edges))
+print("Number of NAs per column:")
+print(na_per_column)
+
 # Step 2: Build node list (unique actors and posts)
 nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
 cat("Nodes count:", nrow(nodes), "\n")
 
 # Debug: inspect nodes
 print(head(nodes))
+
+na_per_column <- colSums(is.na(nodes))
+print("Number of NAs per column:")
+print(na_per_column)
 
 # Step 3: Build igraph object and plot basic network
 g1 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
@@ -41,18 +52,18 @@ gtn <- ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
 save_graph_svg(gtn, "TopNodes_Speirgorm_Network.svg")
 # Step 4: Enrich edges with author info
 # this step is unnecessary - the edges already have author info - need to add created_at
-# edges <- reposts_df |>
+# edges <- reposts_df %>%
 #   left_join(
-#     posts_df |> select(uri, author_handle),
+#     posts_df %>% select(uri, author_handle),
 #     by = c("original_uri" = "uri")
-#   ) |>
+#   ) %>%
 #   transmute(
 #     from = handle,
 #     to = author_handle,
 #     repost_uri = uri,
 #     created_at = created_at
-#   ) |>
-#   filter(!is.na(from) & !is.na(to)) |>
+#   ) %>%
+#   filter(!is.na(from) & !is.na(to)) %>%
 #   distinct()
 # cat("Enriched edges count:", nrow(edges), "\n")
 
@@ -62,14 +73,14 @@ print(head(edges))
 # Step 11: Enrich nodes with metadata
 # This doesn't need to be done either
 # nodes <- bind_rows(
-#  reposts_df |> select(name = handle, display_name, did),
-#  posts_df |> select(name = author_handle, text, like_count, repost_count)
-# ) |>
+#  reposts_df %>% select(name = handle, display_name, did),
+#  posts_df %>% select(name = author_handle, text, like_count, repost_count)
+# ) %>%
 #  distinct(name, .keep_all = TRUE)
 
 # Add repost counts
-# nodes <- nodes |>
-#   mutate(repost_count = table(edges$to)[name] |> as.integer())
+# nodes <- nodes %>%
+#   mutate(repost_count = table(edges$to)[name] %>% as.integer())
 # cat("Enriched nodes count:", nrow(nodes), "\n")
 
 # Debug: enriched nodes
@@ -96,7 +107,7 @@ write_graph(
 )
 
 # Step 6: Interactive visualization with visNetwork
-vis_nodes <- nodes |>
+vis_nodes <- nodes %>%
   mutate(
     id = name,
     label = name,
@@ -104,13 +115,13 @@ vis_nodes <- nodes |>
     value = ifelse(is.na(reposts_received), 0, reposts_received),
     # size by repost_count # nolint: line_length_linter.
     group = name
-  ) |>
+  ) %>%
   distinct(id, .keep_all = TRUE)
 
-vis_edges <- edges |>
+vis_edges <- edges %>%
   mutate(arrows = "from")
- # add arrow pointing to the reposter node
-  
+# add arrow pointing to the reposter node
+
 # Build igraph object from edges
 g3 <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
 
@@ -118,12 +129,12 @@ g3 <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
 deg <- igraph::degree(g3, mode = "all")
 
 # Add degree to vis_nodes
-vis_nodes <- vis_nodes |>
+vis_nodes <- vis_nodes %>%
   mutate(degree = deg[id])
 
 # Sort IDs by degree (descending)
-sorted_ids <- vis_nodes |>
-  arrange(desc(degree)) |>
+sorted_ids <- vis_nodes %>%
+  arrange(desc(degree)) %>%
   pull(id)
 
 # --- Precompute layout coordinates with igraph ---
@@ -151,7 +162,7 @@ for (comp_id in unique(comps$membership)) {
 vis_nodes$x <- coords3[, 1]
 vis_nodes$y <- coords3[, 2]
 
-top_nodes <- vis_nodes |> arrange(desc(degree)) |> slice(1:50) |> pull(id)
+top_nodes <- vis_nodes %>% arrange(desc(degree)) %>% slice(1:50) %>% pull(id)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 
 # Community detection
@@ -159,6 +170,128 @@ comm <- cluster_walktrap(g3) # works on directed graphs
 
 # Add community membership to nodes
 vis_nodes$community <- comm$membership
+
+# ========================================================================
+# COMMUNITY CHARACTERIZATION & LABELING
+# ========================================================================
+# Analyze what defines each community to create meaningful labels
+
+cat("\n=== ANALYZING COMMUNITIES ===\n")
+
+# Get community member data
+community_analysis <- vis_nodes %>%
+  group_by(community) %>%
+  summarise(
+    # Size and structure
+    size = n(),
+    isolated_count = sum(isolated, na.rm = TRUE),
+    active_members = sum(!isolated, na.rm = TRUE),
+
+    # Connectivity metrics
+    avg_degree = mean(degree, na.rm = TRUE),
+    max_degree = max(degree, na.rm = TRUE),
+    median_degree = median(degree, na.rm = TRUE),
+
+    # Engagement metrics (from nodes attributes)
+    avg_repost_count = mean(value, na.rm = TRUE),
+    max_repost_count = max(value, na.rm = TRUE),
+
+    # Temporal reach (if available)
+    earliest_first_seen = min(start, na.rm = TRUE),
+    latest_last_seen = max(end, na.rm = TRUE),
+
+    # Top influencers in this community
+    top_member = paste(
+      head(name[order(desc(degree))], 3),
+      collapse = ", "
+    ),
+
+    .groups = "drop"
+  ) %>%
+  arrange(desc(size))
+
+cat("Community Statistics:\n")
+print(community_analysis)
+
+# Define community types based on characteristics
+community_labels <- community_analysis %>%
+  mutate(
+    # Label logic based on community characteristics
+    community_type = case_when(
+      # Large, highly connected communities (hubs)
+      size >= 50 &
+        avg_degree > median(community_analysis$avg_degree) * 1.5 ~ "Core Hub",
+
+      # Medium-sized, moderately connected
+      size >= 20 &
+        size < 50 &
+        avg_degree >= median(community_analysis$avg_degree) ~ "Active Circle",
+
+      # Smaller, tightly knit groups
+      size >= 10 &
+        size < 20 &
+        avg_degree > median(community_analysis$avg_degree) ~ "Tight Cluster",
+
+      # Small but highly engaged (high repost count relative to size)
+      size < 10 &
+        avg_repost_count >
+          quantile(
+            community_analysis$avg_repost_count,
+            0.75
+          ) ~ "Engaged Micro-Group",
+
+      # Isolated or low-engagement nodes
+      isolated_count >= active_members * 0.5 ~ "Peripheral",
+
+      # Default: catchall
+      TRUE ~ "Discussion Group"
+    ),
+
+    # Create descriptive label with name and characteristics
+    label = sprintf(
+      "Community %d: %s\n(%d members, avg degree: %.1f)",
+      community,
+      community_type,
+      size,
+      avg_degree
+    )
+  ) %>%
+  select(community, community_type, label, size, avg_degree, top_member)
+
+cat("\n=== COMMUNITY LABELS & TYPES ===\n")
+print(community_labels)
+
+# Map labels back to vis_nodes
+community_label_map <- setNames(
+  community_labels$label,
+  community_labels$community
+)
+
+community_type_map <- setNames(
+  community_labels$community_type,
+  community_labels$community
+)
+
+vis_nodes <- vis_nodes %>%
+  mutate(
+    community_label = community_label_map[as.character(community)],
+    community_type = community_type_map[as.character(community)]
+  )
+
+# Print community members for inspection
+cat("\n=== COMMUNITY MEMBERSHIP BREAKDOWN ===\n")
+for (comm_id in sort(unique(vis_nodes$community))) {
+  members <- vis_nodes %>%
+    filter(community == comm_id) %>%
+    arrange(desc(degree)) %>%
+    slice(1:10) %>%
+    pull(id)
+
+  comm_type <- unique(vis_nodes$community_type[vis_nodes$community == comm_id])
+  cat(sprintf("\nCommunity %d (%s) - Top 10 Members:\n", comm_id, comm_type))
+  cat(paste(members, collapse = ", "))
+  cat("\n")
+}
 
 # ensure community is used as the visNetwork group and add colours
 vis_nodes$group <- as.character(vis_nodes$community)
@@ -180,15 +313,15 @@ vis_obj <- visNetwork(
   vis_edges,
   width = "1600px",
   height = "1200px"
-) |>
-  visNodes(fixed = TRUE) |>
+) %>%
+  visNodes(fixed = TRUE) %>%
   visOptions(
     highlightNearest = TRUE,
     nodesIdSelection = list(values = sorted_ids)
-  ) |>
-  visEdges(arrows = "to", smooth = FALSE) |>
-  visLegend(useGroups = TRUE, position = "right") |>
-  visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE) |>
+  ) %>%
+  visEdges(arrows = "to", smooth = FALSE) %>%
+  visLegend(useGroups = TRUE, position = "right") %>%
+  visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE) %>%
   visPhysics(enabled = FALSE)
 # save HTML and capture as SVG (requires webshot2 and
 # a headless Chrome/Chromium)
@@ -209,7 +342,7 @@ ge_nodes <- data.frame(
 )
 
 # Node attributes (metrics + flags) — preserve your existing metrics
-ge_nodesAtt <- vis_nodes |>
+ge_nodesAtt <- vis_nodes %>%
   transmute(
     degree = ifelse(is.na(degree), 0L, as.integer(degree)),
     repost_count = ifelse(
@@ -266,7 +399,7 @@ ge_edges <- data.frame(
 )
 # Safe edge attributes (handles missing width/weight/color)
 if (any(c("width", "weight", "color") %in% names(vis_edges))) {
-  ge_edgesAtt <- vis_edges |>
+  ge_edgesAtt <- vis_edges %>%
     mutate(
       weight = if ("width" %in% names(.)) {
         ifelse(is.na(width), 1, as.numeric(width))
@@ -282,17 +415,17 @@ if (any(c("width", "weight", "color") %in% names(vis_edges))) {
       },
       # NEW: keep dynamic info as attributes
       edge_start = as.character(edgeStarts),
-      edge_end   = as.character(edgeEnds)
-    ) |>
+      edge_end = as.character(edgeEnds)
+    ) %>%
     select(-from, -to, -any_of(c("width", "weight", "color")))
 } else {
-  ge_edgesAtt <- vis_edges |>
+  ge_edgesAtt <- vis_edges %>%
     mutate(
-      weight    = 1,
+      weight = 1,
       color_raw = "#AAAAAA",
       edge_start = as.character(edgeStarts),
-      edge_end   = as.character(edgeEnds)
-    ) |>
+      edge_end = as.character(edgeEnds)
+    ) %>%
     select(-from, -to)
 }
 
@@ -314,7 +447,7 @@ ge_edgesVizColor <- data.frame(
   a = as.numeric(edge_rgba_df$a)
 )
 
-ge_nodes$id    <- sanitize_xml(as.character(ge_nodes$id))
+ge_nodes$id <- sanitize_xml(as.character(ge_nodes$id))
 ge_nodes$label <- sanitize_xml(as.character(ge_nodes$label))
 char_cols <- sapply(ge_nodesAtt, is.character)
 ge_nodesAtt[char_cols] <- lapply(ge_nodesAtt[char_cols], sanitize_xml)
@@ -326,11 +459,11 @@ gexf_obj <- write.gexf(
   nodes = ge_nodes[, c("id", "label")],
   edges = ge_edges,
   nodesAtt = ge_nodesAtt,
-  edgesAtt = ge_edgesAtt |> select(-color_raw),
+  edgesAtt = ge_edgesAtt %>% select(-color_raw),
   nodesVizAtt = ge_nodesVizAtt,
   edgesVizAtt = list(
     color = ge_edgesVizColor,
-    size  = as.numeric(ge_edgesAtt$weight)
+    size = as.numeric(ge_edgesAtt$weight)
   ),
   defaultedgetype = "directed"
 )
@@ -350,15 +483,15 @@ plot(gexf_obj)
 cat("Interactive visualization ready with precomputed layout.\n")
 
 posts_df <- read_parquet("data/speirgorm_network.parquet")
-top_authors_reposted <- posts_df |>
-  group_by(PostedBy) |>
-  summarise(total_reposts = sum(repost_count, na.rm = TRUE)) |>
-  arrange(desc(total_reposts)) |>
+top_authors_reposted <- posts_df %>%
+  group_by(PostedBy) %>%
+  summarise(total_reposts = sum(repost_count, na.rm = TRUE)) %>%
+  arrange(desc(total_reposts)) %>%
   slice(1:10)
-top_reposters <- posts_df |>
-  group_by(RepostedBy) |> # group by both
-  summarise(total_reposts_made = n(), .groups = "drop") |> # count reposts
-  arrange(desc(total_reposts_made)) |> # sort descending
+top_reposters <- posts_df %>%
+  group_by(RepostedBy) %>% # group by both
+  summarise(total_reposts_made = n(), .groups = "drop") %>% # count reposts
+  arrange(desc(total_reposts_made)) %>% # sort descending
   slice(1:10) # top 10
 
 library(DT)

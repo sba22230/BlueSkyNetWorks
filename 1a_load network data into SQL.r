@@ -287,7 +287,7 @@ nodes <- dbGetQuery(
   FROM [BlueSkyNet].[dbo].[Person];"
 )
 
-nodes <- nodes |>
+nodes <- nodes %>%
   mutate(across(
     where(is.character),
     ~ gsub("[[:cntrl:]]", "", .)
@@ -319,8 +319,8 @@ ORDER BY r.posted_on DESC;
 "
 )
 
-edges <- edges |>
-  mutate(from = normalize_handle(from), to = normalize_handle(to)) |>
+edges <- edges %>%
+  mutate(from = normalize_handle(from), to = normalize_handle(to)) %>%
   mutate(across(
     where(is.character),
     ~ gsub("[[:cntrl:]]", "", .)

@@ -27,7 +27,7 @@ threads_df <- tryCatch(
 )
 
 # Filter to only hydrate new posts
-posts_to_hydrate <- posts_df |>
+posts_to_hydrate <- posts_df %>%
   filter(!(uri %in% c(reposts_df$original_uri, threads_df$original_uri)))
 
 # Check for partial hydration checkpoints and load if available
@@ -37,7 +37,7 @@ hydrated_threads_checkpoint <- "data/speirgorm_hydrated_threads.parquet"
 if (file.exists(hydrated_reposts_checkpoint)) {
   message("Found existing hydrated reposts checkpoint; loading...")
   hydrated_reposts_partial <- arrow::read_parquet(hydrated_reposts_checkpoint)
-  posts_to_hydrate <- posts_to_hydrate |>
+  posts_to_hydrate <- posts_to_hydrate %>%
     filter(!(uri %in% hydrated_reposts_partial$original_uri))
   message(
     "Filtered to ",
@@ -49,7 +49,7 @@ if (file.exists(hydrated_reposts_checkpoint)) {
 if (file.exists(hydrated_threads_checkpoint)) {
   message("Found existing hydrated threads checkpoint; loading...")
   hydrated_threads_partial <- arrow::read_parquet(hydrated_threads_checkpoint)
-  posts_to_hydrate <- posts_to_hydrate |>
+  posts_to_hydrate <- posts_to_hydrate %>%
     filter(!(uri %in% hydrated_threads_partial$original_uri))
   message(
     "Filtered to ",
@@ -86,9 +86,9 @@ hydrated <- tryCatch(
   }
 )
 
-reposts_df <- bind_rows(reposts_df, hydrated$reposts_df) |>
+reposts_df <- bind_rows(reposts_df, hydrated$reposts_df) %>%
   distinct(original_uri, handle, uri, .keep_all = TRUE)
-threads_df <- bind_rows(threads_df, hydrated$threads_df) |>
+threads_df <- bind_rows(threads_df, hydrated$threads_df) %>%
   distinct(original_uri, author, uri, .keep_all = TRUE)
 
 plan(sequential)
@@ -106,12 +106,12 @@ nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
 # Step 12: Plot enriched network with ggraph
 
 # Minimal DID/handle normalization if available
-did_map <- reposts_df |>
-  select(handle, did) |>
-  filter(!is.na(handle), !is.na(did)) |>
-  distinct() |>
-  group_by(did) |>
-  slice_tail(n = 1) |> # prefer the latest handle seen for DID
+did_map <- reposts_df %>%
+  select(handle, did) %>%
+  filter(!is.na(handle), !is.na(did)) %>%
+  distinct() %>%
+  group_by(did) %>%
+  slice_tail(n = 1) %>% # prefer the latest handle seen for DID
   ungroup()
 
 g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
