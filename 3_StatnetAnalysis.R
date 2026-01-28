@@ -99,13 +99,13 @@ if (!is.null(num_posts) && nrow(posts_df) > num_posts) {
 
 cat("Nodes count:", nrow(nodes), "\n")
 cat("Edges count:", nrow(edges), "\n")
- 
-g2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+
+g1 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 coords <- layout_with_drl(g1)
 V(g1)$x <- coords[, 1]
 V(g1)$y <- coords[, 2]
 
-ggraph(g2, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
+ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
   geom_edge_parallel0(
     aes(width = repost_count, colour = like_count),
     edge_alpha = 1,
