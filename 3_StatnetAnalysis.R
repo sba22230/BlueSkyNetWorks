@@ -131,9 +131,20 @@ ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
 
 
 summary_df <- tibble(
-  total_users = vcount(g2),
-  total_replies = ecount(g2),
+  network_size = vcount(g2),
+  edge_count = ecount(g2),
+  dyad_count = gsize(g2),
   density = edge_density(g2),
+  mutual_pairs = dyad_census(g2)$mut,
+  asymetric_pairs = dyad_census(g2)$asym,
+  isolated_nodes = dyad_census(g2)$null,
+  diameter = diameter(g2, directed = TRUE, weights = NA),
+  avg_path_length = mean_distance(g2, directed = TRUE),
+  neighbours_average = neighbors(g2, V(g2), mode = "all"),
+  reciprocity_default = reciprocity(g2, mode = "default"),
+  reciprocity_ratio = reciprocity(g2, mode = "ratio"),
+  average_in_degree = mean(igraph::degree(g2, mode = "in")),
+  average_out_degree = mean(igraph::degree(g2, mode = "out")),
   most_replied_to = names(which.max(igraph::degree(g2, mode = "in"))),
   most_active_replier = names(which.max(igraph::degree(g2, mode = "out")))
 )
