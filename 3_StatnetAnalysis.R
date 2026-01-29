@@ -12,7 +12,7 @@ reposts_df <- read_parquet("data/speirgorm_reposts.parquet")
 
 set.seed(22230)
 
-num_posts <- 600
+num_posts <- nrow(posts_df)
 # if tthe num_posts is set, then we sample that many posts
 # else we keep all reposts
 if (!is.null(num_posts) && nrow(posts_df) > num_posts) {
@@ -371,5 +371,3 @@ str(vertex_spells)
 str(edge_spells)
 network.size(bluSkynet2)
 network.edgecount(bluSkynet2)
-
-

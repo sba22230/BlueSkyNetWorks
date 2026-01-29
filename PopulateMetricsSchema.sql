@@ -97,7 +97,7 @@ CREATE TABLE dbo.GlobalNetworkMetrics (
     -- Metadata
     analysis_notes NVARCHAR(MAX) NULL,
     
-    INDEX idx_timestamp ON analysis_timestamp DESC,
+    INDEX idx_timestamp ON analysis_timestamp,
     INDEX idx_search_term ON search_term
 );
 GO
@@ -129,13 +129,16 @@ CREATE TABLE dbo.CommunityStats (
     earliest_post DATETIME2(7) NULL,
     latest_post DATETIME2(7) NULL,
     
-    INDEX idx_community_id ON community_id,
-    INDEX idx_snapshot ON metric_snapshot_id,
+    --INDEX idx_community_id ON community_id,
+    --INDEX idx_snapshot ON metric_snapshot_id,
     
     CONSTRAINT fk_community_snapshot 
         FOREIGN KEY (metric_snapshot_id) 
         REFERENCES dbo.GlobalNetworkMetrics(metric_id) ON DELETE CASCADE
 );
+GO
+CREATE NONCLUSTERED INDEX idx_community_id ON dbo.CommunityStats(community_stats_id);
+CREATE NONCLUSTERED INDEX idx_snapshot ON dbo.CommunityStats(metric_snapshot_id);
 GO
 
 -- =============================================================================
@@ -155,14 +158,14 @@ CREATE TABLE dbo.TriadCensus (
     -- Descriptive label
     [description] NVARCHAR(255) NULL,
     
-    INDEX idx_snapshot ON metric_snapshot_id,
+    --INDEX idx_snapshot ON metric_snapshot_id,
     
     CONSTRAINT fk_triad_snapshot 
         FOREIGN KEY (metric_snapshot_id) 
         REFERENCES dbo.GlobalNetworkMetrics(metric_id) ON DELETE CASCADE
 );
 GO
-
+CREATE NONCLUSTERED INDEX idx_snapshot ON dbo.TriadCensus(metric_snapshot_id);
 -- =============================================================================
 -- SECTION 5: CREATE InfluenceRank TABLE
 -- =============================================================================
@@ -192,14 +195,18 @@ CREATE TABLE dbo.InfluenceRank (
     -- Community membership
     community INT NULL,
     
-    INDEX idx_overall_rank ON overall_rank,
-    INDEX idx_snapshot ON metric_snapshot_id,
-    INDEX idx_handle ON handle,
+    --INDEX idx_overall_rank ON overall_rank,
+    --INDEX idx_snapshot ON metric_snapshot_id,
+    --INDEX idx_handle ON handle,
     
     CONSTRAINT fk_influence_snapshot 
         FOREIGN KEY (metric_snapshot_id) 
         REFERENCES dbo.GlobalNetworkMetrics(metric_id) ON DELETE CASCADE
 );
+GO
+CREATE NONCLUSTERED INDEX idx_overall_rank ON dbo.InfluenceRank(overall_rank);
+CREATE NONCLUSTERED INDEX idx_snapshot ON dbo.InfluenceRank(metric_snapshot_id);
+CREATE NONCLUSTERED INDEX idx_handle ON dbo.InfluenceRank(handle);
 GO
 
 -- =============================================================================
