@@ -1,0 +1,15 @@
+metric_name,value,description
+density,0.0022259057542031732,Proportion of possible edges present
+reciprocity_edgewise,0.10638297872340426,Proportion of mutual reposts (edgewise)
+reciprocity_dyadic,0.056179775280898875,Proportion of dyads with reciprocated edges
+network_size,206,Number of nodes (users) in network
+edge_count,109,Number of directed edges (reposts)
+dyad_count,42436,Total number of possible dyadic pairs
+diameter,5,Longest shortest path between any two nodes
+avg_path_length,2.051470588235294,Average shortest path across all node pairs
+num_components,122,Number of disconnected components
+giant_component_size,73,Nodes in largest connected component
+giant_component_pct,35.43689320388349,Percentage of nodes in largest component
+global_clustering,0.025531914893617023,Global clustering coefficient (transitivity)
+avg_local_clustering,0.016500651452107763,Mean of local clustering coefficients
+centralization_indegree,0.03187470109995218,Degree centralization index (in-degree)

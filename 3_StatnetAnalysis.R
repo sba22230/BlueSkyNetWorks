@@ -2,7 +2,7 @@ source("0_functions.R")
 
 # Step 1: Load data
 posts_df <- read_parquet("data/speirgorm_network.parquet")
-# reposts_df <- read_parquet("data/speirgorm_reposts.parquet")
+reposts_df <- read_parquet("data/speirgorm_reposts.parquet")
 # edges <- read_parquet("graphs/speirgorm_edges.parquet")
 # nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
 # --- Optional: sample reposted posts and filter reposts_df -----------------
@@ -100,12 +100,12 @@ if (!is.null(num_posts) && nrow(posts_df) > num_posts) {
 cat("Nodes count:", nrow(nodes), "\n")
 cat("Edges count:", nrow(edges), "\n")
 
-g1 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-coords <- layout_with_drl(g1)
-V(g1)$x <- coords[, 1]
-V(g1)$y <- coords[, 2]
+g2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+coords <- layout_with_drl(g2)
+V(g2)$x <- coords[, 1]
+V(g2)$y <- coords[, 2]
 
-ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
+ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
   geom_edge_parallel0(
     aes(width = repost_count, colour = like_count),
     edge_alpha = 1,
@@ -371,3 +371,5 @@ str(vertex_spells)
 str(edge_spells)
 network.size(bluSkynet2)
 network.edgecount(bluSkynet2)
+
+

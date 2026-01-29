@@ -52,7 +52,7 @@ pagerank_vals <- page_rank(g_igraph, directed = TRUE)$vector
 cat("  ✓ PageRank computed\n")
 
 # HITS (Hub and Authority scores)
-hits <- hits(g_igraph, normalized = TRUE)
+hits <- hits_scores(g_igraph, scale = TRUE)
 hub_score <- hits$hub
 authority_score <- hits$authority
 cat("  ✓ HITS authority/hub scores computed\n")
@@ -66,7 +66,7 @@ kcore_vals <- coreness(g_igraph)
 cat("  ✓ k-core decomposition computed\n")
 
 # Betweenness in igraph (verify against statnet)
-betweenness_ig <- betweenness(g_igraph, directed = TRUE, weights = NA)
+betweenness_ig <- igraph::betweenness(g_igraph, V(g_igraph), directed = TRUE, weights = NULL)
 cat("  ✓ Cross-verified betweenness (igraph)\n")
 
 # Combine all node metrics into nodes dataframe
@@ -85,8 +85,8 @@ nodes_with_metrics <- nodes %>%
     total_degree = total_degree[name],
     # Normalize metrics to 0-1 scale for comparison
     betweenness_norm = scales::rescale(betweenness, to = c(0, 1)),
-    closeness_norm = scales::rescale(closeness, to = c(0, 1)),
-    pagerank_norm = scales::rescale(pagerank, to = c(0, 1)),
+    closeness_norm = scales::rescale(closeness_vals, to = c(0, 1)),
+    pagerank_norm = scales::rescale(pagerank_vals, to = c(0, 1)),
     authority_norm = scales::rescale(authority_score, to = c(0, 1))
   )
 
@@ -159,8 +159,8 @@ avg_path_length <- mean_distance(g_igraph, directed = TRUE)
 cat(sprintf("  ✓ Average path length: %.2f\n", avg_path_length))
 
 # Connected components
-num_components <- components(g_igraph)$no
-largest_component_size <- max(components(g_igraph)$csize)
+num_components <- igraph::components(g_igraph)$no
+largest_component_size <- max(igraph::components(g_igraph)$csize)
 giant_component_pct <- (largest_component_size / network_size) * 100
 cat(sprintf(
   "  ✓ Components: %d (largest: %d = %.1f%%)\n",
@@ -181,7 +181,7 @@ avg_local_clustering <- mean(local_clustering, na.rm = TRUE)
 cat(sprintf("  ✓ Average local clustering: %.4f\n", avg_local_clustering))
 
 # Centralization (degree based)
-in_degree_vec <- degree(g_igraph, mode = "in")
+in_degree_vec <- igraph::degree(g_igraph, mode = "in")
 centralization_in <- (sum(max(in_degree_vec) - in_degree_vec)) /
   ((network_size - 1) * (network_size - 2))
 cat(sprintf("  ✓ Centralization (in-degree): %.4f\n", centralization_in))
@@ -253,7 +253,7 @@ cat("\n[3/4] Computing community structure...\n")
 
 # Louvain community detection (already computed in 3_StatnetAnalysis.R)
 # Re-compute if necessary
-comm_louvain <- cluster_louvain(g_igraph)
+comm_louvain <- igraph::cluster_louvain(g_igraph)
 num_communities <- length(unique(comm_louvain$membership))
 modularity_louvain <- modularity(g_igraph, comm_louvain$membership)
 cat(sprintf(
@@ -401,3 +401,4 @@ cat("\n✓ Metrics computation complete. Results saved to graphs/\n")
 cat("  Use nodes_with_metrics for per-user analysis\n")
 cat("  Use network_metrics for global statistics\n")
 cat("  Use community_stats to understand cluster structure\n\n")
+
