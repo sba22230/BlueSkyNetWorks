@@ -94,7 +94,7 @@ cat(sprintf(
 # Get network-level statistics
 network_stats <- DBI::dbGetQuery(
   conn,
-  "EXEC sp_ComputeNetworkMetrics @network_stats = @stats OUTPUT"
+  "EXEC sp_ComputeNetworkMetrics @network_stats = NULL"
 )
 
 if (!is.null(network_stats)) {
@@ -119,10 +119,11 @@ comparison <- sql_metrics %>%
       select(name, pagerank, betweenness, in_degree, out_degree),
     by = c("handle" = "name")
   ) %>%
+  filter(!is.na(pagerank)) %>% # Keep only matched rows
   mutate(
     # Normalize SQL influence score to 0-1 for comparison with pagerank
     influence_normalized = influence_score / 100,
-    pagerank_normalized = scales::rescale(pagerank, to = c(0, 1))
+    pagerank_normalized = safe_rescale(pagerank)
   )
 
 cat("\n  Sample comparison (top 10 by SQL influence):\n")

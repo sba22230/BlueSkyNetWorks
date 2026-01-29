@@ -1,17 +1,17 @@
 triad_type,count,description
-0,1417897,003: no edges
-1,16715,012: single directed edge
-2,977,102: single undirected edge
-3,104,021D: two asymmetric edges
-4,32,021U: single undirected + one directed
-5,73,021C: path of length 2
-6,6,111D: three asymmetric edges
-7,14,111U: two undirected + one directed
-8,2,030T: transitive triple
-9,0,030C: cyclic triple
-10,0,201: bidirectional edge + isolated
-11,0,120D: one mutual + one asymmetric
-12,0,120U: one mutual + two directed
-13,0,120C: one mutual + path
-14,0,210: mutual edge + two directed
-15,0,300: all mutual edges
+0,NA,003: no edges
+1,514059033,012: single directed edge
+2,114556426,102: single undirected edge
+3,437595,021D: two asymmetric edges
+4,10310023,021U: single undirected + one directed
+5,1022163,021C: path of length 2
+6,452282,111D: three asymmetric edges
+7,82260,111U: two undirected + one directed
+8,68790,030T: transitive triple
+9,1399,030C: cyclic triple
+10,10992,201: bidirectional edge + isolated
+11,20549,120D: one mutual + one asymmetric
+12,7271,120U: one mutual + two directed
+13,5190,120C: one mutual + path
+14,5579,210: mutual edge + two directed
+15,984,300: all mutual edges

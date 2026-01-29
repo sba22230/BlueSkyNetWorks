@@ -66,28 +66,53 @@ kcore_vals <- coreness(g_igraph)
 cat("  ✓ k-core decomposition computed\n")
 
 # Betweenness in igraph (verify against statnet)
-betweenness_ig <- igraph::betweenness(g_igraph, V(g_igraph), directed = TRUE, weights = NULL)
+betweenness_ig <- igraph::betweenness(
+  g_igraph,
+  V(g_igraph),
+  directed = TRUE,
+  weights = NULL
+)
 cat("  ✓ Cross-verified betweenness (igraph)\n")
+# align numeric vectors to node order
+node_keys <- as.character(nodes$name)
+betw_vec <- betweenness_vals[match(node_keys, names(betweenness_vals))]
+clos_vec <- closeness_vals[match(node_keys, names(closeness_vals))]
+pagerank_vec <- pagerank_vals[match(node_keys, names(pagerank_vals))]
+auth_vec <- authority_score[match(node_keys, names(authority_score))]
+in_vec <- in_degree[match(node_keys, names(in_degree))]
+out_vec <- out_degree[match(node_keys, names(out_degree))]
+kcore_vec <- kcore_vals[match(node_keys, names(kcore_vals))]
+local_clust_vec <- local_clustering[match(node_keys, names(local_clustering))]
 
-# Combine all node metrics into nodes dataframe
+# safe rescale helper
+safe_rescale <- function(x) {
+  if (all(is.na(x))) {
+    return(rep(0, length(x)))
+  }
+  rng <- range(x, na.rm = TRUE)
+  if (rng[1] == rng[2]) {
+    return(rep(0, length(x)))
+  }
+  scales::rescale(x, to = c(0, 1), from = rng)
+}
+
 nodes_with_metrics <- nodes %>%
   dplyr::mutate(
-    betweenness = betweenness_vals[name],
-    closeness = closeness_vals[name],
-    eigenvector_centrality = eigen_vals[name],
-    pagerank = pagerank_vals[name],
-    hub_score = hub_score[name],
-    authority_score = authority_score[name],
-    local_clustering = local_clustering[name],
-    kcore = kcore_vals[name],
-    in_degree = in_degree[name],
-    out_degree = out_degree[name],
-    total_degree = total_degree[name],
-    # Normalize metrics to 0-1 scale for comparison
-    betweenness_norm = scales::rescale(betweenness, to = c(0, 1)),
-    closeness_norm = scales::rescale(closeness_vals, to = c(0, 1)),
-    pagerank_norm = scales::rescale(pagerank_vals, to = c(0, 1)),
-    authority_norm = scales::rescale(authority_score, to = c(0, 1))
+    betweenness = betw_vec,
+    closeness = clos_vec,
+    eigenvector_centrality = eigen_vals[match(node_keys, names(eigen_vals))],
+    pagerank = pagerank_vec,
+    hub_score = hub_score[match(node_keys, names(hub_score))],
+    authority_score = auth_vec,
+    local_clustering = local_clust_vec,
+    kcore = kcore_vec,
+    in_degree = in_vec,
+    out_degree = out_vec,
+    total_degree = (in_vec + out_vec),
+    betweenness_norm = safe_rescale(betweenness),
+    closeness_norm = safe_rescale(closeness),
+    pagerank_norm = safe_rescale(pagerank),
+    authority_norm = safe_rescale(authority_score)
   )
 
 cat("\n✓ Node-level metrics compiled into 'nodes_with_metrics' tibble\n")
@@ -253,7 +278,7 @@ cat("\n[3/4] Computing community structure...\n")
 
 # Louvain community detection (already computed in 3_StatnetAnalysis.R)
 # Re-compute if necessary
-comm_louvain <- igraph::cluster_louvain(g_igraph)
+comm_louvain <- igraph::cluster_louvain(as.undirected(g_igraph))
 num_communities <- length(unique(comm_louvain$membership))
 modularity_louvain <- modularity(g_igraph, comm_louvain$membership)
 cat(sprintf(
@@ -401,4 +426,3 @@ cat("\n✓ Metrics computation complete. Results saved to graphs/\n")
 cat("  Use nodes_with_metrics for per-user analysis\n")
 cat("  Use network_metrics for global statistics\n")
 cat("  Use community_stats to understand cluster structure\n\n")
-
