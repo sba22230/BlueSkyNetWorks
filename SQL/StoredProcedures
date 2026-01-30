@@ -5,7 +5,52 @@
 -- Inverse of mean distance; nodes with shorter paths to others have higher closeness
 -- For directed graphs, we compute reachability-based closeness
 
-CREATE OR ALTER PROCEDURE sp_ComputeCloseness
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_ComputeCloseness]    Script Date: 30/01/2026 10:19:14 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+-- ============================================================================
+-- BlueSkyNetWorks: SQL Server Graph Table Metrics Computation
+-- ============================================================================
+-- This script computes network metrics using T-SQL graph table queries
+-- and stores results back in the Person table for retrieval by R
+-- ============================================================================
+
+-- ============================================================================
+-- SECTION 1: DEGREE METRICS (In-Degree, Out-Degree, Total Degree)
+-- ============================================================================
+
+-- Degree metrics: count incoming and outgoing edges
+-- In-Degree: how many times a post was reposted (reposts_received)
+-- Out-Degree: how many times a user reposted (reposts_made)
+/*
+UPDATE dbo.Person
+SET 
+    reposts_received = COALESCE((
+        SELECT COUNT(*) 
+        FROM dbo.Reposted
+        WHERE $to_id = dbo.Person.$node_id
+    ), 0),
+    reposts_made = COALESCE((
+        SELECT COUNT(*)
+        FROM dbo.Reposted
+        WHERE $from_id = dbo.Person.$node_id
+    ), 0);
+*/
+-- ============================================================================
+-- SECTION 2: CLOSENESS CENTRALITY
+-- ============================================================================
+-- Closeness: average shortest path distance from a node to all others
+-- Inverse of mean distance; nodes with shorter paths to others have higher closeness
+-- For directed graphs, we compute reachability-based closeness
+
+CREATE OR ALTER   PROCEDURE [dbo].[sp_ComputeCloseness]
 AS
 BEGIN
     -- Create temp table to store closeness values
@@ -17,7 +62,7 @@ BEGIN
 
     -- For each person, compute average shortest path to all reachable others
     DECLARE @person_handle NVARCHAR(255);
-    DECLARE @person_id UNIQUEIDENTIFIER;
+    DECLARE @person_id NVARCHAR(1000) --UNIQUEIDENTIFIER;
     DECLARE person_cursor CURSOR FOR 
         SELECT handle, $node_id FROM dbo.Person;
 
@@ -69,7 +114,24 @@ GO
 -- Clustering: for each node, what fraction of its neighbors' neighbors are also neighbors?
 -- Measures local density of triangles (triadic closure)
 
-CREATE OR ALTER PROCEDURE sp_ComputeClusteringCoefficient
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_ComputeClusteringCoefficient]    Script Date: 30/01/2026 10:20:13 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+-- ============================================================================
+-- SECTION 3: LOCAL CLUSTERING COEFFICIENT
+-- ============================================================================
+-- Clustering: for each node, what fraction of its neighbors' neighbors are also neighbors?
+-- Measures local density of triangles (triadic closure)
+
+CREATE OR ALTER   PROCEDURE [dbo].[sp_ComputeClusteringCoefficient]
 AS
 BEGIN
     CREATE TABLE #clustering_temp (
@@ -80,7 +142,7 @@ BEGIN
     -- For each person, count triangles involving that person
     -- Triangle: A -> B -> C -> A (or any direction)
     DECLARE @person_handle NVARCHAR(255);
-    DECLARE @person_id UNIQUEIDENTIFIER;
+    DECLARE @person_id NVARCHAR(1000) --UNIQUEIDENTIFIER;
     DECLARE @out_neighbors INT;
     DECLARE @possible_edges INT;
     DECLARE @actual_triangles INT;
@@ -93,7 +155,7 @@ BEGIN
     WHILE @@FETCH_STATUS = 0
     BEGIN
         -- Get neighbors of this person (both in and out)
-        DECLARE @neighbors TABLE (node_id UNIQUEIDENTIFIER);
+        DECLARE @neighbors TABLE (node_id NVARCHAR(1000) ); --UNIQUEIDENTIFIER
         INSERT INTO @neighbors
         SELECT DISTINCT $from_id FROM dbo.Reposted WHERE $to_id = @person_id
         UNION
@@ -140,12 +202,23 @@ GO
 -- Betweenness: count how many shortest paths pass through a node
 -- Full betweenness requires all-pairs shortest paths; here we show edge betweenness
 -- (For true node betweenness, consider computing this in R; SQL can be slow for large graphs)
+-- TODO : Implement full node betweenness - using R
 
-CREATE OR ALTER PROCEDURE sp_ComputeEdgeBetweenness
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_ComputeEdgeBetweenness]    Script Date: 30/01/2026 10:21:37 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER   PROCEDURE [dbo].[sp_ComputeEdgeBetweenness]
 AS
 BEGIN
     CREATE TABLE #edge_betweenness (
-        repost_id BIGINT NOT NULL PRIMARY KEY,
+        repost_id NVARCHAR(1000) NOT NULL PRIMARY KEY,
         betweenness INT
     );
 
@@ -163,10 +236,16 @@ BEGIN
     WHERE p1.$node_id <> p3.$node_id
     GROUP BY r.$edge_id;
 
-    -- You can normalize or store these results as needed
-    SELECT TOP 20 * FROM #edge_betweenness ORDER BY betweenness DESC;
+    -- Update Person table with closeness values
+    /*
+    UPDATE p
+    SET betweenness = c.betweenness
+    FROM dbo.Person p
+    JOIN #edge_betweenness c ON p.handle = c.handle;
 
-    DROP TABLE #edge_betweenness;
+
+    DROP TABLE #edge_betweenness;*/
+    SELECT * FROM #edge_betweenness;
 END;
 GO
 
@@ -174,7 +253,22 @@ GO
 -- SECTION 5: NETWORK-LEVEL METRICS
 -- ============================================================================
 
-CREATE OR ALTER PROCEDURE sp_ComputeNetworkMetrics
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_ComputeNetworkMetrics]    Script Date: 30/01/2026 10:22:05 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+-- ============================================================================
+-- SECTION 5: NETWORK-LEVEL METRICS
+-- ============================================================================
+
+CREATE OR ALTER   PROCEDURE [dbo].[sp_ComputeNetworkMetrics]
     @network_stats NVARCHAR(MAX) OUTPUT
 AS
 BEGIN
@@ -183,6 +277,7 @@ BEGIN
     DECLARE @density FLOAT;
     DECLARE @reciprocity FLOAT;
     DECLARE @avg_degree FLOAT;
+    
 
     -- Total nodes
     SELECT @node_count = COUNT(*) FROM dbo.Person;
@@ -227,14 +322,28 @@ BEGIN
 
     RETURN 0;
 END;
+
 GO
+
+
+
 
 -- ============================================================================
 -- SECTION 6: INFLUENCE METRICS (Activity-Based Ranking)
 -- ============================================================================
 -- Simple influence score based on posts authored, reposts made, and reposts received
 
-CREATE OR ALTER PROCEDURE sp_ComputeInfluenceScore
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_ComputeInfluenceScore]    Script Date: 30/01/2026 10:22:55 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER   PROCEDURE [dbo].[sp_ComputeInfluenceScore]
 AS
 BEGIN
     -- Normalize activity metrics and compute composite influence score
@@ -257,4 +366,7 @@ BEGIN
     WHERE @max_posts > 0 OR @max_reposts_made > 0 OR @max_reposts_received > 0;
 END;
 GO
+
+
+
 

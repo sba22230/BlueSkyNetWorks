@@ -3,7 +3,17 @@
 -- ============================================================================
 -- Extract subgraph of users above influence threshold (useful for visualization)
 
-CREATE OR ALTER FUNCTION fn_GetInfluenceSubgraph(
+USE [BlueSkyNet]
+GO
+
+/****** Object:  UserDefinedFunction [dbo].[fn_GetInfluenceSubgraph]    Script Date: 30/01/2026 10:18:13 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER   FUNCTION [dbo].[fn_GetInfluenceSubgraph](
     @influence_threshold INT
 )
 RETURNS TABLE
@@ -22,3 +32,6 @@ RETURN (
       AND t.influence_score >= @influence_threshold
 );
 GO
+
+
+
