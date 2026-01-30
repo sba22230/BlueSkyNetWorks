@@ -3,12 +3,7 @@
 # This script computes node-level and network-level statistics
 
 # Load libraries and functions (assumes 0_functions.R was already sourced in 3_StatnetAnalysis.R)
-library(igraph)
-library(statnet)
-library(intergraph)
-library(dplyr)
-library(arrow)
-library(readr)
+source("0_functions.R")
 
 # Source 3_StatnetAnalysis.R if not already loaded (comment out if already running in same session)
 # source("3_StatnetAnalysis.R")

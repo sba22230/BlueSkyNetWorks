@@ -158,6 +158,35 @@ CREATE TABLE Person (
     total_likes_on_posts INT DEFAULT 0,   -- optional aggregate
     total_replies_on_posts INT DEFAULT 0, -- optional aggregate
     total_bookmarks_on_posts INT DEFAULT 0,
+    -- Core centrality measures
+    betweenness FLOAT NULL,
+    betweenness_norm FLOAT NULL,
+    closeness FLOAT NULL,
+    closeness_norm FLOAT NULL,
+    eigenvector_centrality FLOAT NULL,
+    pagerank FLOAT NULL,
+    pagerank_norm FLOAT NULL,
+    
+    -- Authority and hub scores
+    hub_score FLOAT NULL,
+    authority_score FLOAT NULL,
+    authority_norm FLOAT NULL,
+    
+    -- Clustering and cohesion
+    local_clustering FLOAT NULL,
+    kcore INT NULL,
+    
+    -- Degree variants (already may exist, but explicit here)
+    in_degree INT NULL,
+    out_degree INT NULL,
+    total_degree INT NULL,
+    
+    -- Community assignment
+    community INT NULL,
+    modularity FLOAT NULL,
+    
+    -- Engagement influence score (composite)
+    influence_score FLOAT NULL,  -- can be computed as weighted combo of metrics
 
     PRIMARY KEY (handle)
 ) AS NODE;"

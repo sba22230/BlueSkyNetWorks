@@ -281,6 +281,30 @@ ceneig <- centralization(bluSkynet, evcent)
 gden(bluSkynet)
 grecip(bluSkynet)
 grecip(bluSkynet, measure = "edgewise")
+network.size(bluSkynet2)
+network.edgecount(bluSkynet2)
+
+summarybsky_df <- tibble(
+  network_size = vcount(g2),
+  edge_count = ecount(g2),
+  dyad_count = gsize(g2),
+  density = edge_density(g2),
+  mutual_pairs = dyad_census(g2)$mut,
+  asymetric_pairs = dyad_census(g2)$asym,
+  isolated_nodes = dyad_census(g2)$null,
+  diameter = diameter(g2, directed = TRUE, weights = NA),
+  avg_path_length = mean_distance(g2, directed = TRUE),
+  neighbours_average = neighbors(g2, V(g2), mode = "all"),
+  reciprocity_default = reciprocity(g2, mode = "default"),
+  reciprocity_ratio = reciprocity(g2, mode = "ratio"),
+  average_in_degree = mean(igraph::degree(g2, mode = "in")),
+  average_out_degree = mean(igraph::degree(g2, mode = "out")),
+  most_replied_to = names(which.max(igraph::degree(g2, mode = "in"))),
+  most_active_replier = names(which.max(igraph::degree(g2, mode = "out")))
+)
+
+print(summarybsky_df)
+
 
 # Graph Layouts
 

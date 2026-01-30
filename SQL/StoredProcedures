@@ -367,6 +367,201 @@ BEGIN
 END;
 GO
 
+-- =============================================================================
+-- SECTION 6: STORED PROCEDURES FOR COMMON QUERIES
+-- =============================================================================
+
+-- Procedure: Insert global metrics from R output
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[InsertGlobalMetrics]    Script Date: 30/01/2026 11:06:53 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+-- Procedure: Insert global metrics from R output
+CREATE OR ALTER PROCEDURE [dbo].[InsertGlobalMetrics]
+    @network_size INT,
+    @edge_count INT,
+    @dyad_count INT,
+    @density FLOAT,
+    @reciprocity_edgewise FLOAT,
+    @reciprocity_dyadic FLOAT,
+    @diameter INT,
+    @avg_path_length FLOAT,
+    @num_components INT,
+    @giant_component_size INT,
+    @giant_component_pct FLOAT,
+    @global_clustering FLOAT,
+    @avg_local_clustering FLOAT,
+    @centralization_indegree FLOAT,
+    @num_communities INT,
+    @modularity FLOAT,
+    @search_term NVARCHAR(255) = NULL,
+    @analysis_notes NVARCHAR(MAX) = NULL,
+    @metric_id INT OUTPUT
+AS
+BEGIN
+    INSERT INTO dbo.GlobalNetworkMetrics (
+        search_term, network_size, edge_count, dyad_count,
+        density, reciprocity_edgewise, reciprocity_dyadic,
+        diameter, avg_path_length, num_components, giant_component_size, giant_component_pct,
+        global_clustering, avg_local_clustering, centralization_indegree,
+        num_communities, modularity, analysis_notes
+    )
+    VALUES (
+        @search_term, @network_size, @edge_count, @dyad_count,
+        @density, @reciprocity_edgewise, @reciprocity_dyadic,
+        @diameter, @avg_path_length, @num_components, @giant_component_size, @giant_component_pct,
+        @global_clustering, @avg_local_clustering, @centralization_indegree,
+        @num_communities, @modularity, @analysis_notes
+    );
+    
+    SET @metric_id = SCOPE_IDENTITY();
+END;
+GO
+
+
+
+-- Procedure: Get top influencers by various measures
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[GetTopInfluencers]    Script Date: 30/01/2026 11:07:26 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+-- Procedure: Get top influencers by various measures
+CREATE OR ALTER PROCEDURE [dbo].[GetTopInfluencers]
+    @top_n INT = 20,
+    @metric_name NVARCHAR(50) = 'pagerank'  -- 'pagerank', 'betweenness', 'authority', 'degree'
+AS
+BEGIN
+    IF @metric_name = 'pagerank'
+        SELECT TOP (@top_n) 
+            handle, pagerank, in_degree, out_degree, 
+            reposts_received, reposts_made, community
+        FROM dbo.Person
+        WHERE pagerank IS NOT NULL
+        ORDER BY pagerank DESC;
+    
+    ELSE IF @metric_name = 'betweenness'
+        SELECT TOP (@top_n) 
+            handle, betweenness, total_degree, 
+            reposts_received, reposts_made, community
+        FROM dbo.Person
+        WHERE betweenness IS NOT NULL
+        ORDER BY betweenness DESC;
+    
+    ELSE IF @metric_name = 'authority'
+        SELECT TOP (@top_n) 
+            handle, authority_score, in_degree, 
+            reposts_received, posts_authored, community
+        FROM dbo.Person
+        WHERE authority_score IS NOT NULL
+        ORDER BY authority_score DESC;
+    
+    ELSE IF @metric_name = 'degree'
+        SELECT TOP (@top_n) 
+            handle, total_degree, in_degree, out_degree,
+            reposts_received, reposts_made, community
+        FROM dbo.Person
+        WHERE total_degree IS NOT NULL
+        ORDER BY total_degree DESC;
+    
+    ELSE
+        RAISERROR('Invalid metric_name. Use: pagerank, betweenness, authority, or degree', 16, 1);
+END;
+GO
+
+
+
+
+-- Procedure: Get community summary
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[GetCommunitySummary]    Script Date: 30/01/2026 11:07:47 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+-- Procedure: Get community summary
+CREATE OR ALTER PROCEDURE [dbo].[GetCommunitySummary]
+    @metric_snapshot_id INT = NULL
+AS
+BEGIN
+    -- If no snapshot specified, use most recent
+    IF @metric_snapshot_id IS NULL
+        SET @metric_snapshot_id = (
+            SELECT TOP 1 metric_id FROM dbo.GlobalNetworkMetrics 
+            ORDER BY analysis_timestamp DESC
+        );
+    
+    SELECT 
+        cs.community_id,
+        cs.community_size,
+        cs.internal_edges,
+        cs.avg_internal_degree,
+        cs.avg_pagerank,
+        cs.avg_authority,
+        cs.avg_local_clustering,
+        COUNT(DISTINCT p.handle) AS member_count,
+        STRING_AGG(p.handle, ', ') WITHIN GROUP (ORDER BY p.pagerank DESC) AS top_members
+    FROM dbo.CommunityStats cs
+    LEFT JOIN dbo.Person p ON p.community = cs.community_id
+    WHERE cs.metric_snapshot_id = @metric_snapshot_id
+    GROUP BY cs.community_id, cs.community_size, cs.internal_edges, 
+             cs.avg_internal_degree, cs.avg_pagerank, cs.avg_authority, cs.avg_local_clustering
+    ORDER BY cs.community_size DESC;
+END;
+GO
+
+
+
+
+-- Procedure: Compare metrics across analysis runs
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[CompareMetricsOverTime]    Script Date: 30/01/2026 11:08:07 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+-- Procedure: Compare metrics across analysis runs
+CREATE OR ALTER PROCEDURE [dbo].[CompareMetricsOverTime]
+    @top_n INT = 10
+AS
+BEGIN
+    SELECT 
+        gm.analysis_timestamp,
+        gm.network_size,
+        gm.edge_count,
+        gm.density,
+        gm.global_clustering,
+        gm.avg_path_length,
+        gm.num_communities,
+        gm.modularity,
+        gm.giant_component_pct
+    FROM dbo.GlobalNetworkMetrics gm
+    ORDER BY gm.analysis_timestamp DESC;
+END;
+GO
+
 
 
 
