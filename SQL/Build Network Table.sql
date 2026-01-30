@@ -1,3 +1,5 @@
+/* the main sql code to build the basic network table */
+
 SELECT P.uri AS Post , 
 P.author_handle AS PostedBy,  
 CAST(P.indexedAt AS date) AS PostedOn, P.text, 
