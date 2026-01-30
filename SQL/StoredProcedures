@@ -1,0 +1,260 @@
+-- ============================================================================
+-- SECTION 2: CLOSENESS CENTRALITY
+-- ============================================================================
+-- Closeness: average shortest path distance from a node to all others
+-- Inverse of mean distance; nodes with shorter paths to others have higher closeness
+-- For directed graphs, we compute reachability-based closeness
+
+CREATE OR ALTER PROCEDURE sp_ComputeCloseness
+AS
+BEGIN
+    -- Create temp table to store closeness values
+    CREATE TABLE #closeness_temp (
+        handle NVARCHAR(255) NOT NULL PRIMARY KEY,
+        avg_distance FLOAT,
+        closeness FLOAT
+    );
+
+    -- For each person, compute average shortest path to all reachable others
+    DECLARE @person_handle NVARCHAR(255);
+    DECLARE @person_id UNIQUEIDENTIFIER;
+    DECLARE person_cursor CURSOR FOR 
+        SELECT handle, $node_id FROM dbo.Person;
+
+    OPEN person_cursor;
+    FETCH NEXT FROM person_cursor INTO @person_handle, @person_id;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        DECLARE @avg_dist FLOAT;
+        DECLARE @reachable INT;
+
+        -- Use SHORTEST_PATH to find distances
+        WITH reachable_nodes AS (
+            SELECT DISTINCT p2.handle, 1 AS distance
+            FROM dbo.Person p1
+            JOIN dbo.Reposted r ON p1.$node_id = r.$from_id
+            JOIN dbo.Person p2 ON r.$to_id = p2.$node_id
+            WHERE p1.$node_id = @person_id
+        )
+        SELECT 
+            @avg_dist = COALESCE(AVG(CAST(distance AS FLOAT)), 0),
+            @reachable = COUNT(*)
+        FROM reachable_nodes;
+
+        -- Closeness = 1 / average_distance (or proportion of reachable nodes)
+        INSERT INTO #closeness_temp
+        VALUES (@person_handle, @avg_dist, 
+                CASE WHEN @avg_dist > 0 THEN 1.0 / @avg_dist ELSE 0 END);
+
+        FETCH NEXT FROM person_cursor INTO @person_handle, @person_id;
+    END;
+
+    CLOSE person_cursor;
+    DEALLOCATE person_cursor;
+
+    -- Update Person table with closeness values
+    UPDATE p
+    SET closeness = c.closeness
+    FROM dbo.Person p
+    JOIN #closeness_temp c ON p.handle = c.handle;
+
+    DROP TABLE #closeness_temp;
+END;
+GO
+
+-- ============================================================================
+-- SECTION 3: LOCAL CLUSTERING COEFFICIENT
+-- ============================================================================
+-- Clustering: for each node, what fraction of its neighbors' neighbors are also neighbors?
+-- Measures local density of triangles (triadic closure)
+
+CREATE OR ALTER PROCEDURE sp_ComputeClusteringCoefficient
+AS
+BEGIN
+    CREATE TABLE #clustering_temp (
+        handle NVARCHAR(255) NOT NULL PRIMARY KEY,
+        local_clustering FLOAT
+    );
+
+    -- For each person, count triangles involving that person
+    -- Triangle: A -> B -> C -> A (or any direction)
+    DECLARE @person_handle NVARCHAR(255);
+    DECLARE @person_id UNIQUEIDENTIFIER;
+    DECLARE @out_neighbors INT;
+    DECLARE @possible_edges INT;
+    DECLARE @actual_triangles INT;
+    DECLARE person_cursor CURSOR FOR 
+        SELECT handle, $node_id FROM dbo.Person;
+
+    OPEN person_cursor;
+    FETCH NEXT FROM person_cursor INTO @person_handle, @person_id;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        -- Get neighbors of this person (both in and out)
+        DECLARE @neighbors TABLE (node_id UNIQUEIDENTIFIER);
+        INSERT INTO @neighbors
+        SELECT DISTINCT $from_id FROM dbo.Reposted WHERE $to_id = @person_id
+        UNION
+        SELECT DISTINCT $to_id FROM dbo.Reposted WHERE $from_id = @person_id;
+
+        SELECT @out_neighbors = COUNT(*) FROM @neighbors;
+
+        -- Maximum possible edges between neighbors
+        SET @possible_edges = @out_neighbors * (@out_neighbors - 1) / 2;
+
+        -- Count actual edges between neighbors
+        SELECT @actual_triangles = COUNT(*)
+        FROM @neighbors n1
+        JOIN dbo.Reposted r ON n1.node_id = r.$from_id
+        JOIN @neighbors n2 ON r.$to_id = n2.node_id
+        WHERE n1.node_id < n2.node_id;
+
+        -- Clustering coefficient
+        INSERT INTO #clustering_temp
+        VALUES (@person_handle, 
+                CASE WHEN @possible_edges > 0 
+                     THEN CAST(@actual_triangles AS FLOAT) / @possible_edges 
+                     ELSE 0 END);
+
+        FETCH NEXT FROM person_cursor INTO @person_handle, @person_id;
+    END;
+
+    CLOSE person_cursor;
+    DEALLOCATE person_cursor;
+
+    -- Update Person table
+    UPDATE p
+    SET local_clustering = c.local_clustering
+    FROM dbo.Person p
+    JOIN #clustering_temp c ON p.handle = c.handle;
+
+    DROP TABLE #clustering_temp;
+END;
+GO
+
+-- ============================================================================
+-- SECTION 4: SIMPLE BETWEENNESS CENTRALITY (Via Shortest Paths)
+-- ============================================================================
+-- Betweenness: count how many shortest paths pass through a node
+-- Full betweenness requires all-pairs shortest paths; here we show edge betweenness
+-- (For true node betweenness, consider computing this in R; SQL can be slow for large graphs)
+
+CREATE OR ALTER PROCEDURE sp_ComputeEdgeBetweenness
+AS
+BEGIN
+    CREATE TABLE #edge_betweenness (
+        repost_id BIGINT NOT NULL PRIMARY KEY,
+        betweenness INT
+    );
+
+    -- For each edge, count shortest paths that use it
+    -- Simplified: count 2-hop paths through each edge
+    INSERT INTO #edge_betweenness
+    SELECT 
+        r.$edge_id,
+        COUNT(DISTINCT CONCAT(p1.handle, p3.handle)) AS betweenness
+    FROM dbo.Reposted r
+    JOIN dbo.Person p1 ON r.$from_id = p1.$node_id
+    JOIN dbo.Person p2 ON r.$to_id = p2.$node_id
+    JOIN dbo.Reposted r2 ON p2.$node_id = r2.$from_id
+    JOIN dbo.Person p3 ON r2.$to_id = p3.$node_id
+    WHERE p1.$node_id <> p3.$node_id
+    GROUP BY r.$edge_id;
+
+    -- You can normalize or store these results as needed
+    SELECT TOP 20 * FROM #edge_betweenness ORDER BY betweenness DESC;
+
+    DROP TABLE #edge_betweenness;
+END;
+GO
+
+-- ============================================================================
+-- SECTION 5: NETWORK-LEVEL METRICS
+-- ============================================================================
+
+CREATE OR ALTER PROCEDURE sp_ComputeNetworkMetrics
+    @network_stats NVARCHAR(MAX) OUTPUT
+AS
+BEGIN
+    DECLARE @node_count INT;
+    DECLARE @edge_count INT;
+    DECLARE @density FLOAT;
+    DECLARE @reciprocity FLOAT;
+    DECLARE @avg_degree FLOAT;
+
+    -- Total nodes
+    SELECT @node_count = COUNT(*) FROM dbo.Person;
+
+    -- Total edges
+    SELECT @edge_count = COUNT(*) FROM dbo.Reposted;
+
+    -- Density = edges / (nodes * (nodes-1)) for directed graphs
+    SET @density = CASE 
+        WHEN @node_count > 1 
+        THEN CAST(@edge_count AS FLOAT) / (@node_count * (@node_count - 1))
+        ELSE 0 
+    END;
+
+    -- Reciprocity: % of edges that have a reciprocal edge
+    DECLARE @reciprocal_edges INT;
+    SELECT @reciprocal_edges = COUNT(*)
+    FROM dbo.Reposted r1
+    WHERE EXISTS (
+        SELECT 1 FROM dbo.Reposted r2
+        WHERE r1.$from_id = r2.$to_id AND r1.$to_id = r2.$from_id
+    );
+    SET @reciprocity = CASE WHEN @edge_count > 0 
+                           THEN CAST(@reciprocal_edges AS FLOAT) / @edge_count 
+                           ELSE 0 END;
+
+    -- Average degree
+    SET @avg_degree = CASE WHEN @node_count > 0 
+                          THEN CAST(2 * @edge_count AS FLOAT) / @node_count 
+                          ELSE 0 END;
+
+    -- Format as JSON for easy R consumption
+    SET @network_stats = (
+        SELECT 
+            @node_count AS nodes,
+            @edge_count AS edges,
+            @density AS density,
+            @reciprocity AS reciprocity,
+            @avg_degree AS avg_degree
+        FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
+    );
+
+    RETURN 0;
+END;
+GO
+
+-- ============================================================================
+-- SECTION 6: INFLUENCE METRICS (Activity-Based Ranking)
+-- ============================================================================
+-- Simple influence score based on posts authored, reposts made, and reposts received
+
+CREATE OR ALTER PROCEDURE sp_ComputeInfluenceScore
+AS
+BEGIN
+    -- Normalize activity metrics and compute composite influence score
+    DECLARE @max_posts INT;
+    DECLARE @max_reposts_made INT;
+    DECLARE @max_reposts_received INT;
+
+    SELECT 
+        @max_posts = MAX(posts_authored),
+        @max_reposts_made = MAX(reposts_made),
+        @max_reposts_received = MAX(reposts_received)
+    FROM dbo.Person;
+
+    UPDATE dbo.Person
+    SET influence_score = (
+        0.3 * (CAST(posts_authored AS FLOAT) / NULLIF(@max_posts, 0)) +
+        0.3 * (CAST(reposts_made AS FLOAT) / NULLIF(@max_reposts_made, 0)) +
+        0.4 * (CAST(reposts_received AS FLOAT) / NULLIF(@max_reposts_received, 0))
+    ) * 100  -- Scale to 0-100
+    WHERE @max_posts > 0 OR @max_reposts_made > 0 OR @max_reposts_received > 0;
+END;
+GO
+
