@@ -563,5 +563,33 @@ END;
 GO
 
 
+USE [BlueSkyNet]
+GO
 
+/****** Object:  StoredProcedure [dbo].[sp_ComputeEdgeBetweenness]    Script Date: 30/01/2026 15:48:49 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+CREATE OR ALTER     PROCEDURE [dbo].[sp_ComputeEdgeweight]
+AS
+BEGIN
+    WITH weighted_edges AS (
+    SELECT 
+        r.$edge_id as [edge_Id],
+        
+        EXP(-0.01 * DATEDIFF(DAY, r.edgeStarts, SYSUTCDATETIME())) AS weight
+    FROM dbo.Reposted r
+)
+--SELECT * FROM weighted_edges
+UPDATE r
+SET r.weight = w.weight
+FROM dbo.Reposted r
+JOIN weighted_edges w
+    ON r.$edge_id = w.edge_Id
+END;
+GO
 

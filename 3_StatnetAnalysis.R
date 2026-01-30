@@ -267,7 +267,7 @@ save_graph_svg(
   filename = "5_bluSkynet.svg"
 )
 
-bet <- betweenness(bluSkynet, gmode = "graph")
+bet <- betweenness(bluSkynet, gmode = "graph") #  how often shortest paths pass through something
 bet
 
 gplot(bluSkynet, vertex.cex = sqrt(bet) / 25, gmode = "graph")

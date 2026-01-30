@@ -133,6 +133,8 @@ CREATE TABLE dbo.Reposted (
     bookmark_count INT NULL,
     repost_count INT NULL,
     text NVARCHAR(MAX) NULL,
+    weight FLOAT NULL,
+    betweenness FLOAT NULL,
     edgeStarts DATETIME2 NULL,
     edgeEnds DATETIME2 NULL
 ) AS EDGE;
