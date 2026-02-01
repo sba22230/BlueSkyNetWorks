@@ -1,0 +1,595 @@
+-- ============================================================================
+-- SECTION 2: CLOSENESS CENTRALITY
+-- ============================================================================
+-- Closeness: average shortest path distance from a node to all others
+-- Inverse of mean distance; nodes with shorter paths to others have higher closeness
+-- For directed graphs, we compute reachability-based closeness
+
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_ComputeCloseness]    Script Date: 30/01/2026 10:19:14 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+-- ============================================================================
+-- BlueSkyNetWorks: SQL Server Graph Table Metrics Computation
+-- ============================================================================
+-- This script computes network metrics using T-SQL graph table queries
+-- and stores results back in the Person table for retrieval by R
+-- ============================================================================
+
+-- ============================================================================
+-- SECTION 1: DEGREE METRICS (In-Degree, Out-Degree, Total Degree)
+-- ============================================================================
+
+-- Degree metrics: count incoming and outgoing edges
+-- In-Degree: how many times a post was reposted (reposts_received)
+-- Out-Degree: how many times a user reposted (reposts_made)
+/*
+UPDATE dbo.Person
+SET 
+    reposts_received = COALESCE((
+        SELECT COUNT(*) 
+        FROM dbo.Reposted
+        WHERE $to_id = dbo.Person.$node_id
+    ), 0),
+    reposts_made = COALESCE((
+        SELECT COUNT(*)
+        FROM dbo.Reposted
+        WHERE $from_id = dbo.Person.$node_id
+    ), 0);
+*/
+-- ============================================================================
+-- SECTION 2: CLOSENESS CENTRALITY
+-- ============================================================================
+-- Closeness: average shortest path distance from a node to all others
+-- Inverse of mean distance; nodes with shorter paths to others have higher closeness
+-- For directed graphs, we compute reachability-based closeness
+
+CREATE OR ALTER   PROCEDURE [dbo].[sp_ComputeCloseness]
+AS
+BEGIN
+    -- Create temp table to store closeness values
+    CREATE TABLE #closeness_temp (
+        handle NVARCHAR(255) NOT NULL PRIMARY KEY,
+        avg_distance FLOAT,
+        closeness FLOAT
+    );
+
+    -- For each person, compute average shortest path to all reachable others
+    DECLARE @person_handle NVARCHAR(255);
+    DECLARE @person_id NVARCHAR(1000) --UNIQUEIDENTIFIER;
+    DECLARE person_cursor CURSOR FOR 
+        SELECT handle, $node_id FROM dbo.Person;
+
+    OPEN person_cursor;
+    FETCH NEXT FROM person_cursor INTO @person_handle, @person_id;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        DECLARE @avg_dist FLOAT;
+        DECLARE @reachable INT;
+
+        -- Use SHORTEST_PATH to find distances
+        WITH reachable_nodes AS (
+            SELECT DISTINCT p2.handle, 1 AS distance
+            FROM dbo.Person p1
+            JOIN dbo.Reposted r ON p1.$node_id = r.$from_id
+            JOIN dbo.Person p2 ON r.$to_id = p2.$node_id
+            WHERE p1.$node_id = @person_id
+        )
+        SELECT 
+            @avg_dist = COALESCE(AVG(CAST(distance AS FLOAT)), 0),
+            @reachable = COUNT(*)
+        FROM reachable_nodes;
+
+        -- Closeness = 1 / average_distance (or proportion of reachable nodes)
+        INSERT INTO #closeness_temp
+        VALUES (@person_handle, @avg_dist, 
+                CASE WHEN @avg_dist > 0 THEN 1.0 / @avg_dist ELSE 0 END);
+
+        FETCH NEXT FROM person_cursor INTO @person_handle, @person_id;
+    END;
+
+    CLOSE person_cursor;
+    DEALLOCATE person_cursor;
+
+    -- Update Person table with closeness values
+    UPDATE p
+    SET closeness = c.closeness
+    FROM dbo.Person p
+    JOIN #closeness_temp c ON p.handle = c.handle;
+
+    DROP TABLE #closeness_temp;
+END;
+GO
+
+-- ============================================================================
+-- SECTION 3: LOCAL CLUSTERING COEFFICIENT
+-- ============================================================================
+-- Clustering: for each node, what fraction of its neighbors' neighbors are also neighbors?
+-- Measures local density of triangles (triadic closure)
+
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_ComputeClusteringCoefficient]    Script Date: 30/01/2026 10:20:13 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+-- ============================================================================
+-- SECTION 3: LOCAL CLUSTERING COEFFICIENT
+-- ============================================================================
+-- Clustering: for each node, what fraction of its neighbors' neighbors are also neighbors?
+-- Measures local density of triangles (triadic closure)
+
+CREATE OR ALTER   PROCEDURE [dbo].[sp_ComputeClusteringCoefficient]
+AS
+BEGIN
+    CREATE TABLE #clustering_temp (
+        handle NVARCHAR(255) NOT NULL PRIMARY KEY,
+        local_clustering FLOAT
+    );
+
+    -- For each person, count triangles involving that person
+    -- Triangle: A -> B -> C -> A (or any direction)
+    DECLARE @person_handle NVARCHAR(255);
+    DECLARE @person_id NVARCHAR(1000) --UNIQUEIDENTIFIER;
+    DECLARE @out_neighbors INT;
+    DECLARE @possible_edges INT;
+    DECLARE @actual_triangles INT;
+    DECLARE person_cursor CURSOR FOR 
+        SELECT handle, $node_id FROM dbo.Person;
+
+    OPEN person_cursor;
+    FETCH NEXT FROM person_cursor INTO @person_handle, @person_id;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        -- Get neighbors of this person (both in and out)
+        DECLARE @neighbors TABLE (node_id NVARCHAR(1000) ); --UNIQUEIDENTIFIER
+        INSERT INTO @neighbors
+        SELECT DISTINCT $from_id FROM dbo.Reposted WHERE $to_id = @person_id
+        UNION
+        SELECT DISTINCT $to_id FROM dbo.Reposted WHERE $from_id = @person_id;
+
+        SELECT @out_neighbors = COUNT(*) FROM @neighbors;
+
+        -- Maximum possible edges between neighbors
+        SET @possible_edges = @out_neighbors * (@out_neighbors - 1) / 2;
+
+        -- Count actual edges between neighbors
+        SELECT @actual_triangles = COUNT(*)
+        FROM @neighbors n1
+        JOIN dbo.Reposted r ON n1.node_id = r.$from_id
+        JOIN @neighbors n2 ON r.$to_id = n2.node_id
+        WHERE n1.node_id < n2.node_id;
+
+        -- Clustering coefficient
+        INSERT INTO #clustering_temp
+        VALUES (@person_handle, 
+                CASE WHEN @possible_edges > 0 
+                     THEN CAST(@actual_triangles AS FLOAT) / @possible_edges 
+                     ELSE 0 END);
+
+        FETCH NEXT FROM person_cursor INTO @person_handle, @person_id;
+    END;
+
+    CLOSE person_cursor;
+    DEALLOCATE person_cursor;
+
+    -- Update Person table
+    UPDATE p
+    SET local_clustering = c.local_clustering
+    FROM dbo.Person p
+    JOIN #clustering_temp c ON p.handle = c.handle;
+
+    DROP TABLE #clustering_temp;
+END;
+GO
+
+-- ============================================================================
+-- SECTION 4: SIMPLE BETWEENNESS CENTRALITY (Via Shortest Paths)
+-- ============================================================================
+-- Betweenness: count how many shortest paths pass through a node
+-- Full betweenness requires all-pairs shortest paths; here we show edge betweenness
+-- (For true node betweenness, consider computing this in R; SQL can be slow for large graphs)
+-- TODO : Implement full node betweenness - using R
+
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_ComputeEdgeBetweenness]    Script Date: 30/01/2026 10:21:37 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER   PROCEDURE [dbo].[sp_ComputeEdgeBetweenness]
+AS
+BEGIN
+    CREATE TABLE #edge_betweenness (
+        repost_id NVARCHAR(1000) NOT NULL PRIMARY KEY,
+        betweenness INT
+    );
+
+    -- For each edge, count shortest paths that use it
+    -- Simplified: count 2-hop paths through each edge
+    INSERT INTO #edge_betweenness
+    SELECT 
+        r.$edge_id,
+        COUNT(DISTINCT CONCAT(p1.handle, p3.handle)) AS betweenness
+    FROM dbo.Reposted r
+    JOIN dbo.Person p1 ON r.$from_id = p1.$node_id
+    JOIN dbo.Person p2 ON r.$to_id = p2.$node_id
+    JOIN dbo.Reposted r2 ON p2.$node_id = r2.$from_id
+    JOIN dbo.Person p3 ON r2.$to_id = p3.$node_id
+    WHERE p1.$node_id <> p3.$node_id
+    GROUP BY r.$edge_id;
+
+    -- Update Person table with closeness values
+    /*
+    UPDATE p
+    SET betweenness = c.betweenness
+    FROM dbo.Person p
+    JOIN #edge_betweenness c ON p.handle = c.handle;
+
+
+    DROP TABLE #edge_betweenness;*/
+    SELECT * FROM #edge_betweenness;
+END;
+GO
+
+-- ============================================================================
+-- SECTION 5: NETWORK-LEVEL METRICS
+-- ============================================================================
+
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_ComputeNetworkMetrics]    Script Date: 30/01/2026 10:22:05 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+-- ============================================================================
+-- SECTION 5: NETWORK-LEVEL METRICS
+-- ============================================================================
+
+CREATE OR ALTER   PROCEDURE [dbo].[sp_ComputeNetworkMetrics]
+    @network_stats NVARCHAR(MAX) OUTPUT
+AS
+BEGIN
+    DECLARE @node_count INT;
+    DECLARE @edge_count INT;
+    DECLARE @density FLOAT;
+    DECLARE @reciprocity FLOAT;
+    DECLARE @avg_degree FLOAT;
+    
+
+    -- Total nodes
+    SELECT @node_count = COUNT(*) FROM dbo.Person;
+
+    -- Total edges
+    SELECT @edge_count = COUNT(*) FROM dbo.Reposted;
+
+    -- Density = edges / (nodes * (nodes-1)) for directed graphs
+    SET @density = CASE 
+        WHEN @node_count > 1 
+        THEN CAST(@edge_count AS FLOAT) / (@node_count * (@node_count - 1))
+        ELSE 0 
+    END;
+
+    -- Reciprocity: % of edges that have a reciprocal edge
+    DECLARE @reciprocal_edges INT;
+    SELECT @reciprocal_edges = COUNT(*)
+    FROM dbo.Reposted r1
+    WHERE EXISTS (
+        SELECT 1 FROM dbo.Reposted r2
+        WHERE r1.$from_id = r2.$to_id AND r1.$to_id = r2.$from_id
+    );
+    SET @reciprocity = CASE WHEN @edge_count > 0 
+                           THEN CAST(@reciprocal_edges AS FLOAT) / @edge_count 
+                           ELSE 0 END;
+
+    -- Average degree
+    SET @avg_degree = CASE WHEN @node_count > 0 
+                          THEN CAST(2 * @edge_count AS FLOAT) / @node_count 
+                          ELSE 0 END;
+
+    -- Format as JSON for easy R consumption
+    SET @network_stats = (
+        SELECT 
+            @node_count AS nodes,
+            @edge_count AS edges,
+            @density AS density,
+            @reciprocity AS reciprocity,
+            @avg_degree AS avg_degree
+        FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
+    );
+
+    RETURN 0;
+END;
+
+GO
+
+
+
+
+-- ============================================================================
+-- SECTION 6: INFLUENCE METRICS (Activity-Based Ranking)
+-- ============================================================================
+-- Simple influence score based on posts authored, reposts made, and reposts received
+
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_ComputeInfluenceScore]    Script Date: 30/01/2026 10:22:55 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER   PROCEDURE [dbo].[sp_ComputeInfluenceScore]
+AS
+BEGIN
+    -- Normalize activity metrics and compute composite influence score
+    DECLARE @max_posts INT;
+    DECLARE @max_reposts_made INT;
+    DECLARE @max_reposts_received INT;
+
+    SELECT 
+        @max_posts = MAX(posts_authored),
+        @max_reposts_made = MAX(reposts_made),
+        @max_reposts_received = MAX(reposts_received)
+    FROM dbo.Person;
+
+    UPDATE dbo.Person
+    SET influence_score = (
+        0.3 * (CAST(posts_authored AS FLOAT) / NULLIF(@max_posts, 0)) +
+        0.3 * (CAST(reposts_made AS FLOAT) / NULLIF(@max_reposts_made, 0)) +
+        0.4 * (CAST(reposts_received AS FLOAT) / NULLIF(@max_reposts_received, 0))
+    ) * 100  -- Scale to 0-100
+    WHERE @max_posts > 0 OR @max_reposts_made > 0 OR @max_reposts_received > 0;
+END;
+GO
+
+-- =============================================================================
+-- SECTION 6: STORED PROCEDURES FOR COMMON QUERIES
+-- =============================================================================
+
+-- Procedure: Insert global metrics from R output
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[InsertGlobalMetrics]    Script Date: 30/01/2026 11:06:53 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+-- Procedure: Insert global metrics from R output
+CREATE OR ALTER PROCEDURE [dbo].[InsertGlobalMetrics]
+    @network_size INT,
+    @edge_count INT,
+    @dyad_count INT,
+    @density FLOAT,
+    @reciprocity_edgewise FLOAT,
+    @reciprocity_dyadic FLOAT,
+    @diameter INT,
+    @avg_path_length FLOAT,
+    @num_components INT,
+    @giant_component_size INT,
+    @giant_component_pct FLOAT,
+    @global_clustering FLOAT,
+    @avg_local_clustering FLOAT,
+    @centralization_indegree FLOAT,
+    @num_communities INT,
+    @modularity FLOAT,
+    @search_term NVARCHAR(255) = NULL,
+    @analysis_notes NVARCHAR(MAX) = NULL,
+    @metric_id INT OUTPUT
+AS
+BEGIN
+    INSERT INTO dbo.GlobalNetworkMetrics (
+        search_term, network_size, edge_count, dyad_count,
+        density, reciprocity_edgewise, reciprocity_dyadic,
+        diameter, avg_path_length, num_components, giant_component_size, giant_component_pct,
+        global_clustering, avg_local_clustering, centralization_indegree,
+        num_communities, modularity, analysis_notes
+    )
+    VALUES (
+        @search_term, @network_size, @edge_count, @dyad_count,
+        @density, @reciprocity_edgewise, @reciprocity_dyadic,
+        @diameter, @avg_path_length, @num_components, @giant_component_size, @giant_component_pct,
+        @global_clustering, @avg_local_clustering, @centralization_indegree,
+        @num_communities, @modularity, @analysis_notes
+    );
+    
+    SET @metric_id = SCOPE_IDENTITY();
+END;
+GO
+
+
+
+-- Procedure: Get top influencers by various measures
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[GetTopInfluencers]    Script Date: 30/01/2026 11:07:26 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+-- Procedure: Get top influencers by various measures
+CREATE OR ALTER PROCEDURE [dbo].[GetTopInfluencers]
+    @top_n INT = 20,
+    @metric_name NVARCHAR(50) = 'pagerank'  -- 'pagerank', 'betweenness', 'authority', 'degree'
+AS
+BEGIN
+    IF @metric_name = 'pagerank'
+        SELECT TOP (@top_n) 
+            handle, pagerank, in_degree, out_degree, 
+            reposts_received, reposts_made, community
+        FROM dbo.Person
+        WHERE pagerank IS NOT NULL
+        ORDER BY pagerank DESC;
+    
+    ELSE IF @metric_name = 'betweenness'
+        SELECT TOP (@top_n) 
+            handle, betweenness, total_degree, 
+            reposts_received, reposts_made, community
+        FROM dbo.Person
+        WHERE betweenness IS NOT NULL
+        ORDER BY betweenness DESC;
+    
+    ELSE IF @metric_name = 'authority'
+        SELECT TOP (@top_n) 
+            handle, authority_score, in_degree, 
+            reposts_received, posts_authored, community
+        FROM dbo.Person
+        WHERE authority_score IS NOT NULL
+        ORDER BY authority_score DESC;
+    
+    ELSE IF @metric_name = 'degree'
+        SELECT TOP (@top_n) 
+            handle, total_degree, in_degree, out_degree,
+            reposts_received, reposts_made, community
+        FROM dbo.Person
+        WHERE total_degree IS NOT NULL
+        ORDER BY total_degree DESC;
+    
+    ELSE
+        RAISERROR('Invalid metric_name. Use: pagerank, betweenness, authority, or degree', 16, 1);
+END;
+GO
+
+
+
+
+-- Procedure: Get community summary
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[GetCommunitySummary]    Script Date: 30/01/2026 11:07:47 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+-- Procedure: Get community summary
+CREATE OR ALTER PROCEDURE [dbo].[GetCommunitySummary]
+    @metric_snapshot_id INT = NULL
+AS
+BEGIN
+    -- If no snapshot specified, use most recent
+    IF @metric_snapshot_id IS NULL
+        SET @metric_snapshot_id = (
+            SELECT TOP 1 metric_id FROM dbo.GlobalNetworkMetrics 
+            ORDER BY analysis_timestamp DESC
+        );
+    
+    SELECT 
+        cs.community_id,
+        cs.community_size,
+        cs.internal_edges,
+        cs.avg_internal_degree,
+        cs.avg_pagerank,
+        cs.avg_authority,
+        cs.avg_local_clustering,
+        COUNT(DISTINCT p.handle) AS member_count,
+        STRING_AGG(p.handle, ', ') WITHIN GROUP (ORDER BY p.pagerank DESC) AS top_members
+    FROM dbo.CommunityStats cs
+    LEFT JOIN dbo.Person p ON p.community = cs.community_id
+    WHERE cs.metric_snapshot_id = @metric_snapshot_id
+    GROUP BY cs.community_id, cs.community_size, cs.internal_edges, 
+             cs.avg_internal_degree, cs.avg_pagerank, cs.avg_authority, cs.avg_local_clustering
+    ORDER BY cs.community_size DESC;
+END;
+GO
+
+
+
+
+-- Procedure: Compare metrics across analysis runs
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[CompareMetricsOverTime]    Script Date: 30/01/2026 11:08:07 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+-- Procedure: Compare metrics across analysis runs
+CREATE OR ALTER PROCEDURE [dbo].[CompareMetricsOverTime]
+    @top_n INT = 10
+AS
+BEGIN
+    SELECT 
+        gm.analysis_timestamp,
+        gm.network_size,
+        gm.edge_count,
+        gm.density,
+        gm.global_clustering,
+        gm.avg_path_length,
+        gm.num_communities,
+        gm.modularity,
+        gm.giant_component_pct
+    FROM dbo.GlobalNetworkMetrics gm
+    ORDER BY gm.analysis_timestamp DESC;
+END;
+GO
+
+
+USE [BlueSkyNet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_ComputeEdgeBetweenness]    Script Date: 30/01/2026 15:48:49 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+CREATE OR ALTER     PROCEDURE [dbo].[sp_ComputeEdgeweight]
+AS
+BEGIN
+    WITH weighted_edges AS (
+    SELECT 
+        r.$edge_id as [edge_Id],
+        
+        EXP(-0.01 * DATEDIFF(DAY, r.edgeStarts, SYSUTCDATETIME())) AS weight
+    FROM dbo.Reposted r
+)
+--SELECT * FROM weighted_edges
+UPDATE r
+SET r.weight = w.weight
+FROM dbo.Reposted r
+JOIN weighted_edges w
+    ON r.$edge_id = w.edge_Id
+END;
+GO
+

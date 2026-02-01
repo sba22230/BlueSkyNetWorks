@@ -2,6 +2,9 @@
 # Prerequisites: 3_StatnetAnalysis.R must be sourced first
 # This script computes node-level and network-level statistics
 
+# Load libraries and functions (assumes 0_functions.R was already sourced in 3_StatnetAnalysis.R)
+source("0_functions.R")
+
 # Source 3_StatnetAnalysis.R if not already loaded (comment out if already running in same session)
 source("3_StatnetAnalysis.R")
 

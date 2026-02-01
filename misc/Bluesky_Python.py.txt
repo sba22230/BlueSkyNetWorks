@@ -1,0 +1,160 @@
+from atproto import Client
+import json
+import numpy as np
+import pandas as pd
+import random
+import requests
+import time
+import warnings
+warnings.filterwarnings ("ignore")
+
+
+def retry (method, params, retries=5):
+    delay = 5
+    while retries > 0:
+        try:
+            r = method (params)
+            return r
+        except:
+            print ("    error, sleeping " + str (delay) + "s")
+            time.sleep (delay)
+            delay = delay * 2
+            retries = retries - 1
+    return None
+
+
+def deduplicate (items, key):
+    keys = set ()
+    result = []
+    for item in items:
+        k = item[key]
+        if k not in keys:
+            result.append (item)
+            keys.add (k)
+    return result
+            
+    
+def loop_search_posts (query, client, limit=50000):
+    r = retry (client.app.bsky.feed.search_posts,
+            {"q" : query, "limit" : 100})
+    if r is None:
+        return None
+    cursor = r["cursor"]
+    rows = []
+    rows.extend (r.posts)
+    until = None
+    while cursor is not None and len (rows) < limit:
+        time.sleep (1)     
+        r = retry (client.app.bsky.feed.search_posts,
+                {"q" : query + until if until else query,
+                 "cursor" : cursor, "limit" : 100})
+        cursor = r["cursor"]
+        rows.extend (r.posts)
+        if cursor is None and len (rows) < limit:
+            t = " until:" + rows[-1]["indexed_at"]
+            print (t)
+            if t != until:
+                until = t
+                print (until)
+                r = retry (client.app.bsky.feed.search_posts, 
+                        {"q" : query + until, "limit" : 100})
+                cursor = r["cursor"]
+                rows.extend (r.posts)
+    return [item.model_dump () for item in deduplicate (rows, "uri")]
+
+
+def get_reposted_by (uri, client, limit=50000):
+    r = retry (client.app.bsky.feed.get_reposted_by,
+            {"uri" : uri, "limit" : 100})
+    if r is None:
+        return None
+    cursor = r["cursor"]
+    rows = []
+    rows.extend (r.reposted_by)
+    while cursor is not None and len (rows) < limit:
+        time.sleep (1)
+        r = retry (client.app.bsky.feed.get_reposted_by,
+                {"uri" : uri, "cursor" : cursor, "limit" : 100})
+        cursor = r["cursor"]
+        rows.extend (r.reposted_by)
+    return [item.model_dump () for item in rows]
+
+
+def search_and_hydrate_reposts (query, client,
+        min_reposts=10, limit=50000):
+    posts = loop_search_posts (query, client, limit=limit)
+    for post in posts:
+        uri = post["uri"]
+        if post["repost_count"] >= min_reposts:
+            try:
+                reposts = get_reposted_by (uri, client)
+                if reposts is not None and len (reposts) > 0:
+                    post["reposts"] = reposts
+            except:
+                print ("error fetching reposts for " + uri)
+    return posts
+
+
+client = Client ()
+client.login ("<handle>", "<password>")
+
+
+results = search_and_hydrate_reposts ("#caturday", client)
+with open ("caturday.json", "w") as file:
+    json.dump (results, file, indent=2)
+
+def generate_edges (posts, min_reposts=10, normalize_handles=True,
+                    node_colorizer=None, edge_colorizer=None):
+    rows = []
+    for post in posts:
+        if "reposts" in post and len (post["reposts"]) >= min_reposts:
+            uri = post["uri"]
+            orig = post["author"]
+            handle = orig["handle"]
+            did = orig["did"]
+            for repost in post["reposts"]:
+                rows.append ({
+                    "uri" : uri,
+                    "orig_did"        : did,
+                    "orig_handle"     : handle,
+                    "reposter_did"    : repost["did"],
+                    "reposter_handle" : repost["handle"]
+                })
+    edges = pd.DataFrame (rows)
+    g = edges.groupby (["orig_did", "orig_handle"])
+    nodes = pd.DataFrame ({"count" : g.size ()}).reset_index ()
+    nodes = nodes[["orig_did", "orig_handle", "count"]]
+    nodes["radius"] = np.sqrt (nodes["count"])
+    if node_colorizer:
+        nodes["color"] = nodes.apply (node_colorizer, axis=1)
+    df = edges.merge (nodes, on=["orig_did", "orig_handle"])
+    if node_colorizer:
+        if edge_colorizer:
+            df["edge_color"] = df.apply (edge_colorizer, axis=1)
+        else:
+            df["edge_color"] = df["color"]
+    if normalize_handles:
+        dids = {}
+        for i, r in df.iterrows ():
+            did = r["orig_did"]
+            if did not in dids:
+                dids[did] = r["orig_handle"]
+            did = r["reposter_did"]
+            if did not in dids:
+                dids[did] = r["reposter_handle"]
+        df["orig_handle"] = df["orig_did"].apply (lambda i: dids[i])
+        df["reposter_handle"] = df["reposter_did"].apply (
+                lambda i: dids[i])       
+    return df
+
+
+def by_repost_count (row):
+    green = min (row["count"] // 5, 255)
+    pink = hex (max (16, 255 - green))[2:]
+    return "#" + pink + hex (max (16, green))[2:] + pink
+
+   
+with open ("caturday.json", "r") as f:
+    data = json.load (f)
+df = generate_edges (data, node_colorizer=by_repost_count)
+df.to_csv ("caturday_edges.csv", index=False)

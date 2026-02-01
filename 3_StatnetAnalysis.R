@@ -192,7 +192,7 @@ save_graph_svg(
   filename = "outdegree_dist.svg"
 )
 
-bet <- betweenness(bluSkynet, gmode = "graph")
+bet <- betweenness(bluSkynet, gmode = "graph") #  how often shortest paths pass through something
 bet
 
 gplot(bluSkynet, vertex.cex = sqrt(bet) / 25, gmode = "graph")
