@@ -1,6 +1,10 @@
 source("3_StatnetAnalysis.R")
 
-# Network is already created in 3_StatnetAnalysis.R as 'g1' 'g3'
+# Network is already created in 3_StatnetAnalysis.R as 'g2' 'g3'
+
+coords <- layout_with_drl(g2)
+V(g2)$x <- coords[, 1]
+V(g2)$y <- coords[, 2]
 
 ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
   geom_edge_parallel0(
@@ -25,6 +29,22 @@ ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
   scale_size(range = c(3, 8)) +
   theme_graph() +
   theme(legend.position = "top")
+
+coords2 <- layout_with_drl(
+  g2,
+  use.seed = FALSE,
+  seed = matrix(runif(vcount(g2) * 2), ncol = 2),
+  options = list(init.iterations = n_iter)
+) # heavy step, do once
+V(g2)$x <- coords2[, 1]
+V(g2)$y <- coords2[, 2]
+g3 <- ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
+  geom_edge_link(alpha = 0.3) +
+  geom_node_point(aes(size = total_likes_on_posts, color = reposts_received)) +
+  geom_node_text(aes(label = name), repel = TRUE) +
+  scale_size_continuous(range = c(3, 12)) +
+  scale_color_gradient(low = "lightblue", high = "red") +
+  theme_graph()
 
 plot(g3)
 save_graph_svg(g3, "g3_with_drl.svg")
@@ -89,6 +109,7 @@ sg0 <- ggraph(g2, layout = "nicely") +
   scale_color_gradient(low = "lightblue", high = "red") +
   theme_graph()
 save_graph_svg(sg0, "graphLayout_1.svg")
+
 # Stress
 sg <- ggraph(g2, layout = "stress") +
   geom_edge_link(width = 0.2, colour = "grey") +
@@ -108,3 +129,5 @@ sg1 <- ggraph(g2, layout = "stress", bbox = 15) +
   theme_graph()
 plot(sg1)
 save_graph_svg(sg1, "graphLayout_3.svg")
+
+gplot(bluSkynet, vertex.cex = sqrt(bet) / 25, gmode = "graph")

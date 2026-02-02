@@ -101,11 +101,8 @@ cat("Nodes count:", nrow(nodes), "\n")
 cat("Edges count:", nrow(edges), "\n")
 
 g2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-coords <- layout_with_drl(g2)
-V(g2)$x <- coords[, 1]
-V(g2)$y <- coords[, 2]
 
-summary_df <- tibble(
+ig_summary_df <- tibble(
   network_size = vcount(g2),
   edge_count = ecount(g2),
   dyad_count = gsize(g2),
@@ -124,22 +121,8 @@ summary_df <- tibble(
   most_active_replier = names(which.max(igraph::degree(g2, mode = "out")))
 )
 
-print(summary_df)
-coords2 <- layout_with_drl(
-  g2,
-  use.seed = FALSE,
-  seed = matrix(runif(vcount(g2) * 2), ncol = 2),
-  options = list(init.iterations = n_iter)
-) # heavy step, do once
-V(g2)$x <- coords2[, 1]
-V(g2)$y <- coords2[, 2]
-g3 <- ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
-  geom_edge_link(alpha = 0.3) +
-  geom_node_point(aes(size = total_likes_on_posts, color = reposts_received)) +
-  geom_node_text(aes(label = name), repel = TRUE) +
-  scale_size_continuous(range = c(3, 12)) +
-  scale_color_gradient(low = "lightblue", high = "red") +
-  theme_graph()
+str(ig_summary_df)
+
 cat("Final graph summary:\n")
 print(summary(g2))
 
@@ -155,21 +138,21 @@ list.edge.attributes(bluSkynet)
 bluSkynet %e% "edgeStarts"
 #as.sociomatrix.sna(bluSkynet, "created_at")
 
-network.dyadcount(bluSkynet)
-network.edgecount(bluSkynet)
-network.size(bluSkynet)
-degree(bluSkynet)
+bsN_dyadcount <- network.dyadcount(bluSkynet)
+bsN_edgecount <- network.edgecount(bluSkynet)
+bsN_netsize <- network.size(bluSkynet)
+bsN_degree <- degree(bluSkynet)
 
-ideg <- degree(bluSkynet, cmode = "indegree")
-odeg <- degree(bluSkynet, cmode = "outdegree")
+bsN_ideg <- degree(bluSkynet, cmode = "indegree")
+bsN_odeg <- degree(bluSkynet, cmode = "outdegree")
 
 save_graph_svg(
   plot_or_expr = function() {
-    plot(ideg, odeg, type = "n", xlab = "Incoming", ylab = "Outgoing")
+    plot(bsN_ideg, bsN_odeg, type = "n", xlab = "Incoming", ylab = "Outgoing")
     abline(0, 1, lty = 3)
     text(
-      jitter(ideg),
-      jitter(odeg),
+      jitter(bsN_ideg),
+      jitter(bsN_odeg),
       labels = network.vertex.names(bluSkynet),
       cex = 0.5,
       col = 2
@@ -180,29 +163,47 @@ save_graph_svg(
 
 save_graph_svg(
   plot_or_expr = function() {
-    hist(ideg, xlab = "Indegree", main = "Indgree Distribution", prob = TRUE)
+    hist(bsN_ideg, xlab = "Indegree", main = "Indgree Distribution", prob = TRUE)
   },
   filename = "indegree_dist.svg"
 )
 
 save_graph_svg(
   plot_or_expr = function() {
-    hist(odeg, xlab = "Outdegree", main = "Outdgree Distribution", prob = TRUE)
+    hist(bsN_odeg, xlab = "Outdegree", main = "Outdgree Distribution", prob = TRUE)
   },
   filename = "outdegree_dist.svg"
 )
 
-bet <- betweenness(bluSkynet, gmode = "graph") #  how often shortest paths pass through something
-bet
+bsN_bet <- betweenness(bluSkynet, gmode = "graph") #  how often shortest paths pass through something
+bsN_bet
 
-gplot(bluSkynet, vertex.cex = sqrt(bet) / 25, gmode = "graph")
+bsN_clo <- closeness(bluSkynet, cmode = "suminvundir")
+bsN_clo
 
-clo <- closeness(bluSkynet, cmode = "suminvundir")
-clo
+bsN_cen <- centralization(bluSkynet, degree, cmode = "indegree")
+bsN_ceneig <- centralization(bluSkynet, evcent)
 
-cen <- centralization(bluSkynet, degree, cmode = "indegree")
-ceneig <- centralization(bluSkynet, evcent)
+bsN_gden <- gden(bluSkynet)
+bsN_grecip <- grecip(bluSkynet)
+bsN_grecip_edgewise <- grecip(bluSkynet, measure = "edgewise")
 
-gden(bluSkynet)
-grecip(bluSkynet)
-grecip(bluSkynet, measure = "edgewise")
+
+bsN_summary_df <- tibble(
+  network_size = bsN_netsize,
+  edge_count = bsN_edgecount,
+  dyad_count = bsN_dyadcount,
+  density = network.density(bluSkynet),
+  mutual_pairs = dyad_census(g2)$mut,
+  asymetric_pairs = dyad_census(g2)$asym,
+  isolated_nodes = dyad_census(g2)$null,
+  diameter = diameter(g2, directed = TRUE, weights = NA),
+  avg_path_length = mean_distance(g2, directed = TRUE),
+  neighbours_average = neighbors(g2, V(g2), mode = "all"),
+  reciprocity_default = reciprocity(g2, mode = "default"),
+  reciprocity_ratio = reciprocity(g2, mode = "ratio"),
+  average_in_degree = bsN_ideg,
+  average_out_degree = bsN_odeg,
+  most_replied_to = names(which.max(igraph::degree(g2, mode = "in"))),
+  most_active_replier = names(which.max(igraph::degree(g2, mode = "out")))
+)
