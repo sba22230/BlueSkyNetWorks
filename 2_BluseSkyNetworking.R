@@ -149,15 +149,18 @@ layouts <- future_map(
   .options = furrr_options(seed = 22230)
 )
 coords3 <- matrix(NA, nrow = vcount(g3), ncol = 2)
-offset <- 0
+offset <- 3
 
-for (comp_id in unique(comps$membership)) {
+comp_ids <- sort(unique(comps$membership))
+
+for (i in seq_along(comp_ids)) {
+  comp_id <- comp_ids[i]
+  
   sub_nodes <- which(comps$membership == comp_id)
-  sub_coords <- layouts[[which(unique(comps$membership) == comp_id)]]
-
-  # Apply offset so components don’t overlap
+  sub_coords <- layouts[[i]]
+  
   coords3[sub_nodes, ] <- sub_coords + offset
-  offset <- offset + max(sub_coords[, 1]) + 10 # shift horizontally
+  offset <- offset + diff(range(sub_coords[,1])) + 10
 }
 vis_nodes$x <- coords3[, 1]
 vis_nodes$y <- coords3[, 2]
@@ -216,7 +219,7 @@ community_analysis <- vis_nodes %>%
   arrange(desc(size))
 
 cat("Community Statistics:\n")
-print(community_analysis)
+datatable(slice(community_analysis, 1:10))
 
 # Define community types based on characteristics
 community_labels <- community_analysis %>%
@@ -264,7 +267,7 @@ community_labels <- community_analysis %>%
   select(community, community_type, label, size, avg_degree, top_member)
 
 cat("\n=== COMMUNITY LABELS & TYPES ===\n")
-print(community_labels)
+datatable(slice(community_labels, 1:10))
 
 # Map labels back to vis_nodes
 community_label_map <- setNames(

@@ -273,7 +273,7 @@ cat("\n[3/4] Computing community structure...\n")
 
 # Louvain community detection (already computed in 3_StatnetAnalysis.R)
 # Re-compute if necessary
-comm_louvain <- igraph::cluster_louvain(as.undirected(g_igraph))
+comm_louvain <- igraph::cluster_louvain(as_undirected(g_igraph))
 num_communities <- length(unique(comm_louvain$membership))
 modularity_louvain <- modularity(g_igraph, comm_louvain$membership)
 cat(sprintf(
@@ -421,3 +421,4 @@ cat("\n✓ Metrics computation complete. Results saved to graphs/\n")
 cat("  Use nodes_with_metrics for per-user analysis\n")
 cat("  Use network_metrics for global statistics\n")
 cat("  Use community_stats to understand cluster structure\n\n")
+
