@@ -16,6 +16,7 @@ use_trusted_connection <- TRUE # set FALSE if using SQL auth
 #sql_password <- "your_password"
 # only used if not using trusted connection
 orgicc <- rxGetComputeContext()
+rxOptions(numCoresToUse = wrkrs)
 rxSetComputeContext("localpar")
 
 if (use_trusted_connection) {

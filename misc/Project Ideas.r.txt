@@ -1,56 +1,3 @@
-# Absolutely, Stephen. Here's a complete R script that builds a **nested reply network** from a 
-single Bluesky post using the `bskyr` package, 
-# and then constructs a directed graph of user interactions. 
-I’ve also included a summary table of all the feature suggestions we discussed throughout this conversation.
-
----
-
-## 🧠 Full R Script: Nested Replies → User Network Graph
-
-# 3. Recursive function to extract all replies and their targets
-extract_edges <- function(reply_list, parent_author) {
-  map_dfr(reply_list, function(x) {
-    this_author <- x$post$author$handle %||% NA_character_
-    this_text   <- x$post$text %||% NA_character_
-    this_uri    <- x$post$uri %||% NA_character_
-    
-    # Create edge from this reply to its parent
-    edge <- tibble(from = this_author, to = parent_author, text = this_text, uri = this_uri)
-    
-    # Recurse into nested replies
-    nested <- if (!is.null(x$replies)) extract_edges(x$replies, this_author) else NULL
-    
-    bind_rows(edge, nested)
-  })
-}
-
-https://www.trutschnig.net/Slides_igraph_Grossegesse_Hoehn_Holzleitner.pdf - read this and use it to help guide the project outcomes
-
-
-# 4. Extract root author and nested reply edges
-root_author <- thread$thread$post$author$handle
-edges <- extract_edges(thread$thread$replies, root_author)
-
-# 5. Build node list
-nodes <- tibble(name = unique(c(edges$from, edges$to)))
-
-# 6. Create graph object
-g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-
-# 7. Analyze network
-summary_df <- tibble(
-  total_users = vcount(g),
-  total_replies = ecount(g),
-  density = edge_density(g),
-  most_replied_to = names(which.max(degree(g, mode = "in"))),
-  most_active_replier = names(which.max(degree(g, mode = "out")))
-)
-
-print(summary_df)
-```
-
----
-
 ## 📊 Feature Suggestions Summary
 # 
 # Here’s a table of all the feature ideas and enhancements we discussed:
@@ -71,62 +18,151 @@ print(summary_df)
 # 
 # ---
 # 
-# Let me know if you'd like me to help you visualize this nested reply network using `ggraph`, or export the edge list for external analysis. I can also help you compare multiple threads side-by-side.
 
-replies are nested in the structure returned by bs_get_thread
-look into each line there is replies list
+Stephen, this is a serious amount of engineering — you’ve built a full ingestion → hydration → SQL graph → igraph/statnet/tsna → GEXF export pipeline that would make most research groups jealous. The fact that it runs end‑to‑end without manual intervention is already a win, so all suggestions below are *non‑breaking*, minimal‑change improvements that preserve your workflow and your reproducibility standards.
 
+Below is a structured review in table form, as you requested.  
+Each row contains:
 
-# Build edges: author -> reposter
-edges <- reposts_df %>%
-  left_join(
-    posts_df %>% select(uri, author_handle),
-    by = c("original_uri" = "uri")
-  ) %>%
-  transmute(
-    from = author_handle,
-    to = handle,
-    repost_uri = uri,
-    created_at = created_at
-  ) %>%
-  filter(!is.na(from), !is.na(to)) %>%
-  distinct()
+- **Filename**  
+- **Description of the change**  
+- **Code before**  
+- **Code after**  
 
-# Minimal DID/handle normalization if available
-did_map <- reposts_df %>%
-  select(handle, did) %>%
-  filter(!is.na(handle), !is.na(did)) %>%
-  distinct() %>%
-  group_by(did) %>%
-  slice_tail(n = 1) %>% # prefer the latest handle seen for DID
-  ungroup()
+I’ve focused on:  
+- Efficiency (vectorisation, avoiding repeated conversions, reducing I/O)  
+- Robustness (safer defaults, fewer silent failures)  
+- Maintainability (clearer intent, reduced duplication)  
+- Opportunities for missing analysis steps relevant to #speirgorm network science  
 
-normalize_handle <- function(h) {
-  if (length(h) > 1) {
-    # Vectorized handling: replace NA values with NA_character_ safely
-    h[is.na(h)] <- NA_character_
-    return(h)
-  }
-  if (is.na(h)) {
-    return(NA_character_)
-  }
-  h
-}
+---
 
-edges <- edges %>%
-  mutate(from = normalize_handle(from), to = normalize_handle(to))
+# ✅ **CODE REVIEW TABLE**
 
-# Nodes
-nodes <- bind_rows(
-  reposts_df %>% select(name = handle, display_name, did, uri),
-  posts_df %>% select(name = author_handle, text, uri)
-) %>%
-  distinct(name, .keep_all = TRUE)
-nodes <- nodes %>%
-  left_join(
-    posts_df %>% select(name = author_handle, uri, like_count, repost_count),
-    by = c("name", "uri")
-  )
+## **0_functions.R**
 
-write_parquet(edges, "graphs/speirgorm_edges.parquet")
-write_parquet(nodes, "graphs/speirgorm_nodes.parquet")
+| Filename | Description of Change | Before | After |
+|---------|------------------------|--------|-------|
+| 0_functions.R | `parse_color_to_rgba` and `parse_color_single` duplicated logic | Two separate functions with repeated regex | Create one internal parser and wrap vectorised/single versions around it |
+| 0_functions.R | `save_graph_svg` uses `svg()` for base plots but no `on.exit(dev.off())` | ```svg(filepath, width, height); eval(expr); dev.off()``` | ```svg(filepath, width, height); on.exit(dev.off(), add=TRUE); eval(expr)``` |
+| 0_functions.R | `chunk_vec` can be simplified | ```split(x, ceiling(seq_along(x) / size))``` | ```split(x, (seq_along(x)-1) %/% size)``` (avoids ceiling) |
+
+## **2_BlueSkyNetworking.R**
+
+| Filename | Description | Before | After |
+|---------|-------------|--------|-------|
+| 2_BlueSkyNetworking.R | `edges[is.na(edges)] <- "no text here"` is dangerous (coerces numeric columns) | Overwrites all NA with string | Replace only text fields: ```edges$text <- replace_na(edges$text, "no text here")``` |
+| 2_BlueSkyNetworking.R | Layout recomputed multiple times | `coords <- layout_with_drl(g1)` then again for g2 | Compute once and reuse: `coords <- layout_with_drl(g1); V(g2)$x <- coords[,1]` |
+| 2_BlueSkyNetworking.R | Community detection uses walktrap (OK) but no modularity check | No modularity output | Add: `modularity(comm)` |
+| 2_BlueSkyNetworking.R | `future_map` for layout per component is heavy | Parallel layout per component | Use `layout_as_tree` for small components, DRL for large ones |
+
+---
+
+## **3_StatnetAnalysis.R**
+
+| Filename | Description | Before | After |
+|---------|-------------|--------|-------|
+| 3_StatnetAnalysis.R | `dyad_census(g2)` called 3 times | ```dyad_census(g2)$mut``` etc | Compute once: ```dc <- dyad_census(g2)``` |
+| 3_StatnetAnalysis.R | `neighbors(g2, V(g2))` stored in tibble (huge list) | ```neighbours_average = neighbors(...)``` | Remove from summary; compute separately if needed |
+| 3_StatnetAnalysis.R | Sampling logic unclear (`num_posts` reused) | ```if (!is.null(num_posts) && nrow(posts_df) > num_posts)``` | Use explicit parameter: `sample_n_posts <- 5000` |
+| 3_StatnetAnalysis.R | `plot()` inside save_graph_svg without `on.exit` | Same issue as earlier | Add `on.exit(dev.off())` |
+
+---
+
+## **3a_NetworkVisualisation.R**
+
+| Filename | Description | Before | After |
+|---------|-------------|--------|-------|
+| 3a_NetworkVisualisation.R | DRL layout recomputed twice | Two calls to `layout_with_drl` | Compute once and reuse |
+| 3a_NetworkVisualisation.R | `geom_edge_parallel0` deprecated | Uses old API | Replace with `geom_edge_link(aes(...), lineend="round")` |
+| 3a_NetworkVisualisation.R | `gplot(bluSkynet)` repeated | Multiple identical calls | Wrap in helper: `plot_sna(bluSkynet, layout="fr")` |
+
+---
+
+## **3b_TSNA_Analysis.R**
+
+| Filename | Description | Before | After |
+|---------|-------------|--------|-------|
+| 3b_TSNA_Analysis.R | `name_to_id` mapping fails if nodes duplicated | ```setNames(seq_len(n), nodes$name)``` | Use: `name_to_id <- match(nodes$name, unique(nodes$name))` |
+| 3b_TSNA_Analysis.R | `vertex_spells` and `edge_spells` manually stripped attributes | Manual attribute reset | Use: `as.data.frame(vertex_spells)` |
+| 3b_TSNA_Analysis.R | No check for missing edge times | Assumes all edges have edgeStarts/edgeEnds | Add: `edges2 <- edges2 %>% mutate(edgeEnds = coalesce(edgeEnds, edgeStarts))` |
+
+---
+
+## **4_ComputeMetrics.R**
+
+| Filename | Description | Before | After |
+|---------|-------------|--------|-------|
+| 4_ComputeMetrics.R | Recomputes centrality in both statnet and igraph | Both betweenness and igraph betweenness | Keep igraph only (faster, consistent) |
+| 4_ComputeMetrics.R | `safe_rescale` redefined; use `scales::rescale` | Custom wrapper | ```safe_rescale <- function(x) scales::rescale(x, to=c(0,1))``` |
+| 4_ComputeMetrics.R | Triad census computed but not normalised | Raw counts | Add: `triad_census_vals / sum(triad_census_vals)` |
+| 4_ComputeMetrics.R | Community stats use rough internal edge estimate | ```internal_edges = sum(in_degree[name %in% name]) / 2``` | Use igraph: `internal_edges = ecount(induced_subgraph(g_igraph, which(best_comm == k)))` |
+
+---
+
+# 🔍 **WHAT’S MISSING IN THE PROJECT? (High‑Value Additions)**
+
+These are *not* required for correctness, but they would significantly deepen the analysis of #speirgorm.
+
+## **1. Temporal Network Analysis (TSNA) — but with animation**
+You already build a `networkDynamic`, but you don’t:
+
+- compute temporal betweenness  
+- compute temporal reachability  
+- animate the network over time  
+
+These are the core strengths of `tsna` and `ndtv`.
+
+## **2. Influence propagation modelling**
+For a hashtag community, you can model:
+
+- cascade depth  
+- cascade breadth  
+- reproduction number \( R_t \) of reposts  
+- influence decay curves  
+
+## **3. Topic modelling on post text**
+You already ingest text but don’t analyse it.
+
+Suggested additions:
+
+- `stm` or `text2vec` topic models  
+- sentiment over time  
+- cluster communities by linguistic similarity  
+
+## **4. Bot / automation detection**
+Useful for social network integrity:
+
+- posting frequency entropy  
+- repost/like ratio anomalies  
+- temporal burstiness  
+
+## **5. Structural holes & brokerage**
+Use:
+
+- Burt’s constraint  
+- effective size  
+- bridging centrality  
+
+These identify “connectors” between communities.
+
+## **6. Edge weighting by engagement**
+Currently edges are unweighted except for repost_count.
+
+You could weight edges by:
+
+- like_count  
+- reply_count  
+- bookmark_count  
+- time‑decay weighting  
+
+## **7. Robustness / attack simulations**
+Simulate:
+
+- node removal  
+- edge removal  
+- targeted vs random attacks  
+
+This reveals network resilience.
+
+---

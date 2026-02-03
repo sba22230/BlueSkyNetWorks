@@ -170,6 +170,11 @@ comm <- cluster_walktrap(g3) # works on directed graphs
 
 # Add community membership to nodes
 vis_nodes$community <- comm$membership
+ge_nodesAtt$modularity_class <- as.integer(vis_nodes$community)
+
+# ensure community is used as the visNetwork group and add colours
+vis_nodes$group <- as.character(vis_nodes$community)
+vis_nodes$isolated <- vis_nodes$degree == 0
 
 # ========================================================================
 # COMMUNITY CHARACTERIZATION & LABELING
@@ -197,8 +202,8 @@ community_analysis <- vis_nodes %>%
     max_repost_count = max(value, na.rm = TRUE),
 
     # Temporal reach (if available)
-    earliest_first_seen = min(start, na.rm = TRUE),
-    latest_last_seen = max(end, na.rm = TRUE),
+    earliest_first_seen = min(earliestPost, na.rm = TRUE),
+    latest_last_seen = max(latestPost, na.rm = TRUE),
 
     # Top influencers in this community
     top_member = paste(
@@ -292,10 +297,6 @@ for (comm_id in sort(unique(vis_nodes$community))) {
   cat(paste(members, collapse = ", "))
   cat("\n")
 }
-
-# ensure community is used as the visNetwork group and add colours
-vis_nodes$group <- as.character(vis_nodes$community)
-vis_nodes$isolated <- vis_nodes$degree == 0
 
 # assign a distinct colour per community
 comm_levels <- sort(unique(vis_nodes$group))

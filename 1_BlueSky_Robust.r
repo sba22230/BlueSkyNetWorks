@@ -5,6 +5,7 @@ bs_user <- bs_get_user()
 bs_pass <- bs_get_pass()
 bs_auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
 
+orig_plan <- plan()
 plan(multisession, workers = wrkrs)
 # Run deep search
 posts_df <- deep_search_posts(
@@ -91,7 +92,7 @@ reposts_df <- bind_rows(reposts_df, hydrated$reposts_df) %>%
 threads_df <- bind_rows(threads_df, hydrated$threads_df) %>%
   distinct(original_uri, author, uri, .keep_all = TRUE)
 
-plan(sequential)
+plan(orig_plan)
 arrow::write_parquet(posts_df, "data/speirgorm_posts.parquet")
 arrow::write_parquet(reposts_df, "data/speirgorm_reposts.parquet")
 arrow::write_parquet(threads_df, "data/speirgorm_threads.parquet")
