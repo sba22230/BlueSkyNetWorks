@@ -5,6 +5,7 @@ if (v$major == '4' && v$minor != '0.2') {
 library(arrow)
 library(DBI)
 library(dplyr)
+library(DT)
 library(furrr)
 library(ggraph)
 library(igraph)

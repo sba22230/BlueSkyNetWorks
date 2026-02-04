@@ -50,45 +50,10 @@ gtn <- ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
   )
 
 save_graph_svg(gtn, "TopNodes_Speirgorm_Network.svg")
-# Step 4: Enrich edges with author info
-# this step is unnecessary - the edges already have author info - need to add created_at
-# edges <- reposts_df %>%
-#   left_join(
-#     posts_df %>% select(uri, author_handle),
-#     by = c("original_uri" = "uri")
-#   ) %>%
-#   transmute(
-#     from = handle,
-#     to = author_handle,
-#     repost_uri = uri,
-#     created_at = created_at
-#   ) %>%
-#   filter(!is.na(from) & !is.na(to)) %>%
-#   distinct()
-# cat("Enriched edges count:", nrow(edges), "\n")
-
-# Debug: enriched edges
-print(head(edges))
-
-# Step 11: Enrich nodes with metadata
-# This doesn't need to be done either
-# nodes <- bind_rows(
-#  reposts_df %>% select(name = handle, display_name, did),
-#  posts_df %>% select(name = author_handle, text, like_count, repost_count)
-# ) %>%
-#  distinct(name, .keep_all = TRUE)
-
-# Add repost counts
-# nodes <- nodes %>%
-#   mutate(repost_count = table(edges$to)[name] %>% as.integer())
-# cat("Enriched nodes count:", nrow(nodes), "\n")
-
-# Debug: enriched nodes
-print(head(nodes))
 
 # Step 5: Plot enriched network with ggraph
-g2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-coords2 <- layout_with_graphopt(g2, niter = 200) # heavy step, do once
+g2 <- g1
+coords2 <- layout_with_graphopt(g2, niter = 400) # heavy step, do once
 V(g2)$x <- coords2[, 1]
 V(g2)$y <- coords2[, 2]
 ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
@@ -173,7 +138,7 @@ comm <- cluster_walktrap(g3) # works on directed graphs
 
 # Add community membership to nodes
 vis_nodes$community <- comm$membership
-ge_nodesAtt$modularity_class <- as.integer(vis_nodes$community)
+
 
 # ensure community is used as the visNetwork group and add colours
 vis_nodes$group <- as.character(vis_nodes$community)
@@ -360,6 +325,7 @@ ge_nodesAtt <- vis_nodes %>%
     value = ifelse(is.na(value), 1, as.numeric(value))
   )
 
+ge_nodesAtt$modularity_class <- as.integer(vis_nodes$community)
 # Node visual attributes for GEXF
 node_hex <- ifelse(
   is.na(vis_nodes$color.background),
