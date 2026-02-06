@@ -96,7 +96,6 @@ if (!is.null(num_posts) && nrow(posts_df) > num_posts) {
   cat("Keeping all reposts; total reposts count:", nrow(edges), "\n")
 }
 
-
 cat("Nodes count:", nrow(nodes), "\n")
 cat("Edges count:", nrow(edges), "\n")
 
@@ -185,7 +184,9 @@ save_graph_svg(
   filename = "outdegree_dist.svg"
 )
 
-bsN_dyadcount <- network.dyadcount(bluSkynet)
+bsN_dyadcensus <- sna::dyad.census(bluSkynet)
+#bsN_dyadcount <- network.dyadcount(bluSkynet)
+bsN_dyadcount <- sum(bsN_dyadcensus[[1]], bsN_dyadcensus[[2]], bsN_dyadcensus[[3]])
 bsN_edgecount <- network.edgecount(bluSkynet)
 bsN_netsize <- network.size(bluSkynet)
 bsN_cen <- centralization(bluSkynet, degree, cmode = "indegree")
@@ -203,9 +204,9 @@ bsN_summary_df <- tibble(
   edge_count = bsN_edgecount,
   dyad_count = bsN_dyadcount,
   density = bsN_gden,
-  mutual_pairs = sna::dyad.census(bluSkynet)[, "Mut"],
-  asymetric_pairs = sna::dyad.census(bluSkynet)[, "Asym"],
-  isolated_nodes = sna::dyad.census(bluSkynet)[, "Null"],
+  mutual_pairs = bsN_dyadcensus[[1]],
+  asymetric_pairs = bsN_dyadcensus[[2]],
+  isolated_nodes = bsN_dyadcensus[[3]],
   diameter = bsN_diameter,
   avg_path_length = mean(dist_matrix[is.finite(dist_matrix)]),
   neighbours_average = mean(neighbors(g2, V(g2), mode = "all")),
@@ -236,5 +237,5 @@ datatable(comparison_table)
 #bsN_bet <- betweenness(bluSkynet, gmode = "graph") #  how often shortest paths pass through something
 #bsN_bet
 
-b #sN_clo <- closeness(bluSkynet, cmode = "suminvundir")
+#sN_clo <- closeness(bluSkynet, cmode = "suminvundir")
 #bsN_clo
