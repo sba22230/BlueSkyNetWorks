@@ -112,7 +112,7 @@ ig_summary_df <- tibble(
   isolated_nodes = dyad_census(g2)$null,
   diameter = diameter(g2, directed = TRUE, weights = NA),
   avg_path_length = mean_distance(g2, directed = TRUE),
-  neighbours_average = neighbors(g2, V(g2), mode = "all"),
+  neighbours_average = mean(neighbors(g2, V(g2), mode = "all")),
   reciprocity_default = reciprocity(g2, mode = "default"),
   reciprocity_ratio = reciprocity(g2, mode = "ratio"),
   average_in_degree = mean(igraph::degree(g2, mode = "in")),
@@ -163,14 +163,24 @@ save_graph_svg(
 
 save_graph_svg(
   plot_or_expr = function() {
-    hist(bsN_ideg, xlab = "Indegree", main = "Indgree Distribution", prob = TRUE)
+    hist(
+      bsN_ideg,
+      xlab = "Indegree",
+      main = "Indgree Distribution",
+      prob = TRUE
+    )
   },
   filename = "indegree_dist.svg"
 )
 
 save_graph_svg(
   plot_or_expr = function() {
-    hist(bsN_odeg, xlab = "Outdegree", main = "Outdgree Distribution", prob = TRUE)
+    hist(
+      bsN_odeg,
+      xlab = "Outdegree",
+      main = "Outdgree Distribution",
+      prob = TRUE
+    )
   },
   filename = "outdegree_dist.svg"
 )
@@ -185,25 +195,38 @@ bsN_cen <- centralization(bluSkynet, degree, cmode = "indegree")
 bsN_ceneig <- centralization(bluSkynet, evcent)
 
 bsN_gden <- gden(bluSkynet)
-bsN_grecip <- grecip(bluSkynet)
+bsN_grecip <- grecip(bluSkynet, measure = "dyadic")
 bsN_grecip_edgewise <- grecip(bluSkynet, measure = "edgewise")
+dist_matrix <- geodist(bluSkynet)$gdist
+bsN_diameter <- max(dist_matrix[is.finite(dist_matrix)])
 
 
 bsN_summary_df <- tibble(
   network_size = bsN_netsize,
   edge_count = bsN_edgecount,
   dyad_count = bsN_dyadcount,
-  density = network.density(bluSkynet),
-  mutual_pairs = dyad_census(g2)$mut,
-  asymetric_pairs = dyad_census(g2)$asym,
-  isolated_nodes = dyad_census(g2)$null,
-  diameter = diameter(g2, directed = TRUE, weights = NA),
-  avg_path_length = mean_distance(g2, directed = TRUE),
-  neighbours_average = neighbors(g2, V(g2), mode = "all"),
-  reciprocity_default = reciprocity(g2, mode = "default"),
-  reciprocity_ratio = reciprocity(g2, mode = "ratio"),
-  average_in_degree = bsN_ideg,
-  average_out_degree = bsN_odeg,
-  most_replied_to = names(which.max(igraph::degree(g2, mode = "in"))),
-  most_active_replier = names(which.max(igraph::degree(g2, mode = "out")))
+  density = bsN_gden,
+  mutual_pairs = sna::dyad.census(bluSkynet)[, "Mut"],
+  asymetric_pairs = sna::dyad.census(bluSkynet)[, "Asym"],
+  isolated_nodes = sna::dyad.census(bluSkynet)[, "Null"],
+  diameter = bsN_diameter,
+  avg_path_length = mean(dist_matrix[is.finite(dist_matrix)]),
+  neighbours_average = mean(neighbors(g2, V(g2), mode = "all")),
+  reciprocity_default = bsN_grecip_edgewise,
+  reciprocity_ratio = bsN_grecip,
+  average_in_degree = mean(bsN_ideg),
+  average_out_degree = mean(bsN_odeg),
+  most_replied_to = network.vertex.names(bluSkynet)[which.max(bsN_ideg)],
+  most_active_replier = network.vertex.names(bluSkynet)[which.max(bsN_odeg)]
 )
+
+str(bsN_summary_df)
+bsN_summary_df <- bsN_summary_df %>% mutate(method = "sna")
+ig_summary_df <- ig_summary_df %>% mutate(method = "igraph")
+
+joined_long <- bind_rows(bsN_summary_df, ig_summary_df) %>%
+  pivot_longer(
+    cols = -method,
+    names_to = "metric",
+    values_to = "value"
+  )
