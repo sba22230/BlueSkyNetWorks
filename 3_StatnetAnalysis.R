@@ -185,7 +185,6 @@ save_graph_svg(
   filename = "outdegree_dist.svg"
 )
 
-
 bsN_dyadcount <- network.dyadcount(bluSkynet)
 bsN_edgecount <- network.edgecount(bluSkynet)
 bsN_netsize <- network.size(bluSkynet)
