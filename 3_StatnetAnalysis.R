@@ -231,6 +231,7 @@ comparison_table <- bind_rows(bsN_summary_df, ig_summary_df) %>%
     values_from = value
   )
 
+datatable(comparison_table)
 # very slow -
 #bsN_bet <- betweenness(bluSkynet, gmode = "graph") #  how often shortest paths pass through something
 #bsN_bet
