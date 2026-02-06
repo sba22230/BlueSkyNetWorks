@@ -101,15 +101,18 @@ cat("Nodes count:", nrow(nodes), "\n")
 cat("Edges count:", nrow(edges), "\n")
 
 g2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+ig_cen <- igraph::dyad_census(g2)
+
 
 ig_summary_df <- tibble(
+  method = "igraph",
   network_size = vcount(g2),
   edge_count = ecount(g2),
-  dyad_count = gsize(g2),
+  dyad_count = sum(ig_cen$mut, ig_cen$asym, ig_cen$null),
   density = edge_density(g2),
-  mutual_pairs = dyad_census(g2)$mut,
-  asymetric_pairs = dyad_census(g2)$asym,
-  isolated_nodes = dyad_census(g2)$null,
+  mutual_pairs = ig_cen$mut,
+  asymetric_pairs = ig_cen$asym,
+  isolated_nodes = ig_cen$null,
   diameter = diameter(g2, directed = TRUE, weights = NA),
   avg_path_length = mean_distance(g2, directed = TRUE),
   neighbours_average = mean(neighbors(g2, V(g2), mode = "all")),
@@ -138,9 +141,6 @@ list.edge.attributes(bluSkynet)
 bluSkynet %e% "edgeStarts"
 #as.sociomatrix.sna(bluSkynet, "created_at")
 
-bsN_dyadcount <- network.dyadcount(bluSkynet)
-bsN_edgecount <- network.edgecount(bluSkynet)
-bsN_netsize <- network.size(bluSkynet)
 bsN_degree <- degree(bluSkynet)
 
 bsN_ideg <- degree(bluSkynet, cmode = "indegree")
@@ -185,15 +185,12 @@ save_graph_svg(
   filename = "outdegree_dist.svg"
 )
 
-bsN_bet <- betweenness(bluSkynet, gmode = "graph") #  how often shortest paths pass through something
-bsN_bet
 
-bsN_clo <- closeness(bluSkynet, cmode = "suminvundir")
-bsN_clo
-
+bsN_dyadcount <- network.dyadcount(bluSkynet)
+bsN_edgecount <- network.edgecount(bluSkynet)
+bsN_netsize <- network.size(bluSkynet)
 bsN_cen <- centralization(bluSkynet, degree, cmode = "indegree")
 bsN_ceneig <- centralization(bluSkynet, evcent)
-
 bsN_gden <- gden(bluSkynet)
 bsN_grecip <- grecip(bluSkynet, measure = "dyadic")
 bsN_grecip_edgewise <- grecip(bluSkynet, measure = "edgewise")
@@ -202,6 +199,7 @@ bsN_diameter <- max(dist_matrix[is.finite(dist_matrix)])
 
 
 bsN_summary_df <- tibble(
+  method = "network/sna",
   network_size = bsN_netsize,
   edge_count = bsN_edgecount,
   dyad_count = bsN_dyadcount,
@@ -221,12 +219,22 @@ bsN_summary_df <- tibble(
 )
 
 str(bsN_summary_df)
-bsN_summary_df <- bsN_summary_df %>% mutate(method = "sna")
-ig_summary_df <- ig_summary_df %>% mutate(method = "igraph")
 
-joined_long <- bind_rows(bsN_summary_df, ig_summary_df) %>%
+comparison_table <- bind_rows(bsN_summary_df, ig_summary_df) %>%
+  mutate(across(-method, as.character)) %>% # ensure all values are same type
   pivot_longer(
     cols = -method,
     names_to = "metric",
     values_to = "value"
+  ) %>%
+  pivot_wider(
+    names_from = method,
+    values_from = value
   )
+
+# very slow -
+#bsN_bet <- betweenness(bluSkynet, gmode = "graph") #  how often shortest paths pass through something
+#bsN_bet
+
+b #sN_clo <- closeness(bluSkynet, cmode = "suminvundir")
+#bsN_clo
