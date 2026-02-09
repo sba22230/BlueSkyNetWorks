@@ -1,15 +1,15 @@
 metric_name,value,description
-density,2.37387185224382e-4,Proportion of possible edges present
-reciprocity_edgewise,0.7589010115827756,Proportion of mutual reposts (edgewise)
-reciprocity_dyadic,0.6114750061561192,Proportion of dyads with reciprocated edges
-network_size,16604,Number of nodes (users) in network
-edge_count,66856,Number of directed edges (reposts)
-dyad_count,275692816,Total number of possible dyadic pairs
+density,2.3418042151628006e-4,Proportion of possible edges present
+reciprocity_edgewise,0.760922037171132,Proportion of mutual reposts (edgewise)
+reciprocity_dyadic,0.6141034382000584,Proportion of dyads with reciprocated edges
+network_size,16825,Number of nodes (users) in network
+edge_count,67717,Number of directed edges (reposts)
+dyad_count,283080625,Total number of possible dyadic pairs
 diameter,9,Longest shortest path between any two nodes
-avg_path_length,3.633075677262564,Average shortest path across all node pairs
+avg_path_length,3.626019452737742,Average shortest path across all node pairs
 num_components,13,Number of disconnected components
-giant_component_size,16582,Nodes in largest connected component
-giant_component_pct,99.86750180679354,Percentage of nodes in largest component
-global_clustering,0.02555146098172683,Global clustering coefficient (transitivity)
-avg_local_clustering,0.11619649181080487,Mean of local clustering coefficients
-centralization_indegree,0.31829248009289235,Degree centralization index (in-degree)
+giant_component_size,16803,Nodes in largest connected component
+giant_component_pct,99.86924219910847,Percentage of nodes in largest component
+global_clustering,0.025323810111764194,Global clustering coefficient (transitivity)
+avg_local_clustering,0.11722358887548501,Mean of local clustering coefficients
+centralization_indegree,0.31839110555259853,Degree centralization index (in-degree)

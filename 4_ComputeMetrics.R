@@ -293,7 +293,7 @@ cat(sprintf(
 ))
 
 # Fast greedy (for directed, may treat as undirected)
-comm_fastgreedy <- cluster_fast_greedy(as.undirected(g_igraph))
+comm_fastgreedy <- cluster_fast_greedy(as_undirected(g_igraph))
 num_communities_fg <- length(unique(comm_fastgreedy$membership))
 modularity_fastgreedy <- modularity(
   as.undirected(g_igraph),
@@ -421,4 +421,3 @@ cat("\n✓ Metrics computation complete. Results saved to graphs/\n")
 cat("  Use nodes_with_metrics for per-user analysis\n")
 cat("  Use network_metrics for global statistics\n")
 cat("  Use community_stats to understand cluster structure\n\n")
-
