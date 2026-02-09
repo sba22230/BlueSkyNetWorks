@@ -131,10 +131,19 @@ print(paste(
 print(head(reposts_df))
 
 ### Networking stuff
-
+nodes_query <- "SELECT [handle] AS name
+      ,[first_seen] AS earliestPost
+      ,[last_seen] AS latestPost
+      ,[posts_authored]
+      ,[reposts_made]
+      ,[reposts_received]
+      ,[total_likes_on_posts]
+      ,[total_replies_on_posts]
+      ,[total_bookmarks_on_posts]
+  FROM [BlueSkyNet].[dbo].[Person];"
 # Step 7: Build edge list (who reposted whom)
 nodes <- RxSqlServerData(
-  table = "Person",
+  sqlQuery = nodes_query,
   connectionString = connStr,
   rowsPerRead = 500000
 )
@@ -146,16 +155,36 @@ print(head(nodes))
 
 # Edges = Reposted graph edge table projected to from/to names
 edges_query <- "
-  SELECT
-      pFrom.name AS [from],
-      pTo.name   AS [to],
-      e.repost_uri,
-      CAST(e.created_at AS Date) AS created_at
-  FROM Person   AS pFrom,
-       Reposted AS e,
-       Person   AS pTo
-  WHERE MATCH(pFrom-(e)->pTo);
+  SELECT 
+    f.handle AS [from],
+    t.handle AS [to],
+    r.post_uri AS repost_uri,
+    r.posted_on AS created_at,
+    
+    r.like_count,
+    r.reply_count,
+    r.bookmark_count,
+    r.repost_count
+    ,CAST(r.edgeStarts AS date) AS edgeStarts
+    ,CAST(r.edgeEnds AS date) AS edgeEnds
+    ,r.text 
+FROM dbo.Reposted AS r
+JOIN dbo.Person AS f
+    ON r.$from_id = f.$node_id      -- reposter
+JOIN dbo.Person AS t
+    ON r.$to_id = t.$node_id        -- original author
+ORDER BY r.posted_on DESC;
 "
+
+edges <- edges %>%
+  mutate(from = normalize_handle(from), to = normalize_handle(to)) %>%
+  mutate(across(
+    where(is.character),
+    ~ gsub("[[:cntrl:]]", "", .)
+  ))
+
+names(edges)
+
 edges <- RxSqlServerData(
   sqlQuery = edges_query,
   connectionString = connStr,
@@ -175,3 +204,4 @@ g1 <- graph_from_data_frame(
 )
 cat("Graph summary:\n")
 print(summary(g1))
+
