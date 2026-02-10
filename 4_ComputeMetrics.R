@@ -2,10 +2,12 @@
 # Prerequisites: 3_StatnetAnalysis.R must be sourced first
 # This script computes node-level and network-level statistics
 
-# Load libraries and functions (assumes 0_functions.R was already sourced in 3_StatnetAnalysis.R)
+# Load libraries and functions (assumes 0_functions.
+# R was already sourced in 3_StatnetAnalysis.R)
 source("0_functions.R")
 
-# Source 3_StatnetAnalysis.R if not already loaded (comment out if already running in same session)
+# Source 3_StatnetAnalysis.R if not already loaded
+# (comment out if already running in same session)
 source("3_StatnetAnalysis.R")
 
 cat("\n=== BlueSkyNetWorks: Computing Network Metrics ===\n")
@@ -318,7 +320,8 @@ community_stats <- nodes_with_metrics %>%
   group_by(community) %>%
   summarise(
     community_size = n(),
-    internal_edges = sum(in_degree[name %in% name], na.rm = TRUE) / 2, # rough estimate
+    # rough estimate
+    internal_edges = sum(in_degree[name %in% name], na.rm = TRUE) / 2,
     avg_internal_degree = mean(in_degree + out_degree, na.rm = TRUE),
     avg_pagerank = mean(pagerank, na.rm = TRUE),
     avg_authority = mean(authority_score, na.rm = TRUE),
@@ -339,7 +342,7 @@ cat("\n[4/4] Saving results...\n")
 arrow::write_parquet(nodes_with_metrics, "graphs/nodes_with_metrics.parquet")
 readr::write_csv(nodes_with_metrics, "graphs/nodes_with_metrics.csv")
 cat(
-  "  ✓ Saved: graphs/nodes_with_metrics.parquet | graphs/nodes_with_metrics.csv\n"
+  "✓ Saved: graphs/nodes_with_metrics.parquet | graphs/nodes_with_metrics.csv\n"
 )
 
 # Save network metrics
