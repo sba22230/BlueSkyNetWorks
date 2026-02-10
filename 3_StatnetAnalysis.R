@@ -13,6 +13,7 @@ reposts_df <- read_parquet("data/speirgorm_reposts.parquet")
 set.seed(22230)
 
 num_posts <- nrow(posts_df)
+num_posts <- 1000
 # if tthe num_posts is set, then we sample that many posts
 # else we keep all reposts
 if (!is.null(num_posts) && nrow(posts_df) > num_posts) {
@@ -186,7 +187,11 @@ save_graph_svg(
 
 bsN_dyadcensus <- sna::dyad.census(bluSkynet)
 #bsN_dyadcount <- network.dyadcount(bluSkynet)
-bsN_dyadcount <- sum(bsN_dyadcensus[[1]], bsN_dyadcensus[[2]], bsN_dyadcensus[[3]])
+bsN_dyadcount <- sum(
+  bsN_dyadcensus[[1]],
+  bsN_dyadcensus[[2]],
+  bsN_dyadcensus[[3]]
+)
 bsN_edgecount <- network.edgecount(bluSkynet)
 bsN_netsize <- network.size(bluSkynet)
 bsN_cen <- centralization(bluSkynet, degree, cmode = "indegree")
