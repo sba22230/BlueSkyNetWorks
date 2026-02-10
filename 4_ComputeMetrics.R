@@ -8,6 +8,7 @@ source("0_functions.R")
 
 # Source 3_StatnetAnalysis.R if not already loaded
 # (comment out if already running in same session)
+source("2_BlueSkyNetworking.R")
 source("3_StatnetAnalysis.R")
 
 cat("\n=== BlueSkyNetWorks: Computing Network Metrics ===\n")
@@ -273,6 +274,11 @@ cat(sprintf("  %d network-level metrics computed\n", nrow(network_metrics)))
 
 cat("\n[3/4] Computing community structure...\n")
 
+
+
+
+
+
 # Louvain community detection (already computed in 3_StatnetAnalysis.R)
 # Re-compute if necessary
 comm_louvain <- igraph::cluster_louvain(as_undirected(g_igraph))
@@ -283,6 +289,57 @@ cat(sprintf(
   num_communities,
   modularity_louvain
 ))
+
+
+cat("\n Extract Community Subgraphs \n")
+# Assuming you have your community detection results
+communities <- comm_louvain  # or your preferred method
+membership <- membership(communities)
+
+# Get top 10 communities by size
+comm_sizes <- sort(table(membership), decreasing = TRUE)
+top_10_ids <- as.numeric(names(comm_sizes[1:10]))
+
+# Create list of subgraphs
+community_graphs <- lapply(top_10_ids, function(id) {
+  nodes <- which(membership == id)
+  induced_subgraph(graph, nodes)
+})
+
+# Name them for easy reference
+names(community_graphs) <- paste0("Community_", top_10_ids)
+cat("\n Analyze Internal Structure
+For each community subgraph, examine: \n")
+  # For a single community
+  comm_graph <- community_graphs[[1]]
+
+# Density
+edge_density(comm_graph)
+
+# Key nodes within community
+betweenness(comm_graph)
+closeness(comm_graph)
+degree(comm_graph)
+
+# Clustering coefficient
+transitivity(comm_graph, type = "local")
+
+# Diameter and average path length
+diameter(comm_graph)
+mean_distance(comm_graph)
+
+# Sub-communities within
+sub_communities <- cluster_louvain(comm_graph)
+Batch Analysis
+# Analyze all top 10 at once
+community_metrics <- data.frame(
+  community = names(community_graphs),
+  size = sapply(community_graphs, vcount),
+  density = sapply(community_graphs, edge_density),
+  diameter = sapply(community_graphs, diameter),
+  avg_path = sapply(community_graphs, mean_distance)
+)
+
 
 # Label propagation (can detect overlapping communities)
 comm_labelprop <- cluster_label_prop(g_igraph)
