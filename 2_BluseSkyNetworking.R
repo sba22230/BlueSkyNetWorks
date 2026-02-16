@@ -50,7 +50,12 @@ gtn <- ggraph(g1_2, layout = "manual", x = V(g1_2)$x, y = V(g1_2)$y) +
   )
 
 save_graph_svg(gtn, "gtn_TopNodes_Speirgorm_Network.svg")
-rxWriteObject(ds_Graphs, "gtn_Graph - ggraph - layout_with_drl", gtn)
+rxWriteObject(
+  ds_Graphs,
+  "gtn_Graph - ggraph - layout_with_drl",
+  gtn,
+  overwrite = TRUE
+)
 
 # Step 5: Plot enriched network with ggraph
 g2 <- g1_2
@@ -71,7 +76,12 @@ write_graph(
   "graphs/g2 bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
   format = "graphml"
 )
-rxWriteObject(ds_Graphs, "g2_Graph - igraph - layout_with_graphopt", g2)
+rxWriteObject(
+  ds_Graphs,
+  "g2_Graph - igraph - layout_with_graphopt",
+  g2,
+  overwrite
+)
 
 # Step 6: Interactive visualization with visNetwork
 vis_nodes <- nodes %>%
@@ -139,7 +149,12 @@ vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 # Community detection
 comm <- cluster_walktrap(g3) # works on directed graphs
 
-rxWriteObject(ds_Graphs, "g3_Graph - igraph - community detection", g3)
+rxWriteObject(
+  ds_Graphs,
+  "g3_Graph - igraph - community detection",
+  g3,
+  overwrite = TRUE
+)
 
 # Add community membership to nodes
 vis_nodes$community <- comm$membership
@@ -458,7 +473,12 @@ if (!dir.exists(file_path)) {
 rgexf::write.gexf(gexf_obj, output = file_name)
 
 plot(gexf_obj)
-rxWriteObject(ds_Graphs, "Gephi_Graph - Gephi - GEXF", gexf_obj)
+rxWriteObject(
+  ds_Graphs,
+  "Gephi_Graph - Gephi - GEXF",
+  gexf_obj,
+  overwrite = TRUE
+)
 
 cat("Interactive visualization ready with precomputed layout.\n")
 

@@ -13,7 +13,7 @@ reposts_df <- read_parquet("data/speirgorm_reposts.parquet")
 set.seed(22230)
 
 num_posts <- nrow(posts_df)
-num_posts <- 1000
+num_posts <- 5000
 # if tthe num_posts is set, then we sample that many posts
 # else we keep all reposts
 if (!is.null(num_posts) && nrow(posts_df) > num_posts) {
@@ -100,40 +100,54 @@ if (!is.null(num_posts) && nrow(posts_df) > num_posts) {
 cat("Nodes count:", nrow(nodes), "\n")
 cat("Edges count:", nrow(edges), "\n")
 
-g2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-ig_cen <- igraph::dyad_census(g2)
+g4_sample <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+ig_cen <- igraph::dyad_census(g4_sample)
 
 
 ig_summary_df <- tibble(
   method = "igraph",
-  network_size = vcount(g2),
-  edge_count = ecount(g2),
+  network_size = vcount(g4_sample),
+  edge_count = ecount(g4_sample),
   dyad_count = sum(ig_cen$mut, ig_cen$asym, ig_cen$null),
-  density = edge_density(g2),
+  density = edge_density(g4_sample),
   mutual_pairs = ig_cen$mut,
   asymetric_pairs = ig_cen$asym,
   isolated_nodes = ig_cen$null,
-  diameter = diameter(g2, directed = TRUE, weights = NA),
-  avg_path_length = mean_distance(g2, directed = TRUE),
-  neighbours_average = mean(neighbors(g2, V(g2), mode = "all")),
-  reciprocity_default = reciprocity(g2, mode = "default"),
-  reciprocity_ratio = reciprocity(g2, mode = "ratio"),
-  average_in_degree = mean(igraph::degree(g2, mode = "in")),
-  average_out_degree = mean(igraph::degree(g2, mode = "out")),
-  most_replied_to = names(which.max(igraph::degree(g2, mode = "in"))),
-  most_active_replier = names(which.max(igraph::degree(g2, mode = "out")))
+  diameter = diameter(g4_sample, directed = TRUE, weights = NA),
+  avg_path_length = mean_distance(g4_sample, directed = TRUE),
+  neighbours_average = mean(neighbors(g4_sample, V(g4_sample), mode = "all")),
+  reciprocity_default = reciprocity(g4_sample, mode = "default"),
+  reciprocity_ratio = reciprocity(g4_sample, mode = "ratio"),
+  average_in_degree = mean(igraph::degree(g4_sample, mode = "in")),
+  average_out_degree = mean(igraph::degree(g4_sample, mode = "out")),
+  most_replied_to = names(which.max(igraph::degree(g4_sample, mode = "in"))),
+  most_active_replier = names(which.max(igraph::degree(
+    g4_sample,
+    mode = "out"
+  )))
 )
 
 str(ig_summary_df)
 
 cat("Final graph summary:\n")
-print(summary(g2))
-
+print(summary(g4_sample))
+rxWriteObject(
+  ds_Graphs,
+  paste0("g4_sampled_Graph - igraph - no posts: num_posts ", num_posts),
+  g4_sample,
+  overwrite = TRUE
+)
 # Start of Statnet analysis
 # Convert igraph to statnet
 library(network)
-bluSkynet <- asNetwork(g2)
+bluSkynet <- asNetwork(g4_sample)
 summary(bluSkynet)
+rxWriteObject(
+  ds_Graphs,
+  paste0("bluSkynet_Graph - network - no posts: num_posts ", num_posts),
+  bluSkynet,
+  overwrite = TRUE
+)
 
 bluSkynet %v% "vertex.names"
 # bluSkynet[,]
