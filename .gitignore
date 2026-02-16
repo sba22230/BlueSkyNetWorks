@@ -16,3 +16,5 @@ graphs/visnetwork_tmp_files/visNetwork-binding-2.1.4/visNetwork.js
 graphs/g_bluesky enriched Speirgorm Network.graphml
 images/g1_bluesky enriched Speirgorm Network.svg
 images/gtn_TopNodes_Speirgorm_Network.svg
+graphs/g2 bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml
+graphs/g3 visnetwork_export.gexf
