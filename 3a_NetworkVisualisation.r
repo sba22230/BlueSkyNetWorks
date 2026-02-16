@@ -1,6 +1,11 @@
-source("3_StatnetAnalysis.R")
+# source("3_StatnetAnalysis.R")
 
-# Network is already created in 3_StatnetAnalysis.R as 'g2' 'g3'
+g2 <- rxReadObject(
+  ds_Graphs,
+  "g4_sampled_Graph - igraph - no posts: num_posts 5000"
+)
+
+# Network is already created in 3_StatnetAnalysis.R as 'g4_sample'
 
 coords <- layout_with_drl(g2)
 V(g2)$x <- coords[, 1]
