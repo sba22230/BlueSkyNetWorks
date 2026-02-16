@@ -43,6 +43,90 @@ dedup_posts <- function(posts) {
     distinct(uri, .keep_all = TRUE)
 }
 
+
+# ---------------------------
+# Configuration: SQL Server
+# ---------------------------
+# Edit these values for your environment
+sql_server <- "localhost" # e.g., "localhost\\SQLEXPRESS" or
+# "sqlserver.domain.com"
+database <- "BlueSkyNet"
+use_trusted_connection <- TRUE # set FALSE if using SQL auth
+#sql_user <- "your_sql_user"
+# only used if not using trusted connection
+#sql_password <- "your_password"
+# only used if not using trusted connection
+orgicc <- rxGetComputeContext()
+rxOptions(numCoresToUse = wrkrs)
+rxSetComputeContext("localpar")
+
+if (use_trusted_connection) {
+  odbc_con <- dbConnect(
+    odbc::odbc(),
+    Driver = "SQL Server",
+    Server = sql_server,
+    Database = database,
+    Trusted_Connection = "Yes"
+  )
+  
+  connStr <- paste0(
+    "Driver={SQL Server};Server=",
+    sql_server,
+    ";Database=",
+    database,
+    ";Trusted_Connection=Yes;"
+  )
+} else {
+  odbc_con <- dbConnect(
+    odbc::odbc(),
+    Driver = "SQL Server",
+    Server = sql_server,
+    Database = database,
+    UID = sql_user,
+    PWD = sql_password
+  )
+  
+  connStr <- paste0(
+    # nolint: object_name_linter.
+    "Driver={SQL Server};Server=",
+    sql_server,
+    ";Database=",
+    database,
+    ";Uid=",
+    sql_user,
+    ";Pwd=",
+    sql_password,
+    ";"
+  )
+}
+
+# Helper to create RxSqlServerData objects
+rx_sql_table <- function(table_name, connectionString = connStr) {
+  RxSqlServerData(
+    table = table_name,
+    connectionString = connectionString,
+    stringsAsFactors = FALSE
+  )
+}
+
+# ODBC connection to read and write objects into SQL 
+ds_Graphs <- RxOdbcData(table = "Graph_objects", connectionString = connStr)
+
+# SQL DDL code to create table if it does not exist 
+ddl <- paste(" create table [", ds_Graphs@table, "] (",
+                           "     [id] varchar(200) not null, ",
+                           "     [value] varbinary(max), ",
+                           "     constraint unique_id unique (id))",
+                           sep = "")
+if (!rxSqlServerTableExists(ds_Graphs@table, ds_Graphs@connectionString)) {
+  rxOpen(ds_Graphs, "w")
+  rxExecuteSQLDDL(ds_Graphs, ddl)
+}
+
+# shareDir must be accessible by SQL Server compute context
+shareDir <- paste("H:\\AllShare\\", Sys.getenv("USERNAME"), sep = "")
+# change to a path accessible by SQL Server machine
+
 # Single page search with retry
 search_page <- function(query, cursor = NULL, limit = 300) {
   retry(
