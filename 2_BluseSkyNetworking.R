@@ -27,20 +27,20 @@ print("Number of NAs per column:")
 print(na_per_column)
 
 # Step 3: Build igraph object and plot basic network
-g1 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+g1_2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 cat("Graph summary:\n")
-print(summary(g1))
+print(summary(g1_2))
 
-coords <- layout_with_drl(g1) # heavy step, do once
-V(g1)$x <- coords[, 1]
-V(g1)$y <- coords[, 2]
+coords <- layout_with_drl(g1_2) # heavy step, do once
+V(g1_2)$x <- coords[, 1]
+V(g1_2)$y <- coords[, 2]
 
 # Select top N nodes to label (e.g., top 50 by degree)
-deg <- igraph::degree(g1)
+deg <- igraph::degree(g1_2)
 top_nodes <- names(sort(deg, decreasing = TRUE))[1:50]
 
 # Faster ggraph call
-gtn <- ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
+gtn <- ggraph(g1_2, layout = "manual", x = V(g1_2)$x, y = V(g1_2)$y) +
   geom_edge_link(alpha = 0.3) +
   geom_node_point(size = 5) +
   geom_node_text(
@@ -49,10 +49,11 @@ gtn <- ggraph(g1, layout = "manual", x = V(g1)$x, y = V(g1)$y) +
     max.overlaps = 1000
   )
 
-save_graph_svg(gtn, "TopNodes_Speirgorm_Network.svg")
+save_graph_svg(gtn, "gtn_TopNodes_Speirgorm_Network.svg")
+rxWriteObject(ds_Graphs, "gtn_Graph - ggraph - layout_with_drl", gtn)
 
 # Step 5: Plot enriched network with ggraph
-g2 <- g1
+g2 <- g1_2
 coords2 <- layout_with_graphopt(g2, niter = 400) # heavy step, do once
 V(g2)$x <- coords2[, 1]
 V(g2)$y <- coords2[, 2]
@@ -67,16 +68,18 @@ cat("Final graph summary:\n")
 print(summary(g2))
 write_graph(
   g2,
-  "graphs/bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
+  "graphs/g2 bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
   format = "graphml"
 )
+rxWriteObject(ds_Graphs, "g2_Graph - igraph - layout_with_graphopt", g2)
 
 # Step 6: Interactive visualization with visNetwork
 vis_nodes <- nodes %>%
   mutate(
     id = name,
     label = name,
-    title = paste0("Name: ", name, "\nTotal Likes: ", total_likes_on_posts), # hover tooltip
+    # hover tooltip
+    title = paste0("Name: ", name, "\nTotal Likes: ", total_likes_on_posts),
     value = ifelse(is.na(reposts_received), 0, reposts_received),
     # size by repost_count # nolint: line_length_linter.
     group = name
@@ -120,12 +123,12 @@ comp_ids <- sort(unique(comps$membership))
 
 for (i in seq_along(comp_ids)) {
   comp_id <- comp_ids[i]
-  
+
   sub_nodes <- which(comps$membership == comp_id)
   sub_coords <- layouts[[i]]
-  
+
   coords3[sub_nodes, ] <- sub_coords + offset
-  offset <- offset + diff(range(sub_coords[,1])) + 10
+  offset <- offset + diff(range(sub_coords[, 1])) + 10
 }
 vis_nodes$x <- coords3[, 1]
 vis_nodes$y <- coords3[, 2]
@@ -135,6 +138,8 @@ vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 
 # Community detection
 comm <- cluster_walktrap(g3) # works on directed graphs
+
+rxWriteObject(ds_Graphs, "g3_Graph - igraph - community detection", g3)
 
 # Add community membership to nodes
 vis_nodes$community <- comm$membership
@@ -299,7 +304,11 @@ htmlwidgets::saveWidget(
   "graphs/visnetwork_tmp.html",
   selfcontained = TRUE
 )
-
+rxWriteObject(
+  ds_Graphs,
+  "g3_Visnetwork - visNetwork - layout_with_lgl",
+  vis_obj
+)
 ## Export the Visnetwork into GEXF with visual encodings preserved
 # Nodes (basic)
 ge_nodes <- data.frame(
@@ -442,13 +451,14 @@ gexf_obj <- write.gexf(
 # Save to file
 home_dir <- here::here()
 file_path <- file.path(home_dir, "graphs")
-file_name <- file.path(file_path, "visnetwork_export.gexf")
+file_name <- file.path(file_path, "g3 visnetwork_export.gexf")
 if (!dir.exists(file_path)) {
   dir.create(file_path, recursive = TRUE)
 }
 rgexf::write.gexf(gexf_obj, output = file_name)
 
 plot(gexf_obj)
+rxWriteObject(ds_Graphs, "Gephi_Graph - Gephi - GEXF", gexf_obj)
 
 cat("Interactive visualization ready with precomputed layout.\n")
 

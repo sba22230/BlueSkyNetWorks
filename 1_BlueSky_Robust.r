@@ -125,9 +125,11 @@ g1 <- ggraph::ggraph(g, layout = "drl") +
   theme_void()
 cat("Final graph summary:\n")
 print(summary(g))
-save_graph_svg(g1, "bluesky enriched Speirgorm Network.svg")
+save_graph_svg(g1, "g1_bluesky enriched Speirgorm Network.svg")
+rxWriteObject(ds_Graphs, "G1_Graph - ggraph", g1)
 write_graph(
   g,
-  "graphs/bluesky enriched Speirgorm Network.graphml",
+  "graphs/g_bluesky enriched Speirgorm Network.graphml",
   format = "graphml"
 )
+rxWriteObject(ds_Graphs, "G_Graph - igraph", g)
