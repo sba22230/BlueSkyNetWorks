@@ -99,7 +99,11 @@ if (use_trusted_connection) {
     ";"
   )
 }
-
+sql_cc <- RxInSqlServer(
+  connectionString = connStr,
+  numTasks = wrkrs,
+  autoCleanup = TRUE
+)
 # Helper to create RxSqlServerData objects
 rx_sql_table <- function(table_name, connectionString = connStr) {
   RxSqlServerData(

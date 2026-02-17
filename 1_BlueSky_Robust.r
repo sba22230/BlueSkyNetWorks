@@ -1,3 +1,4 @@
+# 1_bluesky_ingest.R
 source("0_functions.R")
 
 # Connect to bluesky
@@ -15,7 +16,6 @@ posts_df <- deep_search_posts(
   checkpoint_path = "data/speirgorm_posts.parquet"
 )
 
-readr::write_csv(posts_df, "data/speirgorm_posts.csv")
 
 # Load existing reposts/threads or start fresh
 reposts_df <- tryCatch(
@@ -96,40 +96,4 @@ plan(orig_plan)
 arrow::write_parquet(posts_df, "data/speirgorm_posts.parquet")
 arrow::write_parquet(reposts_df, "data/speirgorm_reposts.parquet")
 arrow::write_parquet(threads_df, "data/speirgorm_threads.parquet")
-#readr::write_csv(reposts_df, "data/speirgorm_reposts.csv") # this file is too big for git
-readr::write_csv(threads_df, "data/speirgorm_threads.csv")
 
-source("1a_load network data into SQL.r")
-
-edges <- read_parquet("graphs/speirgorm_edges.parquet")
-nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
-
-# Step 12: Plot enriched network with ggraph
-
-# Minimal DID/handle normalization if available
-did_map <- reposts_df %>%
-  select(handle, did) %>%
-  filter(!is.na(handle), !is.na(did)) %>%
-  distinct() %>%
-  group_by(did) %>%
-  slice_tail(n = 1) %>% # prefer the latest handle seen for DID
-  ungroup()
-
-g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-g1 <- ggraph::ggraph(g, layout = "drl") +
-  geom_edge_link(alpha = 0.3) +
-  geom_node_point(aes(size = reposts_made, color = reposts_received)) +
-  geom_node_text(aes(label = name), repel = TRUE) +
-  scale_size_continuous(range = c(3, 12)) +
-  scale_color_gradient(low = "lightblue", high = "red") +
-  theme_void()
-cat("Final graph summary:\n")
-print(summary(g))
-save_graph_svg(g1, "g1_bluesky enriched Speirgorm Network.svg")
-rxWriteObject(ds_Graphs, "G1_Graph - ggraph", g1, overwrite = TRUE)
-write_graph(
-  g,
-  "graphs/g_bluesky enriched Speirgorm Network.graphml",
-  format = "graphml"
-)
-rxWriteObject(ds_Graphs, "G_Graph - igraph", g, overwrite = TRUE)
