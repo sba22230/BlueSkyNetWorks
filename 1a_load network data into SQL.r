@@ -436,6 +436,26 @@ tryCatch(
     cat("  ⚠ Influence score computation warning:", e$message, "\n")
   }
 )
+
+# Execute the proc sp_ComputeEdgeweight
+tryCatch(
+  {
+    dbExecute(odbc_con, "EXEC sp_ComputeEdgeweight;")
+  },
+  error = function(e) {
+    cat("  ⚠ Edgeweight computation warning:", e$message, "\n")
+  }
+)
+
+# Execute the proc sp_ComputeEdgeBetweenness
+tryCatch(
+  {
+    dbExecute(odbc_con, "EXEC sp_ComputeEdgeBetweenness;")
+  },
+  error = function(e) {
+    cat("  ⚠ Edge betweenness computation warning:", e$message, "\n")
+  }
+)
 # # ---------------------------
 # # Step 6: Create edges and nodes csv files for later
 # #   Create table: repost_counts (to, repost_count)
@@ -491,7 +511,9 @@ edges <- dbGetQuery(
     r.like_count,
     r.reply_count,
     r.bookmark_count,
-    r.repost_count
+    r.repost_count,
+    r.betweenness,
+    r.weight
     ,CAST(r.edgeStarts AS date) AS edgeStarts
     ,CAST(r.edgeEnds AS date) AS edgeEnds
     ,r.text 
