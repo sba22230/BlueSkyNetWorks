@@ -1,5 +1,5 @@
 # 1_bluesky_ingest.R
-source("0_functions.R")
+#source("0_functions.R")
 
 # Connect to bluesky
 bs_user <- bs_get_user()
@@ -96,4 +96,3 @@ plan(orig_plan)
 arrow::write_parquet(posts_df, "data/speirgorm_posts.parquet")
 arrow::write_parquet(reposts_df, "data/speirgorm_reposts.parquet")
 arrow::write_parquet(threads_df, "data/speirgorm_threads.parquet")
-

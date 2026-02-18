@@ -68,7 +68,7 @@ if (use_trusted_connection) {
     Database = database,
     Trusted_Connection = "Yes"
   )
-  
+
   connStr <- paste0(
     "Driver={SQL Server};Server=",
     sql_server,
@@ -85,7 +85,7 @@ if (use_trusted_connection) {
     UID = sql_user,
     PWD = sql_password
   )
-  
+
   connStr <- paste0(
     # nolint: object_name_linter.
     "Driver={SQL Server};Server=",
@@ -113,15 +113,19 @@ rx_sql_table <- function(table_name, connectionString = connStr) {
   )
 }
 
-# ODBC connection to read and write objects into SQL 
+# ODBC connection to read and write objects into SQL
 ds_Graphs <- RxOdbcData(table = "Graph_objects", connectionString = connStr)
 
-# SQL DDL code to create table if it does not exist 
-ddl <- paste(" create table [", ds_Graphs@table, "] (",
-                           "     [id] varchar(200) not null, ",
-                           "     [value] varbinary(max), ",
-                           "     constraint unique_id unique (id))",
-                           sep = "")
+# SQL DDL code to create table if it does not exist
+ddl <- paste(
+  " create table [",
+  ds_Graphs@table,
+  "] (",
+  "     [id] varchar(200) not null, ",
+  "     [value] varbinary(max), ",
+  "     constraint unique_id unique (id))",
+  sep = ""
+)
 if (!rxSqlServerTableExists(ds_Graphs@table, ds_Graphs@connectionString)) {
   rxOpen(ds_Graphs, "w")
   rxExecuteSQLDDL(ds_Graphs, ddl)
@@ -679,4 +683,16 @@ sanitize_xml <- function(x) {
   x <- gsub("\"", "&quot;", x, fixed = TRUE)
   x <- gsub("'", "&apos;", x, fixed = TRUE)
   x
+}
+
+# safe rescale helper
+safe_rescale <- function(x) {
+  if (all(is.na(x))) {
+    return(rep(0, length(x)))
+  }
+  rng <- range(x, na.rm = TRUE)
+  if (rng[1] == rng[2]) {
+    return(rep(0, length(x)))
+  }
+  scales::rescale(x, to = c(0, 1), from = rng)
 }

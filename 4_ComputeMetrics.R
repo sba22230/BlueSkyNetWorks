@@ -82,17 +82,6 @@ out_vec <- out_degree[match(node_keys, names(out_degree))]
 kcore_vec <- kcore_vals[match(node_keys, names(kcore_vals))]
 local_clust_vec <- local_clustering[match(node_keys, names(local_clustering))]
 
-# safe rescale helper
-safe_rescale <- function(x) {
-  if (all(is.na(x))) {
-    return(rep(0, length(x)))
-  }
-  rng <- range(x, na.rm = TRUE)
-  if (rng[1] == rng[2]) {
-    return(rep(0, length(x)))
-  }
-  scales::rescale(x, to = c(0, 1), from = rng)
-}
 
 nodes_with_metrics <- nodes %>%
   dplyr::mutate(
@@ -288,7 +277,7 @@ cat(sprintf(
 
 cat("\n Extract Community Subgraphs \n")
 # Assuming you have your community detection results
-communities <- comm_louvain  # or your preferred method
+communities <- comm_louvain # or your preferred method
 membership <- membership(communities)
 
 # Get top 10 communities by size
@@ -303,10 +292,12 @@ community_graphs <- lapply(top_10_ids, function(id) {
 
 # Name them for easy reference
 names(community_graphs) <- paste0("Community_", top_10_ids)
-cat("\n Analyze Internal Structure
-For each community subgraph, examine: \n")
-  # For a single community
-  comm_graph <- community_graphs[[1]]
+cat(
+  "\n Analyze Internal Structure
+For each community subgraph, examine: \n"
+)
+# For a single community
+comm_graph <- community_graphs[[1]]
 
 # Density
 edge_density(comm_graph)
@@ -475,4 +466,3 @@ cat("\n✓ Metrics computation complete. Results saved to graphs/\n")
 cat("  Use nodes_with_metrics for per-user analysis\n")
 cat("  Use network_metrics for global statistics\n")
 cat("  Use community_stats to understand cluster structure\n\n")
-
