@@ -52,6 +52,9 @@ sql_server <- "localhost" # e.g., "localhost\\SQLEXPRESS" or
 # "sqlserver.domain.com"
 database <- "BlueSkyNet"
 use_trusted_connection <- TRUE # set FALSE if using SQL auth
+# shareDir must be accessible by SQL Server compute context
+shareDir <- paste("H:\\AllShare\\", Sys.getenv("USERNAME"), sep = "")
+# change to a path accessible by SQL Server machine
 #sql_user <- "your_sql_user"
 # only used if not using trusted connection
 #sql_password <- "your_password"
@@ -130,10 +133,6 @@ if (!rxSqlServerTableExists(ds_Graphs@table, ds_Graphs@connectionString)) {
   rxOpen(ds_Graphs, "w")
   rxExecuteSQLDDL(ds_Graphs, ddl)
 }
-
-# shareDir must be accessible by SQL Server compute context
-shareDir <- paste("H:\\AllShare\\", Sys.getenv("USERNAME"), sep = "")
-# change to a path accessible by SQL Server machine
 
 # Single page search with retry
 search_page <- function(query, cursor = NULL, limit = 300) {

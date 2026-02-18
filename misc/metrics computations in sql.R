@@ -1,6 +1,66 @@
 # 3_build_graph_and_metrics.R
 source("0_functions.R")
 
+
+# ---------------------------
+# Configuration: SQL Server
+# ---------------------------
+# Edit these values for your environment
+sql_server <- "localhost" # e.g., "localhost\\SQLEXPRESS" or
+# "sqlserver.domain.com"
+database <- "BlueSkyNet"
+use_trusted_connection <- TRUE # set FALSE if using SQL auth
+# shareDir must be accessible by SQL Server compute context
+shareDir <- paste("H:\\AllShare\\", Sys.getenv("USERNAME"), sep = "")
+# change to a path accessible by SQL Server machine
+
+orgicc <- rxGetComputeContext()
+if (use_trusted_connection) {
+  odbc_con <- dbConnect(
+    odbc::odbc(),
+    Driver = "SQL Server",
+    Server = sql_server,
+    Database = database,
+    Trusted_Connection = "Yes"
+  )
+
+  connStr <- paste0(
+    "Driver={SQL Server};Server=",
+    sql_server,
+    ";Database=",
+    database,
+    ";Trusted_Connection=Yes;"
+  )
+} else {
+  odbc_con <- dbConnect(
+    odbc::odbc(),
+    Driver = "SQL Server",
+    Server = sql_server,
+    Database = database,
+    UID = sql_user,
+    PWD = sql_password
+  )
+
+  connStr <- paste0(
+    # nolint: object_name_linter.
+    "Driver={SQL Server};Server=",
+    sql_server,
+    ";Database=",
+    database,
+    ";Uid=",
+    sql_user,
+    ";Pwd=",
+    sql_password,
+    ";"
+  )
+}
+sql_cc <- RxInSqlServer(
+  connectionString = connStr,
+  numTasks = wrkrs,
+  autoCleanup = TRUE
+)
+
+library(odbc)
 # Read edges/nodes from SQL via RxSqlServerData
 edges_rx <- RxSqlServerData(
   sqlQuery = "
