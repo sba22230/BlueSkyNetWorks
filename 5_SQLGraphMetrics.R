@@ -5,7 +5,7 @@
 # and retrieve them in R for visualization and further analysis
 # ============================================================================
 
-source("0_functions.R")
+# source("0_functions.R")
 
 cat("\n=== SQL Server Graph Metrics Integration ===\n")
 

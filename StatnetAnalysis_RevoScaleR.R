@@ -1,5 +1,5 @@
 # BlueSkyNet_RevoScaleR.R
-source("0_functions.R")
+# source("0_functions.R")
 
 # Edit these values for your environment
 sql_server <- "localhost" # e.g., "localhost\\SQLEXPRESS" or "sqlserver.domain.com"

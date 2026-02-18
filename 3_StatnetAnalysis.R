@@ -1,4 +1,4 @@
-source("0_functions.R")
+# source("0_functions.R")
 
 # Step 1: Load data
 posts_df <- read_parquet("data/speirgorm_network.parquet")

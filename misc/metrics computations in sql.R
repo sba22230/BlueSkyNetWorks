@@ -1,6 +1,5 @@
 # 3_build_graph_and_metrics.R
-source("0_functions.R")
-
+# source("0_functions.R")
 
 # ---------------------------
 # Configuration: SQL Server

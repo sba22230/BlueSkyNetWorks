@@ -4,7 +4,7 @@
 
 # Load libraries and functions (assumes 0_functions.
 # R was already sourced in 3_StatnetAnalysis.R)
-source("0_functions.R")
+# source("0_functions.R")
 
 # Source 3_StatnetAnalysis.R if not already loaded
 # (comment out if already running in same session)

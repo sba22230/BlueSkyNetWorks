@@ -1,4 +1,4 @@
-source("0_functions.R")
+# source("0_functions.R")
 plan(multisession, workers = wrkrs)
 
 # Step 1: Build edge list (who reposted whom)
