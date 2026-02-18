@@ -31,6 +31,42 @@ g1_2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 cat("Graph summary:\n")
 print(summary(g1_2))
 
+rxSetComputeContext(sql_cc)
+layout_exec <- function(edges_data, nodes_data, layout_type, ...) {
+  library(igraph)
+
+  edges_df <- rxImport(edges_data)
+  nodes_df <- rxImport(nodes_data)
+
+  g <- graph_from_data_frame(
+    d = edges_df,
+    vertices = nodes_df,
+    directed = FALSE
+  )
+
+  coords <- switch(
+    layout_type,
+    "drl" = layout_with_drl(g, ...),
+    "drl_fast" = layout_with_drl(g, options = list(simmer.attraction = 0)),
+    "graphopt" = layout_with_graphopt(g, ...),
+    stop("Unknown layout type")
+  )
+
+  df <- as.data.frame(coords)
+  names(df) <- c("x", "y")
+  df$name <- V(g)$name
+  df
+}
+rxExec(
+  function(edges_data, nodes_data, layout_type) {
+    layout_exec(edges_data, nodes_data, layout_type)
+  },
+  edges_data = edges_rx,
+  nodes_data = nodes_rx,
+  layout_type = c("drl", "drl_fast", "graphopt"),
+  execObjects = c("connStr")
+)
+
 coords <- layout_with_drl(g1_2) # heavy step, do once
 V(g1_2)$x <- coords[, 1]
 V(g1_2)$y <- coords[, 2]
