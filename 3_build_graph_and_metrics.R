@@ -35,6 +35,9 @@ rxSetComputeContext(sql_cc)
 layout_exec <- function(edges_data, nodes_data, layout_type, ...) {
   library(igraph)
 
+  # make absolutely sure this is a single scalar
+  layout_type <- as.character(layout_type)[1]
+
   edges_df <- rxImport(edges_data)
   nodes_df <- rxImport(nodes_data)
 
@@ -48,8 +51,14 @@ layout_exec <- function(edges_data, nodes_data, layout_type, ...) {
     layout_type,
     "drl" = layout_with_drl(g, ...),
     "drl_fast" = layout_with_drl(g, options = list(simmer.attraction = 0)),
-    "graphopt" = layout_with_graphopt(g, ...),
-    stop("Unknown layout type")
+    "graphopt" = layout_with_graphopt(g, niter = 400),
+    "lgl" = layout_with_lgl(g),
+    "kk" = layout_with_kk(g),
+    "tree" = layout_as_tree(
+      g,
+      root = which(nodes$total_degree == max(nodes$total_degree))
+    ),
+    stop(paste("Unknown layout type:", layout_type))
   )
 
   df <- as.data.frame(coords)
@@ -57,17 +66,31 @@ layout_exec <- function(edges_data, nodes_data, layout_type, ...) {
   df$name <- V(g)$name
   df
 }
-rxExec(
-  function(edges_data, nodes_data, layout_type) {
-    layout_exec(edges_data, nodes_data, layout_type)
-  },
-  edges_data = edges_rx,
-  nodes_data = nodes_rx,
-  layout_type = c("drl", "drl_fast", "graphopt"),
-  execObjects = c("connStr")
+tic()
+res <- rxExec(
+  layout_exec,
+  edges_data = edges,
+  nodes_data = nodes,
+  layout_type = rxElemArg(c(
+    "drl",
+    "drl_fast",
+    "graphopt",
+    "lgl",
+    "kk",
+    "tree"
+  )),
+  execObjects = c("connStr", "layout_exec")
 )
+toc()
+# res is a list of 3 data.frames in the same order as layout_type
+coords_drl <- res[[1]]
+coords_drl_fast <- res[[2]]
+coords_graphopt <- res[[3]]
+coords_lgl <- res[[4]]
+coords_kk <- res[[5]]
+coords_tree <- res[[6]]
 
-coords <- layout_with_drl(g) # heavy step, do once
+coords <- coords_drl # heavy step, do once
 V(g)$x <- coords[, 1]
 V(g)$y <- coords[, 2]
 
