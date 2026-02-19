@@ -70,7 +70,7 @@ layout_exec <- function(edges_data, nodes_data, layout_type, ...) {
     "tree" = layout_as_tree(
       g,
       # make this a vector of the top ten connected nodes
-      root = which(nodes_df$total_degree == max(nodes_df$total_degree)), 
+      root = which(nodes_df$total_degree == max(nodes_df$total_degree)),
       rootlevel = numeric(),
       mode = "out"
     ),
@@ -107,7 +107,7 @@ coords_lgl <- res[[4]]
 coords_kk <- res[[5]]
 coords_tree <- res[[6]]
 
-coords <- coords_drl # heavy step, do once
+coords <- coords_tree # heavy step, do once
 V(g)$x <- coords[, 1]
 V(g)$y <- coords[, 2]
 
