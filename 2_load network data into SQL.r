@@ -473,8 +473,8 @@ nodes <- dbGetQuery(
       ,[total_bookmarks_on_posts]
       ,[betweenness]
       ,[betweenness_norm]
-      ,[closeness]
-      ,[closeness_norm]
+      ,COALESCE([closeness], 0) AS closeness
+      ,COALESCE([closeness_norm], 0) AS closeness_norm
       ,[eigenvector_centrality]
       ,[pagerank]
       ,[pagerank_norm]
@@ -483,8 +483,8 @@ nodes <- dbGetQuery(
       ,[authority_norm]
       ,[local_clustering]
       ,[kcore]
-      ,[in_degree]
-      ,[out_degree]
+      ,COALESCE([in_degree], 0) AS in_degree
+      ,COALESCE([out_degree], 0) AS out_degree
       ,[total_degree]
       ,[community]
       ,[modularity]
@@ -507,16 +507,15 @@ edges <- dbGetQuery(
     t.handle AS [to],
     r.post_uri AS repost_uri,
     r.posted_on AS created_at,
-    
     r.like_count,
     r.reply_count,
     r.bookmark_count,
     r.repost_count,
-    r.betweenness,
+    COALESCE(r.betweenness, 0) AS betweenness,
     r.weight
     ,CAST(r.edgeStarts AS date) AS edgeStarts
     ,CAST(r.edgeEnds AS date) AS edgeEnds
-    ,r.text 
+    ,COALESCE(r.text, 'NO TEXT HERE') AS text
 FROM dbo.Reposted AS r
 JOIN dbo.Person AS f
     ON r.$from_id = f.$node_id      -- reposter

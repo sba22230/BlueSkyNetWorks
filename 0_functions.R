@@ -1,12 +1,15 @@
 v <- R.Version()
 if (v$major == '4' && v$minor != '0.2') {
   library(bskyr)
+  library(furrr)
+library(rgexf)
+
+library(statnet)
 }
 library(arrow)
+library(DT)
 library(DBI)
 library(dplyr)
-library(DT)
-library(furrr)
 library(ggraph)
 library(igraph)
 library(intergraph)
@@ -16,9 +19,7 @@ library(purrr)
 library(readr)
 library(retry)
 library(RevoScaleR) # RevoScaleR provides RxSqlServerData, rxDataStep, etc.
-library(rgexf)
 library(sna)
-library(statnet)
 library(stringi)
 library(stringr)
 library(tibble)
@@ -184,7 +185,7 @@ deep_search_posts <- function(
   until <- NULL
   fetched <- 0
   iter <- 0
-  # ✅ Load existing checkpoint if available
+  # âœ… Load existing checkpoint if available
   if (file.exists(checkpoint_path)) {
     checkpoint <- tryCatch(
       arrow::read_parquet(checkpoint_path),

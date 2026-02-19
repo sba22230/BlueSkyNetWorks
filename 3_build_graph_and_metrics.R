@@ -27,9 +27,9 @@ print("Number of NAs per column:")
 print(na_per_column)
 
 # Step 3: Build igraph object and plot basic network
-g1_2 <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 cat("Graph summary:\n")
-print(summary(g1_2))
+print(summary(g))
 
 rxSetComputeContext(sql_cc)
 layout_exec <- function(edges_data, nodes_data, layout_type, ...) {
@@ -67,16 +67,16 @@ rxExec(
   execObjects = c("connStr")
 )
 
-coords <- layout_with_drl(g1_2) # heavy step, do once
-V(g1_2)$x <- coords[, 1]
-V(g1_2)$y <- coords[, 2]
+coords <- layout_with_drl(g) # heavy step, do once
+V(g)$x <- coords[, 1]
+V(g)$y <- coords[, 2]
 
 # Select top N nodes to label (e.g., top 50 by degree)
-deg <- igraph::degree(g1_2)
+deg <- igraph::degree(g)
 top_nodes <- names(sort(deg, decreasing = TRUE))[1:50]
 
 # Faster ggraph call
-gtn <- ggraph(g1_2, layout = "manual", x = V(g1_2)$x, y = V(g1_2)$y) +
+gtn <- ggraph(g, layout = "manual", x = V(g)$x, y = V(g)$y) +
   geom_edge_link(alpha = 0.3) +
   geom_node_point(size = 5) +
   geom_node_text(
@@ -94,7 +94,7 @@ rxWriteObject(
 )
 
 # Step 5: Plot enriched network with ggraph
-g2 <- g1_2
+g2 <- g
 coords2 <- layout_with_graphopt(g2, niter = 400) # heavy step, do once
 V(g2)$x <- coords2[, 1]
 V(g2)$y <- coords2[, 2]
