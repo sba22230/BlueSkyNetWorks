@@ -31,7 +31,7 @@ g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 cat("Graph summary:\n")
 print(summary(g))
 
-rxSetComputeContext(sql_cc)
+#xSetComputeContext(sql_cc)
 layout_exec <- function(edges_data, nodes_data, layout_type, ...) {
   library(igraph)
 
@@ -49,14 +49,30 @@ layout_exec <- function(edges_data, nodes_data, layout_type, ...) {
 
   coords <- switch(
     layout_type,
-    "drl" = layout_with_drl(g, ...),
+    "drl" = layout_with_drl(
+      g,
+      use.seed = TRUE,
+      seed = matrix(runif(vcount(g) * 2), ncol = 2)
+    ),
     "drl_fast" = layout_with_drl(g, options = list(simmer.attraction = 0)),
-    "graphopt" = layout_with_graphopt(g, niter = 400),
-    "lgl" = layout_with_lgl(g),
-    "kk" = layout_with_kk(g),
+    "graphopt" = layout_with_graphopt(
+      g,
+      start = matrix(runif(vcount(g) * 2), ncol = 2),
+      niter = 400
+    ),
+    "lgl" = layout_with_lgl(g, maxiter = 100, maxdelta = vcount(g) * 2),
+    "kk" = layout_with_kk(
+      g,
+      coords = matrix(runif(vcount(g) * 2), ncol = 2),
+      maxiter = 100,
+      weights = E(g)$weight
+    ),
     "tree" = layout_as_tree(
       g,
-      root = which(nodes$total_degree == max(nodes$total_degree))
+      # make this a vector of the top ten connected nodes
+      root = which(nodes_df$total_degree == max(nodes_df$total_degree)), 
+      rootlevel = numeric(),
+      mode = "out"
     ),
     stop(paste("Unknown layout type:", layout_type))
   )
@@ -66,6 +82,7 @@ layout_exec <- function(edges_data, nodes_data, layout_type, ...) {
   df$name <- V(g)$name
   df
 }
+library(tictoc)
 tic()
 res <- rxExec(
   layout_exec,

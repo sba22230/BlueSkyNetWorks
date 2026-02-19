@@ -2,9 +2,8 @@ v <- R.Version()
 if (v$major == '4' && v$minor != '0.2') {
   library(bskyr)
   library(furrr)
-library(rgexf)
-
-library(statnet)
+  library(rgexf)
+  library(statnet)
 }
 library(arrow)
 library(DT)
@@ -105,7 +104,7 @@ if (use_trusted_connection) {
 }
 sql_cc <- RxInSqlServer(
   connectionString = connStr,
-  numTasks = wrkrs,
+  numTasks = 15,
   autoCleanup = TRUE
 )
 # Helper to create RxSqlServerData objects

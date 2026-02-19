@@ -241,16 +241,58 @@ dbExecute(odbc_con, populate_reposted_sql)
 # Read edges/nodes from SQL via RxSqlServerData
 edges_rx <- RxSqlServerData(
   sqlQuery = "
-    SELECT f.handle AS [from],
-           t.handle AS [to]
-    FROM dbo.Reposted AS r
-    JOIN dbo.Person AS f ON r.$from_id = f.$node_id
-    JOIN dbo.Person AS t ON r.$to_id   = t.$node_id;",
+    SELECT 
+    f.handle AS [from],
+    t.handle AS [to],
+    r.post_uri AS repost_uri,
+    r.posted_on AS created_at,
+    r.like_count,
+    r.reply_count,
+    r.bookmark_count,
+    r.repost_count,
+    COALESCE(r.betweenness, 0) AS betweenness,
+    r.weight
+    ,CAST(r.edgeStarts AS date) AS edgeStarts
+    ,CAST(r.edgeEnds AS date) AS edgeEnds
+    ,COALESCE(r.text, 'NO TEXT HERE') AS text
+FROM dbo.Reposted AS r
+JOIN dbo.Person AS f
+    ON r.$from_id = f.$node_id      -- reposter
+JOIN dbo.Person AS t
+    ON r.$to_id = t.$node_id        -- original author
+ORDER BY r.posted_on DESC",
   connectionString = connStr
 )
 
 nodes_rx <- RxSqlServerData(
-  sqlQuery = "SELECT handle AS name FROM dbo.Person;",
+  sqlQuery = "SELECT [handle] AS name
+      ,[first_seen] AS earliestPost
+      ,[last_seen] AS latestPost
+      ,[posts_authored]
+      ,[reposts_made]
+      ,[reposts_received]
+      ,[total_likes_on_posts]
+      ,[total_replies_on_posts]
+      ,[total_bookmarks_on_posts]
+      ,[betweenness]
+      ,[betweenness_norm]
+      ,COALESCE([closeness], 0) AS closeness
+      ,COALESCE([closeness_norm], 0) AS closeness_norm
+      ,[eigenvector_centrality]
+      ,[pagerank]
+      ,[pagerank_norm]
+      ,[hub_score]
+      ,[authority_score]
+      ,[authority_norm]
+      ,[local_clustering]
+      ,[kcore]
+      ,COALESCE([in_degree], 0) AS in_degree
+      ,COALESCE([out_degree], 0) AS out_degree
+      ,[total_degree]
+      ,[community]
+      ,[modularity]
+      ,[influence_score]
+  FROM [BlueSkyNet].[dbo].[Person];",
   connectionString = connStr
 )
 rxSetComputeContext(sql_cc)
