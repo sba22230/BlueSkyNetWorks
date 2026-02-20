@@ -31,57 +31,7 @@ g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 cat("Graph summary:\n")
 print(summary(g))
 
-#xSetComputeContext(sql_cc)
-layout_exec <- function(edges_data, nodes_data, layout_type, ...) {
-  library(igraph)
-
-  # make absolutely sure this is a single scalar
-  layout_type <- as.character(layout_type)[1]
-
-  edges_df <- rxImport(edges_data)
-  nodes_df <- rxImport(nodes_data)
-
-  g <- graph_from_data_frame(
-    d = edges_df,
-    vertices = nodes_df,
-    directed = FALSE
-  )
-
-  coords <- switch(
-    layout_type,
-    "drl" = layout_with_drl(
-      g,
-      use.seed = TRUE,
-      seed = matrix(runif(vcount(g) * 2), ncol = 2)
-    ),
-    "drl_fast" = layout_with_drl(g, options = list(simmer.attraction = 0)),
-    "graphopt" = layout_with_graphopt(
-      g,
-      start = matrix(runif(vcount(g) * 2), ncol = 2),
-      niter = 400
-    ),
-    "lgl" = layout_with_lgl(g, maxiter = 100, maxdelta = vcount(g) * 2),
-    "kk" = layout_with_kk(
-      g,
-      coords = matrix(runif(vcount(g) * 2), ncol = 2),
-      maxiter = 100,
-      weights = E(g)$weight
-    ),
-    "tree" = layout_as_tree(
-      g,
-      # make this a vector of the top ten connected nodes
-      root = which(nodes_df$total_degree == max(nodes_df$total_degree)),
-      rootlevel = numeric(),
-      mode = "out"
-    ),
-    stop(paste("Unknown layout type:", layout_type))
-  )
-
-  df <- as.data.frame(coords)
-  names(df) <- c("x", "y")
-  df$name <- V(g)$name
-  df
-}
+# --- this code bloc needs to go into the vis file 
 library(tictoc)
 tic()
 res <- rxExec(
@@ -99,7 +49,8 @@ res <- rxExec(
   execObjects = c("connStr", "layout_exec")
 )
 toc()
-# res is a list of 3 data.frames in the same order as layout_type
+
+# res is a list of 6 data.frames in the same order as layout_type
 coords_drl <- res[[1]]
 coords_drl_fast <- res[[2]]
 coords_graphopt <- res[[3]]
@@ -132,6 +83,8 @@ rxWriteObject(
   gtn,
   overwrite = TRUE
 )
+
+# --- end of one visualisation 
 
 # Step 5: Plot enriched network with ggraph
 g2 <- g

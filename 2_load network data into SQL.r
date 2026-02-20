@@ -4,7 +4,7 @@
 # source("0_functions.R")
 
 # ---------------------------
-# Step 0: Read Parquet files locally
+# Step 0: Read raw data Parquet files locally
 # ---------------------------
 posts_local <- read_parquet(
   "/../../Source/Repos/BlueSkyNetWorks/data/speirgorm_posts.parquet",
@@ -17,7 +17,7 @@ reposts_local <- arrow::read_parquet(
 )
 cat("\n=== Step 0: Read Parquet files locally ===\n")
 # ---------------------------
-# Step 1: Write raw CSVs to SQL Server
+# Step 1: Write raw data to SQL Server
 # ---------------------------
 # Write posts -> table: posts_raw
 posts_sql <- rx_sql_table("posts_raw")
@@ -175,9 +175,11 @@ GROUP BY handle;"
 dbExecute(odbc_con, populate_person_sql)
 cat("\n=== Step 2: populate the Nodes and Edges tables ===\n")
 # ---------------------------
-# Step 4: Populate Reposted edge table
+# Step 3: Populate Reposted edge table
 # - Insert edges by resolving $node_id for from/to using Person.name
 # ---------------------------
+
+cat("\n=== Step 3: Populate Reposted edge table ===\n")
 populate_reposted_sql <- "TRUNCATE TABLE dbo.Reposted;
 
 WITH NetDF AS (
@@ -236,11 +238,11 @@ dbExecute(odbc_con, populate_reposted_sql)
 
 
 # # ---------------------------
-# # Step 5: Create network metrics in SQL Server using igraph in R (via RevoScaleR)
+# # Step 4: Create network metrics in SQL Server using igraph in R (via RevoScaleR)
 # # ---------------------------
 
 cat(
-  "\n=== Step 5: Create network metrics in SQL Server using SQL ===\n"
+  "\n=== Step 4: Create network metrics in SQL Server using SQL ===\n"
 )
 
 # moved this as some of the igraph alogrithms use the edge weight
@@ -266,7 +268,7 @@ JOIN #in_degree_tmp AS c
 -- Clean up
 DROP TABLE #in_degree_tmp;"
 )
-cat("\n=== Step 5a: Create in-degree metrics in SQL Server using SQL ===\n")
+cat("\n=== Step 4a: Create in-degree metrics in SQL Server using SQL ===\n")
 
 dbExecute(
   odbc_con,
@@ -289,7 +291,7 @@ JOIN #out_degree_tmp AS c
 -- Clean up
 DROP TABLE #out_degree_tmp;"
 )
-cat("\n=== Step 5b: Create out-degree metrics in SQL Server using SQL ===\n")
+cat("\n=== Step 4b: Create out-degree metrics in SQL Server using SQL ===\n")
 
 # Execute the proc sp_ComputeInfluenceScore
 tryCatch(
@@ -300,7 +302,7 @@ tryCatch(
     cat("  ⚠ Influence score computation warning:", e$message, "\n")
   }
 )
-
+cat("\n=== Step 4c: Run Influence score computation SQL Server using SQL ===\n")
 # Execute the proc sp_ComputeEdgeweight
 tryCatch(
   {
@@ -310,7 +312,7 @@ tryCatch(
     cat("  ⚠ Edgeweight computation warning:", e$message, "\n")
   }
 )
-
+cat("\n=== Step 4d: Run Edgeweight computation SQL Server using SQL ===\n")
 # Execute the proc sp_ComputeEdgeBetweenness
 tryCatch(
   {
@@ -320,7 +322,7 @@ tryCatch(
     cat("  ⚠ Edge betweenness computation warning:", e$message, "\n")
   }
 )
-
+cat("\n=== Step 4e: Run Edge betweenness computation SQL Server using SQL ===\n")
 
 # Read edges/nodes from SQL via RxSqlServerData
 edges_rx <- RxSqlServerData(
@@ -504,12 +506,12 @@ dbExecute(
 "
 )
 cat(
-  "\n=== Step 5: Create network metrics in SQL Server using igraph in R (via RevoScaleR) ===\n"
+  "\n=== Step 4f: Create network metrics in SQL Server using igraph in R (via RevoScaleR) ===\n"
 )
 # dbExecute(odbc_con, "DROP TABLE dbo.centrality_tmp;")
 
 # # ---------------------------
-# # Step 6: Create edges and nodes csv files for later
+# # Step 5: Create edges and nodes csv files for later
 # #   Create table: repost_counts (to, repost_count)
 # # ---------------------------
 nodes <- dbGetQuery(
@@ -586,3 +588,6 @@ edges <- edges %>%
 names(edges)
 
 write_parquet(edges, "graphs/speirgorm_edges.parquet")
+cat(
+  "\n=== Step 5: Create edges and nodes csv files for later ===\n"
+)
