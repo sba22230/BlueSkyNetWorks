@@ -238,6 +238,90 @@ dbExecute(odbc_con, populate_reposted_sql)
 # # ---------------------------
 # # Step 5: Create network metrics in SQL Server using igraph in R (via RevoScaleR)
 # # ---------------------------
+
+cat(
+  "\n=== Step 5: Create network metrics in SQL Server using SQL ===\n"
+)
+
+# moved this as some of the igraph alogrithms use the edge weight
+
+dbExecute(
+  odbc_con,
+  "-- Build in-degree counts
+SELECT 
+    $to_id AS to_id,
+    COUNT(*) AS in_degree
+INTO #in_degree_tmp
+FROM dbo.Reposted
+GROUP BY $to_id;
+
+-- select * from #in_degree_tmp;
+-- Update Person table
+UPDATE p
+SET p.in_degree = c.in_degree
+FROM dbo.Person AS p
+JOIN #in_degree_tmp AS c
+    ON p.$node_id = c.to_id;
+
+-- Clean up
+DROP TABLE #in_degree_tmp;"
+)
+cat("\n=== Step 5a: Create in-degree metrics in SQL Server using SQL ===\n")
+
+dbExecute(
+  odbc_con,
+  "-- Build out-degree counts
+SELECT 
+$from_id AS from_id, 
+COUNT(*) AS out_degree
+INTO #out_degree_tmp
+FROM dbo.Reposted
+ GROUP BY $from_id;
+
+-- select * from #out_degree_tmp;
+-- Update Person table
+UPDATE p
+SET p.out_degree = c.out_degree
+FROM dbo.Person AS p
+JOIN #out_degree_tmp AS c
+    ON p.$node_id = c.from_id;
+
+-- Clean up
+DROP TABLE #out_degree_tmp;"
+)
+cat("\n=== Step 5b: Create out-degree metrics in SQL Server using SQL ===\n")
+
+# Execute the proc sp_ComputeInfluenceScore
+tryCatch(
+  {
+    dbExecute(odbc_con, "EXEC sp_ComputeInfluenceScore;")
+  },
+  error = function(e) {
+    cat("  ⚠ Influence score computation warning:", e$message, "\n")
+  }
+)
+
+# Execute the proc sp_ComputeEdgeweight
+tryCatch(
+  {
+    dbExecute(odbc_con, "EXEC sp_ComputeEdgeweight;")
+  },
+  error = function(e) {
+    cat("  ⚠ Edgeweight computation warning:", e$message, "\n")
+  }
+)
+
+# Execute the proc sp_ComputeEdgeBetweenness
+tryCatch(
+  {
+    dbExecute(odbc_con, "EXEC sp_ComputeEdgeBetweenness;")
+  },
+  error = function(e) {
+    cat("  ⚠ Edge betweenness computation warning:", e$message, "\n")
+  }
+)
+
+
 # Read edges/nodes from SQL via RxSqlServerData
 edges_rx <- RxSqlServerData(
   sqlQuery = "
@@ -319,7 +403,8 @@ centrality_df <- rxExec(
     eig <- eigen_centrality(g, directed = TRUE)$vector
     deg <- degree(g, mode = "total")
     core_vals <- coreness(g)
-    hits <- hits_scores(g, scale = TRUE)
+    hits <- hits_scores(g, scale = FALSE)
+    hits_norm <- hits_scores(g, scale = TRUE)
     comm <- cluster_walktrap(g)
     local_clustering <- transitivity(
       g,
@@ -372,7 +457,7 @@ centrality_df <- rxExec(
       kcore = as.numeric(core_vals),
       hub_score = as.numeric(hits$hub),
       authority_score = as.numeric(hits$authority),
-      authority_norm = safe_rescale(hits$authority),
+      authority_norm = as.numeric(hits_norm$authority),
       community = as.numeric(comm_df$membership),
       modularity = as.numeric(comm_df$modularity),
       local_clustering = as.numeric(local_clustering),
@@ -423,81 +508,6 @@ cat(
 )
 # dbExecute(odbc_con, "DROP TABLE dbo.centrality_tmp;")
 
-dbExecute(
-  odbc_con,
-  "-- Build in-degree counts
-SELECT 
-    $to_id AS to_id,
-    COUNT(*) AS in_degree
-INTO #in_degree_tmp
-FROM dbo.Reposted
-GROUP BY $to_id;
-
--- select * from #in_degree_tmp;
--- Update Person table
-UPDATE p
-SET p.in_degree = c.in_degree
-FROM dbo.Person AS p
-JOIN #in_degree_tmp AS c
-    ON p.$node_id = c.to_id;
-
--- Clean up
-DROP TABLE #in_degree_tmp;"
-)
-cat("\n=== Step 5a: Create in-degree metrics in SQL Server using SQL ===\n")
-
-dbExecute(
-  odbc_con,
-  "-- Build out-degree counts
-SELECT 
-$from_id AS from_id, 
-COUNT(*) AS out_degree
-INTO #out_degree_tmp
-FROM dbo.Reposted
- GROUP BY $from_id;
-
--- select * from #out_degree_tmp;
--- Update Person table
-UPDATE p
-SET p.out_degree = c.out_degree
-FROM dbo.Person AS p
-JOIN #out_degree_tmp AS c
-    ON p.$node_id = c.from_id;
-
--- Clean up
-DROP TABLE #out_degree_tmp;"
-)
-cat("\n=== Step 5b: Create out-degree metrics in SQL Server using SQL ===\n")
-
-# Execute the proc sp_ComputeInfluenceScore
-tryCatch(
-  {
-    dbExecute(odbc_con, "EXEC sp_ComputeInfluenceScore;")
-  },
-  error = function(e) {
-    cat("  ⚠ Influence score computation warning:", e$message, "\n")
-  }
-)
-
-# Execute the proc sp_ComputeEdgeweight
-tryCatch(
-  {
-    dbExecute(odbc_con, "EXEC sp_ComputeEdgeweight;")
-  },
-  error = function(e) {
-    cat("  ⚠ Edgeweight computation warning:", e$message, "\n")
-  }
-)
-
-# Execute the proc sp_ComputeEdgeBetweenness
-tryCatch(
-  {
-    dbExecute(odbc_con, "EXEC sp_ComputeEdgeBetweenness;")
-  },
-  error = function(e) {
-    cat("  ⚠ Edge betweenness computation warning:", e$message, "\n")
-  }
-)
 # # ---------------------------
 # # Step 6: Create edges and nodes csv files for later
 # #   Create table: repost_counts (to, repost_count)

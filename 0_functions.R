@@ -4,6 +4,7 @@ if (v$major == '4' && v$minor != '0.2') {
   library(furrr)
   library(rgexf)
   library(statnet)
+  wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.3))
 }
 library(arrow)
 library(DT)
@@ -24,8 +25,9 @@ library(stringr)
 library(tibble)
 library(tidyr)
 library(visNetwork)
+wrkrs = 10
 
-wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.3))
+
 
 safe_chr <- function(x, ...) {
   val <- purrr::pluck(x, ..., .default = NA_character_)
@@ -104,7 +106,7 @@ if (use_trusted_connection) {
 }
 sql_cc <- RxInSqlServer(
   connectionString = connStr,
-  numTasks = 15,
+  numTasks = wrkrs,
   autoCleanup = TRUE
 )
 # Helper to create RxSqlServerData objects
