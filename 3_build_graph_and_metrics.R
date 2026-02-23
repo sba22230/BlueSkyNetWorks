@@ -17,7 +17,7 @@ cat("Edges count:", nrow(edges), "\n")
 print(head(edges))
 
 # remove NAs
-edges[is.na(edges)] <- "no text here"
+#edges[is.na(edges)] <- "no text here"
 
 na_per_column <- colSums(is.na(edges))
 print("Number of NAs per column:")
@@ -40,18 +40,95 @@ cat("Graph summary:\n")
 print(summary(g))
 
 
+# ============================================================================
+# SECTION 1: NODE-LEVEL METRICS
+# ============================================================================
+ig_cen <- igraph::dyad_census(g)
+ig_summary_df <- tibble(
+  method = "igraph",
+  network_size = vcount(g),
+  edge_count = ecount(g),
+  dyad_count = sum(ig_cen$mut, ig_cen$asym, ig_cen$null),
+  density = edge_density(g),
+  mutual_pairs = ig_cen$mut,
+  asymetric_pairs = ig_cen$asym,
+  isolated_nodes = ig_cen$null,
+  diameter = diameter(g, directed = TRUE, weights = NA),
+  avg_path_length = mean_distance(g, directed = TRUE),
+  neighbours_average = mean(neighbors(g, V(g), mode = "all")),
+  reciprocity_default = reciprocity(g, mode = "default"),
+  reciprocity_ratio = reciprocity(g, mode = "ratio"),
+  average_in_degree = mean(nodes$in_degree),
+  average_out_degree = mean(nodes$out_degree),
+  most_replied_to = nodes$name[which.max(nodes$in_degree)],
+  most_active_replier = nodes$name[which.max(nodes$out_degree)]
+)
+
+str(ig_summary_df)
+
 cat("\n=== BlueSkyNetWorks: Computing Network Metrics using StatNet ===\n")
 
 # Convert igraph to statnet
 library(network)
 bluSkynet <- asNetwork(g)
 
-# ============================================================================
-# SECTION 1: NODE-LEVEL METRICS
-# ============================================================================
+cat("\n[1/4] Computing node-level centrality metrics for bluSkynet..\n")
 
-cat("\n[1/4] Computing node-level centrality metrics...\n")
+bsN_degree <- sna::degree(bluSkynet)
+bsN_ideg <- sna::degree(bluSkynet, cmode = "indegree")
+bsN_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
+bsN_dyadcensus <- sna::dyad.census(bluSkynet)
+bsN_dyadcount <- sum(
+  bsN_dyadcensus[[1]],
+  bsN_dyadcensus[[2]],
+  bsN_dyadcensus[[3]]
+)
 
+bsN_edgecount <- network.edgecount(bluSkynet)
+bsN_netsize <- network.size(bluSkynet)
+bsN_cen <- sna::centralization(bluSkynet, sna::degree, cmode = "indegree")
+bsN_ceneig <- sna::centralization(bluSkynet, sna::evcent)
+bsN_gden <- gden(bluSkynet)
+bsN_grecip <- grecip(bluSkynet, measure = "dyadic")
+bsN_grecip_edgewise <- grecip(bluSkynet, measure = "edgewise")
+dist_matrix <- geodist(bluSkynet)$gdist
+bsN_diameter <- max(dist_matrix[is.finite(dist_matrix)])
+
+bsN_summary_df <- tibble(
+  method = "network/sna",
+  network_size = bsN_netsize,
+  edge_count = bsN_edgecount,
+  dyad_count = bsN_dyadcount,
+  density = bsN_gden,
+  mutual_pairs = bsN_dyadcensus[[1]],
+  asymetric_pairs = bsN_dyadcensus[[2]],
+  isolated_nodes = bsN_dyadcensus[[3]],
+  diameter = bsN_diameter,
+  avg_path_length = mean(dist_matrix[is.finite(dist_matrix)]),
+  neighbours_average = mean(neighbors(g, V(g), mode = "all")),
+  reciprocity_default = bsN_grecip_edgewise,
+  reciprocity_ratio = bsN_grecip,
+  average_in_degree = mean(bsN_ideg),
+  average_out_degree = mean(bsN_odeg),
+  most_replied_to = network.vertex.names(bluSkynet)[which.max(bsN_ideg)],
+  most_active_replier = network.vertex.names(bluSkynet)[which.max(bsN_odeg)]
+)
+
+str(bsN_summary_df)
+
+comparison_table <- bind_rows(bsN_summary_df, ig_summary_df) %>%
+  mutate(across(-method, as.character)) %>% # ensure all values are same type
+  pivot_longer(
+    cols = -method,
+    names_to = "metric",
+    values_to = "value"
+  ) %>%
+  pivot_wider(
+    names_from = method,
+    values_from = value
+  )
+
+datatable(comparison_table)
 # Betweenness Centrality
 betweenness_vals <- sna::betweenness(
   bluSkynet,
@@ -77,63 +154,44 @@ cat("  ✓ Eigenvector centrality computed\n")
 # g_igraph <- g3
 
 # Degree metrics (already computed but ensuring consistency)
-in_degree <- sna::degree(bluSkynet, cmode = "indegree")
-out_degree <- sna::degree(bluSkynet, cmode = "outdegree")
+bsN_ideg <- sna::degree(bluSkynet, cmode = "indegree")
+bsN_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
 total_degree <- in_degree + out_degree
 cat("  ✓ Degree metrics (in/out/total) computed\n")
 
 ### == these are already computed - no need to do it again == ###
 # PageRank (weighted by influence)
-pagerank_vals <- page_rank(g_igraph, directed = TRUE)$vector
-cat("  ✓ PageRank computed\n")
+# pagerank_vals <- page_rank(g_igraph, directed = TRUE)$vector ## not available in SNA
+# cat("  ✓ PageRank computed\n")
 
 # HITS (Hub and Authority scores)
-hits <- hits_scores(g_igraph, scale = TRUE)
-hub_score <- hits$hub
-authority_score <- hits$authority
-cat("  ✓ HITS authority/hub scores computed\n")
+# hits <- hits_scores(g_igraph, scale = TRUE) ## not available in SNA
+# hub_score <- hits$hub ## not available in SNA
+# authority_score <- hits$authority ## not available in SNA
+# cat("  ✓ HITS authority/hub scores computed\n") ## not available in SNA
 
 # Local Clustering Coefficient (for directed graphs, variants exist)
-local_clustering <- transitivity(g_igraph, type = "local", isolates = "zero")
+local_clustering <- gtrans(bluSkynet, mode = "digraph", measure = "weak")
+
 cat("  ✓ Local clustering coefficient computed\n")
 
 # k-Core Decomposition
-kcore_vals <- coreness(g_igraph)
+kcore_vals <- sna::kcores(bluSkynet)
 cat("  ✓ k-core decomposition computed\n")
 
-# Betweenness in igraph (verify against statnet)
-betweenness_ig <- igraph::betweenness(
-  g_igraph,
-  V(g_igraph),
-  directed = TRUE,
-  weights = NULL
-)
-cat("  ✓ Cross-verified betweenness (igraph)\n")
+
 # align numeric vectors to node order
 node_keys <- as.character(nodes$name)
-betw_vec <- betweenness_vals[match(node_keys, names(betweenness_vals))]
-clos_vec <- closeness_vals[match(node_keys, names(closeness_vals))]
-pagerank_vec <- pagerank_vals[match(node_keys, names(pagerank_vals))]
-auth_vec <- authority_score[match(node_keys, names(authority_score))]
-in_vec <- in_degree[match(node_keys, names(in_degree))]
-out_vec <- out_degree[match(node_keys, names(out_degree))]
-kcore_vec <- kcore_vals[match(node_keys, names(kcore_vals))]
-local_clust_vec <- local_clustering[match(node_keys, names(local_clustering))]
-
 
 nodes_with_metrics <- nodes %>%
   dplyr::mutate(
-    betweenness = betw_vec,
-    closeness = clos_vec,
-    eigenvector_centrality = eigen_vals[match(node_keys, names(eigen_vals))],
-    pagerank = pagerank_vec,
-    hub_score = hub_score[match(node_keys, names(hub_score))],
-    authority_score = auth_vec,
-    local_clustering = local_clust_vec,
-    kcore = kcore_vec,
-    in_degree = in_vec,
-    out_degree = out_vec,
-    total_degree = (in_vec + out_vec),
+    betweenness = betweenness_vals,
+    closeness = closeness_vals,
+    eigenvector_centrality = eigen_vals,
+    kcore = kcore_vals,
+    in_degree = in_degree,
+    out_degree = out_degree,
+    total_degree = total_degree,
     betweenness_norm = safe_rescale(betweenness),
     closeness_norm = safe_rescale(closeness),
     pagerank_norm = safe_rescale(pagerank),
