@@ -1,5 +1,13 @@
 # source("0_functions.R")
-plan(multisession, workers = wrkrs)
+
+# Source 3_StatnetAnalysis.R if not already loaded
+# (comment out if already running in same session)
+# source("2_BluseSkyNetworking.R")
+# source("3_StatnetAnalysis.R")
+
+# plan(multisession, workers = wrkrs)  ## to be moved closer to its use
+
+cat("\n=== Step 1: Build the initial graph... ===\n")
 
 # Step 1: Build edge list (who reposted whom)
 edges <- read_parquet("graphs/speirgorm_edges.parquet")
@@ -31,501 +39,465 @@ g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 cat("Graph summary:\n")
 print(summary(g))
 
-# --- this code bloc needs to go into the vis file 
-library(tictoc)
-tic()
-res <- rxExec(
-  layout_exec,
-  edges_data = edges,
-  nodes_data = nodes,
-  layout_type = rxElemArg(c(
-    "drl",
-    "drl_fast",
-    "graphopt",
-    "lgl",
-    "kk",
-    "tree"
-  )),
-  execObjects = c("connStr", "layout_exec")
+
+
+cat("\n=== BlueSkyNetWorks: Computing Network Metrics using StatNet ===\n")
+
+# Convert igraph to statnet
+library(network)
+bluSkynet <- asNetwork(g)
+
+# ============================================================================
+# SECTION 1: NODE-LEVEL METRICS
+# ============================================================================
+
+cat("\n[1/4] Computing node-level centrality metrics...\n")
+
+# Betweenness Centrality
+betweenness_vals <- sna::betweenness(
+  bluSkynet,
+  gmode = "digraph",
+  diag = FALSE,
+  ignore.eval = FALSE
 )
-toc()
+cat("  ✓ Betweenness centrality computed\n")
 
-# res is a list of 6 data.frames in the same order as layout_type
-coords_drl <- res[[1]]
-coords_drl_fast <- res[[2]]
-coords_graphopt <- res[[3]]
-coords_lgl <- res[[4]]
-coords_kk <- res[[5]]
-coords_tree <- res[[6]]
+# Closeness Centrality (suminvdir accounts for directed graphs)
+closeness_vals <- sna::closeness(bluSkynet, cmode = "suminvdir", ignore.eval = FALSE)
+cat("  ✓ Closeness centrality computed\n")
 
-coords <- coords_tree # heavy step, do once
-V(g)$x <- coords[, 1]
-V(g)$y <- coords[, 2]
+# Eigenvector Centrality
+eigen_vals <- sna::evcent(bluSkynet, gmode = "digraph", ignore.eval = FALSE)
+cat("  ✓ Eigenvector centrality computed\n")
 
-# Select top N nodes to label (e.g., top 50 by degree)
-deg <- igraph::degree(g)
-top_nodes <- names(sort(deg, decreasing = TRUE))[1:50]
+# Convert to igraph for additional metrics
+# g_igraph <- g3
 
-# Faster ggraph call
-gtn <- ggraph(g, layout = "manual", x = V(g)$x, y = V(g)$y) +
-  geom_edge_link(alpha = 0.3) +
-  geom_node_point(size = 5) +
-  geom_node_text(
-    aes(label = ifelse(name %in% top_nodes, name, "")),
-    repel = TRUE,
-    max.overlaps = 1000
+# Degree metrics (already computed but ensuring consistency)
+in_degree <- sna::degree(bluSkynet, cmode = "indegree")
+out_degree <- sna::degree(bluSkynet, cmode = "outdegree")
+total_degree <- in_degree + out_degree
+cat("  ✓ Degree metrics (in/out/total) computed\n")
+
+### == these are already computed - no need to do it again == ###
+# PageRank (weighted by influence)
+pagerank_vals <- page_rank(g_igraph, directed = TRUE)$vector
+cat("  ✓ PageRank computed\n")
+
+# HITS (Hub and Authority scores)
+hits <- hits_scores(g_igraph, scale = TRUE)
+hub_score <- hits$hub
+authority_score <- hits$authority
+cat("  ✓ HITS authority/hub scores computed\n")
+
+# Local Clustering Coefficient (for directed graphs, variants exist)
+local_clustering <- transitivity(g_igraph, type = "local", isolates = "zero")
+cat("  ✓ Local clustering coefficient computed\n")
+
+# k-Core Decomposition
+kcore_vals <- coreness(g_igraph)
+cat("  ✓ k-core decomposition computed\n")
+
+# Betweenness in igraph (verify against statnet)
+betweenness_ig <- igraph::betweenness(
+  g_igraph,
+  V(g_igraph),
+  directed = TRUE,
+  weights = NULL
+)
+cat("  ✓ Cross-verified betweenness (igraph)\n")
+# align numeric vectors to node order
+node_keys <- as.character(nodes$name)
+betw_vec <- betweenness_vals[match(node_keys, names(betweenness_vals))]
+clos_vec <- closeness_vals[match(node_keys, names(closeness_vals))]
+pagerank_vec <- pagerank_vals[match(node_keys, names(pagerank_vals))]
+auth_vec <- authority_score[match(node_keys, names(authority_score))]
+in_vec <- in_degree[match(node_keys, names(in_degree))]
+out_vec <- out_degree[match(node_keys, names(out_degree))]
+kcore_vec <- kcore_vals[match(node_keys, names(kcore_vals))]
+local_clust_vec <- local_clustering[match(node_keys, names(local_clustering))]
+
+
+nodes_with_metrics <- nodes %>%
+  dplyr::mutate(
+    betweenness = betw_vec,
+    closeness = clos_vec,
+    eigenvector_centrality = eigen_vals[match(node_keys, names(eigen_vals))],
+    pagerank = pagerank_vec,
+    hub_score = hub_score[match(node_keys, names(hub_score))],
+    authority_score = auth_vec,
+    local_clustering = local_clust_vec,
+    kcore = kcore_vec,
+    in_degree = in_vec,
+    out_degree = out_vec,
+    total_degree = (in_vec + out_vec),
+    betweenness_norm = safe_rescale(betweenness),
+    closeness_norm = safe_rescale(closeness),
+    pagerank_norm = safe_rescale(pagerank),
+    authority_norm = safe_rescale(authority_score)
   )
 
-save_graph_svg(gtn, "gtn_TopNodes_Speirgorm_Network.svg")
-rxWriteObject(
-  ds_Graphs,
-  "gtn_Graph - ggraph - layout_with_drl",
-  gtn,
-  overwrite = TRUE
+cat("\n✓ Node-level metrics compiled into 'nodes_with_metrics' tibble\n")
+cat(sprintf(
+  "  Rows: %d nodes | Cols: %d features\n",
+  nrow(nodes_with_metrics),
+  ncol(nodes_with_metrics)
+))
+
+# Top influential nodes (various measures)
+cat("\n  Top 10 nodes by different centrality measures:\n")
+cat("  --- By PageRank ---\n")
+print(
+  nodes_with_metrics %>%
+    arrange(desc(pagerank)) %>%
+    select(name, pagerank, in_degree, out_degree) %>%
+    head(10)
+)
+cat("  --- By Betweenness ---\n")
+print(
+  nodes_with_metrics %>%
+    arrange(desc(betweenness)) %>%
+    select(name, betweenness, total_degree) %>%
+    head(10)
+)
+cat("  --- By Authority Score (most reposted) ---\n")
+print(
+  nodes_with_metrics %>%
+    arrange(desc(authority_score)) %>%
+    select(name, authority_score, in_degree, reposts_received) %>%
+    head(10)
 )
 
-# --- end of one visualisation 
+# ============================================================================
+# SECTION 2: NETWORK-LEVEL METRICS
+# ============================================================================
 
-# Step 5: Plot enriched network with ggraph
-g2 <- g
-coords2 <- layout_with_graphopt(g2, niter = 400) # heavy step, do once
-V(g2)$x <- coords2[, 1]
-V(g2)$y <- coords2[, 2]
-ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
-  geom_edge_link(alpha = 0.3) +
-  geom_node_point(aes(size = reposts_made, color = reposts_received)) +
-  geom_node_text(aes(label = name), repel = TRUE) +
-  scale_size_continuous(range = c(3, 12)) +
-  scale_color_gradient(low = "lightblue", high = "red") +
-  theme_void()
-cat("Final graph summary:\n")
-print(summary(g2))
-write_graph(
-  g2,
-  "graphs/g2 bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
-  format = "graphml"
+cat("\n[2/4] Computing network-level metrics...\n")
+
+# Density
+density_val <- gden(bluSkynet)
+cat(sprintf("  ✓ Density: %.4f\n", density_val))
+
+# Reciprocity (edgewise = mutual reposts)
+reciprocity_val <- grecip(bluSkynet, measure = "edgewise")
+cat(sprintf("  ✓ Reciprocity (edgewise): %.4f\n", reciprocity_val))
+
+# Reciprocity dyadic
+reciprocity_dyadic <- grecip(bluSkynet, measure = "dyadic.nonnull")
+
+cat(sprintf("  ✓ Reciprocity (dyadic): %.4f\n", reciprocity_dyadic))
+
+# Network size and edges
+network_size <- network.size(bluSkynet)
+edge_count <- network.edgecount(bluSkynet)
+dyad_count <- network.dyadcount(bluSkynet)
+cat(sprintf(
+  "  ✓ Network size: %d nodes, %d edges, %d dyads\n",
+  network_size,
+  edge_count,
+  dyad_count
+))
+
+# Diameter (longest shortest path)
+diameter_val <- diameter(g_igraph, directed = TRUE, unconnected = TRUE)
+cat(sprintf("  ✓ Diameter: %d\n", diameter_val))
+
+# Average path length
+avg_path_length <- mean_distance(g_igraph, directed = TRUE)
+cat(sprintf("  ✓ Average path length: %.2f\n", avg_path_length))
+
+# Connected components
+num_components <- igraph::components(g_igraph)$no
+largest_component_size <- max(igraph::components(g_igraph)$csize)
+giant_component_pct <- (largest_component_size / network_size) * 100
+cat(sprintf(
+  "  ✓ Components: %d (largest: %d = %.1f%%)\n",
+  num_components,
+  largest_component_size,
+  giant_component_pct
+))
+
+# Transitivity (global clustering coefficient)
+transitivity_val <- transitivity(g_igraph, type = "global")
+cat(sprintf(
+  "  ✓ Global clustering coefficient (transitivity): %.4f\n",
+  transitivity_val
+))
+
+# Average local clustering
+avg_local_clustering <- mean(local_clustering, na.rm = TRUE)
+cat(sprintf("  ✓ Average local clustering: %.4f\n", avg_local_clustering))
+
+# Centralization (degree based)
+in_degree_vec <- igraph::degree(g_igraph, mode = "in")
+centralization_in <- (sum(max(in_degree_vec) - in_degree_vec)) /
+  ((network_size - 1) * (network_size - 2))
+cat(sprintf("  ✓ Centralization (in-degree): %.4f\n", centralization_in))
+
+# Triad Census (for directed graphs)
+triad_census_vals <- triad_census(g_igraph)
+cat(sprintf("  ✓ Triad census computed (16 types of triads)\n"))
+
+# Create network metrics summary table
+network_metrics <- tibble(
+  metric_name = c(
+    "density",
+    "reciprocity_edgewise",
+    "reciprocity_dyadic",
+    "network_size",
+    "edge_count",
+    "dyad_count",
+    "diameter",
+    "avg_path_length",
+    "num_components",
+    "giant_component_size",
+    "giant_component_pct",
+    "global_clustering",
+    "avg_local_clustering",
+    "centralization_indegree"
+  ),
+  value = c(
+    density_val,
+    reciprocity_val,
+    reciprocity_dyadic,
+    network_size,
+    edge_count,
+    dyad_count,
+    diameter_val,
+    avg_path_length,
+    num_components,
+    largest_component_size,
+    giant_component_pct,
+    transitivity_val,
+    avg_local_clustering,
+    centralization_in
+  ),
+  description = c(
+    "Proportion of possible edges present",
+    "Proportion of mutual reposts (edgewise)",
+    "Proportion of dyads with reciprocated edges",
+    "Number of nodes (users) in network",
+    "Number of directed edges (reposts)",
+    "Total number of possible dyadic pairs",
+    "Longest shortest path between any two nodes",
+    "Average shortest path across all node pairs",
+    "Number of disconnected components",
+    "Nodes in largest connected component",
+    "Percentage of nodes in largest component",
+    "Global clustering coefficient (transitivity)",
+    "Mean of local clustering coefficients",
+    "Degree centralization index (in-degree)"
+  )
 )
-rxWriteObject(
-  ds_Graphs,
-  "g2_Graph - igraph - layout_with_graphopt",
-  g2,
-  overwrite
+
+cat("\n✓ Network metrics compiled into 'network_metrics' tibble\n")
+cat(sprintf("  %d network-level metrics computed\n", nrow(network_metrics)))
+
+# ============================================================================
+# SECTION 3: COMMUNITY STRUCTURE ANALYSIS
+# ============================================================================
+
+cat("\n[3/4] Computing community structure...\n")
+# Louvain community detection (already computed in 3_StatnetAnalysis.R)
+# Re-compute if necessary
+comm_louvain <- igraph::cluster_louvain(as_undirected(g2))
+num_communities <- length(unique(comm_louvain$membership))
+modularity_louvain <- modularity(g_igraph, comm_louvain$membership)
+cat(sprintf(
+  "  ✓ Louvain detection: %d communities, modularity = %.4f\n",
+  num_communities,
+  modularity_louvain
+))
+
+
+cat("\n Extract Community Subgraphs \n")
+# Assuming you have your community detection results
+communities <- comm_louvain # or your preferred method
+membership <- membership(communities)
+
+# Get top 10 communities by size
+comm_sizes <- sort(table(membership), decreasing = TRUE)
+top_10_ids <- as.numeric(names(comm_sizes[1:10]))
+
+# Create list of subgraphs
+community_graphs <- lapply(top_10_ids, function(id) {
+  nodes <- which(membership == id)
+  induced_subgraph(g2, nodes)
+})
+
+# Name them for easy reference
+names(community_graphs) <- paste0("Community_", top_10_ids)
+cat(
+  "\n Analyze Internal Structure
+For each community subgraph, examine: \n"
+)
+# For a single community
+comm_graph <- community_graphs[[1]]
+
+# Density
+edge_density(comm_graph)
+
+# Key nodes within community
+igraph::betweenness(comm_graph)
+igraph::closeness(comm_graph)
+igraph::degree(comm_graph)
+
+# Clustering coefficient
+transitivity(comm_graph, type = "local")
+
+# Diameter and average path length
+diameter(comm_graph)
+mean_distance(comm_graph)
+
+# Sub-communities within
+sub_communities <- cluster_louvain(as_undirected(comm_graph))
+# Batch Analysis
+# Analyze all top 10 at once
+community_metrics <- data.frame(
+  community = names(community_graphs),
+  size = sapply(community_graphs, vcount),
+  density = sapply(community_graphs, edge_density),
+  diameter = sapply(community_graphs, diameter),
+  avg_path = sapply(community_graphs, mean_distance)
 )
 
-# Step 6: Interactive visualization with visNetwork
-vis_nodes <- nodes %>%
-  mutate(
-    id = name,
-    label = name,
-    # hover tooltip
-    title = paste0("Name: ", name, "\nTotal Likes: ", total_likes_on_posts),
-    value = ifelse(is.na(reposts_received), 0, reposts_received),
-    # size by repost_count # nolint: line_length_linter.
-    group = name
-  ) %>%
-  distinct(id, .keep_all = TRUE)
+# Label propagation (can detect overlapping communities)
+comm_labelprop <- cluster_label_prop(g_igraph)
+num_communities_lp <- length(unique(comm_labelprop$membership))
+modularity_labelprop <- modularity(g_igraph, comm_labelprop$membership)
+cat(sprintf(
+  "  ✓ Label propagation: %d communities, modularity = %.4f\n",
+  num_communities_lp,
+  modularity_labelprop
+))
 
-vis_edges <- edges %>%
-  mutate(arrows = "from")
-# add arrow pointing to the reposter node
-
-# Build igraph object from edges
-g3 <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
-
-# Compute degree for each node
-deg <- igraph::degree(g3, mode = "all")
-
-# Add degree to vis_nodes
-vis_nodes <- vis_nodes %>%
-  mutate(degree = deg[id])
-
-# Sort IDs by degree (descending)
-sorted_ids <- vis_nodes %>%
-  arrange(desc(degree)) %>%
-  pull(id)
-
-# --- Precompute layout coordinates with igraph ---
-comps <- igraph::components(g3)
-layouts <- future_map(
-  unique(comps$membership),
-  function(comp_id) {
-    subg <- induced_subgraph(g3, which(comps$membership == comp_id))
-    if (vcount(subg) > 100) layout_with_lgl(subg) else layout_with_kk(subg)
-  },
-  .progress = TRUE,
-  .options = furrr_options(seed = 22230)
+# Fast greedy (for directed, may treat as undirected)
+comm_fastgreedy <- cluster_fast_greedy(as_undirected(g_igraph))
+num_communities_fg <- length(unique(comm_fastgreedy$membership))
+modularity_fastgreedy <- modularity(
+  as_undirected(g_igraph),
+  comm_fastgreedy$membership
 )
-coords3 <- matrix(NA, nrow = vcount(g3), ncol = 2)
-offset <- 3
+cat(sprintf(
+  "  ✓ Fast greedy: %d communities, modularity = %.4f\n",
+  num_communities_fg,
+  modularity_fastgreedy
+))
 
-comp_ids <- sort(unique(comps$membership))
+# Add best community assignment to nodes
+best_comm <- comm_louvain$membership
+nodes_with_metrics <- nodes_with_metrics %>%
+  dplyr::mutate(
+    community = best_comm[name],
+    modularity = modularity_louvain
+  )
 
-for (i in seq_along(comp_ids)) {
-  comp_id <- comp_ids[i]
-
-  sub_nodes <- which(comps$membership == comp_id)
-  sub_coords <- layouts[[i]]
-
-  coords3[sub_nodes, ] <- sub_coords + offset
-  offset <- offset + diff(range(sub_coords[, 1])) + 10
-}
-vis_nodes$x <- coords3[, 1]
-vis_nodes$y <- coords3[, 2]
-
-top_nodes <- vis_nodes %>% arrange(desc(degree)) %>% slice(1:50) %>% pull(id)
-vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
-
-# Community detection
-comm <- cluster_walktrap(g3) # works on directed graphs
-
-rxWriteObject(
-  ds_Graphs,
-  "g3_Graph - igraph - community detection",
-  g3,
-  overwrite = TRUE
-)
-
-# Add community membership to nodes
-vis_nodes$community <- comm$membership
-
-
-# ensure community is used as the visNetwork group and add colours
-vis_nodes$group <- as.character(vis_nodes$community)
-vis_nodes$isolated <- vis_nodes$degree == 0
-
-# ========================================================================
-# COMMUNITY CHARACTERIZATION & LABELING
-# ========================================================================
-# Analyze what defines each community to create meaningful labels
-
-cat("\n=== ANALYZING COMMUNITIES ===\n")
-
-# Get community member data
-community_analysis <- vis_nodes %>%
+# Community statistics (size, internal density, external connections)
+community_stats <- nodes_with_metrics %>%
   group_by(community) %>%
   summarise(
-    # Size and structure
-    size = n(),
-    isolated_count = sum(isolated, na.rm = TRUE),
-    active_members = sum(!isolated, na.rm = TRUE),
-
-    # Connectivity metrics
-    avg_degree = mean(degree, na.rm = TRUE),
-    max_degree = max(degree, na.rm = TRUE),
-    median_degree = median(degree, na.rm = TRUE),
-
-    # Engagement metrics (from nodes attributes)
-    avg_repost_count = mean(value, na.rm = TRUE),
-    max_repost_count = max(value, na.rm = TRUE),
-
-    # Temporal reach (if available)
-    earliest_first_seen = min(earliestPost, na.rm = TRUE),
-    latest_last_seen = max(latestPost, na.rm = TRUE),
-
-    # Top influencers in this community
-    top_member = paste(
-      head(name[order(desc(degree))], 3),
-      collapse = ", "
-    ),
-
+    community_size = n(),
+    # rough estimate
+    internal_edges = sum(in_degree[name %in% name], na.rm = TRUE) / 2,
+    avg_internal_degree = mean(in_degree + out_degree, na.rm = TRUE),
+    avg_pagerank = mean(pagerank, na.rm = TRUE),
+    avg_authority = mean(authority_score, na.rm = TRUE),
     .groups = "drop"
   ) %>%
-  arrange(desc(size))
+  arrange(desc(community_size))
 
-cat("Community Statistics:\n")
-datatable(slice(community_analysis, 1:10))
+cat("\n✓ Community analysis complete:\n")
+print(community_stats)
 
-# Define community types based on characteristics
-community_labels <- community_analysis %>%
-  mutate(
-    # Label logic based on community characteristics
-    community_type = case_when(
-      # Large, highly connected communities (hubs)
-      size >= 50 &
-        avg_degree > median(community_analysis$avg_degree) * 1.5 ~ "Core Hub",
+# ============================================================================
+# SECTION 4: SAVE RESULTS
+# ============================================================================
 
-      # Medium-sized, moderately connected
-      size >= 20 &
-        size < 50 &
-        avg_degree >= median(community_analysis$avg_degree) ~ "Active Circle",
+cat("\n[4/4] Saving results...\n")
 
-      # Smaller, tightly knit groups
-      size >= 10 &
-        size < 20 &
-        avg_degree > median(community_analysis$avg_degree) ~ "Tight Cluster",
-
-      # Small but highly engaged (high repost count relative to size)
-      size < 10 &
-        avg_repost_count >
-          quantile(
-            community_analysis$avg_repost_count,
-            0.75
-          ) ~ "Engaged Micro-Group",
-
-      # Isolated or low-engagement nodes
-      isolated_count >= active_members * 0.5 ~ "Peripheral",
-
-      # Default: catchall
-      TRUE ~ "Discussion Group"
-    ),
-
-    # Create descriptive label with name and characteristics
-    label = sprintf(
-      "Community %d: %s\n(%d members, avg degree: %.1f)",
-      community,
-      community_type,
-      size,
-      avg_degree
-    )
-  ) %>%
-  select(community, community_type, label, size, avg_degree, top_member)
-
-cat("\n=== COMMUNITY LABELS & TYPES ===\n")
-datatable(slice(community_labels, 1:10))
-
-# Map labels back to vis_nodes
-community_label_map <- setNames(
-  community_labels$label,
-  community_labels$community
+# Save node metrics
+arrow::write_parquet(nodes_with_metrics, "graphs/nodes_with_metrics.parquet")
+readr::write_csv(nodes_with_metrics, "graphs/nodes_with_metrics.csv")
+cat(
+  "✓ Saved: graphs/nodes_with_metrics.parquet | graphs/nodes_with_metrics.csv\n"
 )
 
-community_type_map <- setNames(
-  community_labels$community_type,
-  community_labels$community
-)
+# Save network metrics
+arrow::write_parquet(network_metrics, "graphs/network_metrics.parquet")
+readr::write_csv(network_metrics, "graphs/network_metrics.csv")
+cat("  ✓ Saved: graphs/network_metrics.parquet | graphs/network_metrics.csv\n")
 
-vis_nodes <- vis_nodes %>%
-  mutate(
-    community_label = community_label_map[as.character(community)],
-    community_type = community_type_map[as.character(community)]
-  )
+# Save community stats
+arrow::write_parquet(community_stats, "graphs/community_stats.parquet")
+readr::write_csv(community_stats, "graphs/community_stats.csv")
+cat("  ✓ Saved: graphs/community_stats.parquet | graphs/community_stats.csv\n")
 
-# Print community members for inspection
-cat("\n=== COMMUNITY MEMBERSHIP BREAKDOWN ===\n")
-for (comm_id in sort(unique(vis_nodes$community))) {
-  members <- vis_nodes %>%
-    filter(community == comm_id) %>%
-    arrange(desc(degree)) %>%
-    slice(1:10) %>%
-    pull(id)
-
-  comm_type <- unique(vis_nodes$community_type[vis_nodes$community == comm_id])
-  cat(sprintf("\nCommunity %d (%s) - Top 10 Members:\n", comm_id, comm_type))
-  cat(paste(members, collapse = ", "))
-  cat("\n")
-}
-
-# assign a distinct colour per community
-comm_levels <- sort(unique(vis_nodes$group))
-pal <- grDevices::rainbow(length(comm_levels))
-group_cols <- setNames(pal, comm_levels)
-vis_nodes$color.background <- group_cols[vis_nodes$group]
-vis_nodes$color.border <- "black"
-
-# optional: shrink labels for non-top nodes (already computed earlier)
-vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
-
-# --- Use precomputed layout in visNetwork ---
-vis_obj <- visNetwork(
-  vis_nodes,
-  vis_edges,
-  width = "1600px",
-  height = "1200px"
-) %>%
-  visNodes(fixed = TRUE) %>%
-  visOptions(
-    highlightNearest = TRUE,
-    nodesIdSelection = list(values = sorted_ids)
-  ) %>%
-  visEdges(arrows = "to", smooth = FALSE) %>%
-  visLegend(useGroups = TRUE, position = "right") %>%
-  visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE) %>%
-  visPhysics(enabled = FALSE)
-# save HTML and capture as SVG (requires webshot2 and
-# a headless Chrome/Chromium)
-htmlwidgets::saveWidget(
-  vis_obj,
-  "graphs/visnetwork_tmp.html",
-  selfcontained = TRUE
-)
-rxWriteObject(
-  ds_Graphs,
-  "g3_Visnetwork - visNetwork - layout_with_lgl",
-  vis_obj
-)
-## Export the Visnetwork into GEXF with visual encodings preserved
-# Nodes (basic)
-ge_nodes <- data.frame(
-  id = vis_nodes$id,
-  label = ifelse(is.na(vis_nodes$label), vis_nodes$id, vis_nodes$label),
-  x = vis_nodes$x,
-  y = vis_nodes$y,
-  stringsAsFactors = FALSE
-)
-
-# Node attributes (metrics + flags) — preserve your existing metrics
-ge_nodesAtt <- vis_nodes %>%
-  transmute(
-    degree = ifelse(is.na(degree), 0L, as.integer(degree)),
-    repost_count = ifelse(
-      is.na(reposts_received),
-      0L,
-      as.integer(reposts_received)
-    ),
-    community = as.integer(community),
-    isolated = ifelse(isolated, "TRUE", "FALSE"),
-    label_shown = !is.na(label),
-    value = ifelse(is.na(value), 1, as.numeric(value))
-  )
-
-ge_nodesAtt$modularity_class <- as.integer(vis_nodes$community)
-# Node visual attributes for GEXF
-node_hex <- ifelse(
-  is.na(vis_nodes$color.background),
-  "#878787",
-  vis_nodes$color.background
-)
-# parallel parse nodes
-node_rgba_df <- furrr::future_map_dfr(
-  node_hex,
-  function(cl) {
-    v <- parse_color_single(cl)
-    tibble::tibble(r = v["r"], g = v["g"], b = v["b"], a = v["a"])
-  },
-  .progress = TRUE,
-  .options = furrr::furrr_options(seed = 1234)
-)
-ge_nodesVizAtt <- list(
-  position = data.frame(
-    x = vis_nodes$x,
-    y = vis_nodes$y,
-    z = rep(0, nrow(vis_nodes))
-  ),
-  size = as.numeric(ifelse(
-    is.na(vis_nodes$value),
-    ge_nodesAtt$value,
-    vis_nodes$value
-  )),
-  color = data.frame(
-    r = as.integer(node_rgba_df$r),
-    g = as.integer(node_rgba_df$g),
-    b = as.integer(node_rgba_df$b),
-    a = as.numeric(node_rgba_df$a)
+# Save triad census results
+triad_census_df <- tibble(
+  triad_type = 0:15,
+  count = as.integer(triad_census_vals),
+  description = c(
+    "003: no edges",
+    "012: single directed edge",
+    "102: single undirected edge",
+    "021D: two asymmetric edges",
+    "021U: single undirected + one directed",
+    "021C: path of length 2",
+    "111D: three asymmetric edges",
+    "111U: two undirected + one directed",
+    "030T: transitive triple",
+    "030C: cyclic triple",
+    "201: bidirectional edge + isolated",
+    "120D: one mutual + one asymmetric",
+    "120U: one mutual + two directed",
+    "120C: one mutual + path",
+    "210: mutual edge + two directed",
+    "300: all mutual edges"
   )
 )
+arrow::write_parquet(triad_census_df, "graphs/triad_census.parquet")
+readr::write_csv(triad_census_df, "graphs/triad_census.csv")
+cat("  ✓ Saved: graphs/triad_census.parquet | graphs/triad_census.csv\n")
 
-# Edges and attributes (preserve width/weight and color)
-ge_edges <- data.frame(
-  source = vis_edges$from,
-  target = vis_edges$to,
-  stringsAsFactors = FALSE
-)
-# Safe edge attributes (handles missing width/weight/color)
-if (any(c("width", "weight", "color") %in% names(vis_edges))) {
-  ge_edgesAtt <- vis_edges %>%
-    mutate(
-      weight = if ("width" %in% names(.)) {
-        ifelse(is.na(width), 1, as.numeric(width))
-      } else if ("weight" %in% names(.)) {
-        ifelse(is.na(weight), 1, as.numeric(weight))
-      } else {
-        1
-      },
-      color_raw = if ("color" %in% names(.)) {
-        ifelse(is.na(color) | color == "", "#AAAAAA", color)
-      } else {
-        "#AAAAAA"
-      },
-      # NEW: keep dynamic info as attributes
-      edge_start = as.character(edgeStarts),
-      edge_end = as.character(edgeEnds)
-    ) %>%
-    select(-from, -to, -any_of(c("width", "weight", "color")))
-} else {
-  ge_edgesAtt <- vis_edges %>%
-    mutate(
-      weight = 1,
-      color_raw = "#AAAAAA",
-      edge_start = as.character(edgeStarts),
-      edge_end = as.character(edgeEnds)
-    ) %>%
-    select(-from, -to)
-}
+# Summary report
+cat("\n" %+% strrep("=", 70) %+% "\n")
+cat("METRICS COMPUTATION SUMMARY\n")
+cat(strrep("=", 70) %+% "\n")
+cat(sprintf(
+  "Network Size:        %d nodes, %d edges\n",
+  network_size,
+  edge_count
+))
+cat(sprintf(
+  "Density:             %.4f (%.2f%% of possible edges)\n",
+  density_val,
+  density_val * 100
+))
+cat(sprintf(
+  "Clustering:          Global: %.4f | Local mean: %.4f\n",
+  transitivity_val,
+  avg_local_clustering
+))
+cat(sprintf(
+  "Communities:         %d (Louvain, modularity = %.4f)\n",
+  num_communities,
+  modularity_louvain
+))
+cat(sprintf("Reciprocity:         %.4f (edgewise)\n", reciprocity_val))
+cat(sprintf(
+  "Path Length:         Avg: %.2f | Diameter: %d\n",
+  avg_path_length,
+  diameter_val
+))
+cat(sprintf("Centralization:      %.4f (in-degree based)\n", centralization_in))
+cat(sprintf(
+  "Components:          %d (giant component: %.1f%%)\n",
+  num_components,
+  giant_component_pct
+))
+cat(strrep("=", 70) %+% "\n")
 
-# safe color parsing for edges
-# parallel parse edges
-edge_rgba_df <- furrr::future_map_dfr(
-  ge_edgesAtt$color_raw,
-  function(cl) {
-    v <- parse_color_single(cl)
-    tibble::tibble(r = v["r"], g = v["g"], b = v["b"], a = v["a"])
-  },
-  .progress = TRUE,
-  .options = furrr::furrr_options(seed = 1234)
-)
-ge_edgesVizColor <- data.frame(
-  r = as.integer(edge_rgba_df$r),
-  g = as.integer(edge_rgba_df$g),
-  b = as.integer(edge_rgba_df$b),
-  a = as.numeric(edge_rgba_df$a)
-)
-
-ge_nodes$id <- sanitize_xml(as.character(ge_nodes$id))
-ge_nodes$label <- sanitize_xml(as.character(ge_nodes$label))
-char_cols <- sapply(ge_nodesAtt, is.character)
-ge_nodesAtt[char_cols] <- lapply(ge_nodesAtt[char_cols], sanitize_xml)
-char_cols_e <- sapply(ge_edgesAtt, is.character)
-ge_edgesAtt[char_cols_e] <- lapply(ge_edgesAtt[char_cols_e], sanitize_xml)
-
-# Use write.gexf, passing nodes, edges, attributes and viz attributes
-gexf_obj <- write.gexf(
-  nodes = ge_nodes[, c("id", "label")],
-  edges = ge_edges,
-  nodesAtt = ge_nodesAtt,
-  edgesAtt = ge_edgesAtt %>% select(-color_raw),
-  nodesVizAtt = ge_nodesVizAtt,
-  edgesVizAtt = list(
-    color = ge_edgesVizColor,
-    size = as.numeric(ge_edgesAtt$weight)
-  ),
-  defaultedgetype = "directed"
-)
-
-
-# Save to file
-home_dir <- here::here()
-file_path <- file.path(home_dir, "graphs")
-file_name <- file.path(file_path, "g3 visnetwork_export.gexf")
-if (!dir.exists(file_path)) {
-  dir.create(file_path, recursive = TRUE)
-}
-rgexf::write.gexf(gexf_obj, output = file_name)
-
-plot(gexf_obj)
-rxWriteObject(
-  ds_Graphs,
-  "Gephi_Graph - Gephi - GEXF",
-  gexf_obj,
-  overwrite = TRUE
-)
-
-cat("Interactive visualization ready with precomputed layout.\n")
-
-posts_df <- read_parquet("data/speirgorm_network.parquet")
-top_authors_reposted <- posts_df %>%
-  group_by(PostedBy) %>%
-  summarise(total_reposts = sum(repost_count, na.rm = TRUE)) %>%
-  arrange(desc(total_reposts)) %>%
-  slice(1:10)
-top_reposters <- posts_df %>%
-  group_by(RepostedBy) %>% # group by both
-  summarise(total_reposts_made = n(), .groups = "drop") %>% # count reposts
-  arrange(desc(total_reposts_made)) %>% # sort descending
-  slice(1:10) # top 10
-
-library(DT)
-
-datatable(top_authors_reposted, caption = "Top 10 Authors by Reposts Received")
-datatable(top_reposters, caption = "Top 10 Accounts by Reposts Made")
-
-# End of script
+cat("\n✓ Metrics computation complete. Results saved to graphs/\n")
+cat("  Use nodes_with_metrics for per-user analysis\n")
+cat("  Use network_metrics for global statistics\n")
+cat("  Use community_stats to understand cluster structure\n\n")
