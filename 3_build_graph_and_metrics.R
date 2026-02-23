@@ -156,7 +156,7 @@ cat("  ✓ Eigenvector centrality computed\n")
 # Degree metrics (already computed but ensuring consistency)
 bsN_ideg <- sna::degree(bluSkynet, cmode = "indegree")
 bsN_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
-total_degree <- in_degree + out_degree
+total_degree <- bsN_ideg + bsN_odeg
 cat("  ✓ Degree metrics (in/out/total) computed\n")
 
 ### == these are already computed - no need to do it again == ###
@@ -260,16 +260,16 @@ cat(sprintf(
 ))
 
 # Diameter (longest shortest path)
-diameter_val <- diameter(g_igraph, directed = TRUE, unconnected = TRUE)
-cat(sprintf("  ✓ Diameter: %d\n", diameter_val))
+diameter_val <- diameter(g, directed = TRUE, unconnected = TRUE)
+cat(sprintf("  ✓ Diameter: %f\n", diameter_val))
 
 # Average path length
-avg_path_length <- mean_distance(g_igraph, directed = TRUE)
+avg_path_length <- mean_distance(g, directed = TRUE)
 cat(sprintf("  ✓ Average path length: %.2f\n", avg_path_length))
 
 # Connected components
-num_components <- igraph::components(g_igraph)$no
-largest_component_size <- max(igraph::components(g_igraph)$csize)
+num_components <- igraph::components(g)$no
+largest_component_size <- max(igraph::components(g)$csize)
 giant_component_pct <- (largest_component_size / network_size) * 100
 cat(sprintf(
   "  ✓ Components: %d (largest: %d = %.1f%%)\n",
@@ -279,7 +279,7 @@ cat(sprintf(
 ))
 
 # Transitivity (global clustering coefficient)
-transitivity_val <- transitivity(g_igraph, type = "global")
+transitivity_val <- transitivity(g, type = "global")
 cat(sprintf(
   "  ✓ Global clustering coefficient (transitivity): %.4f\n",
   transitivity_val
@@ -290,13 +290,13 @@ avg_local_clustering <- mean(local_clustering, na.rm = TRUE)
 cat(sprintf("  ✓ Average local clustering: %.4f\n", avg_local_clustering))
 
 # Centralization (degree based)
-in_degree_vec <- igraph::degree(g_igraph, mode = "in")
+in_degree_vec <- igraph::degree(g, mode = "in")
 centralization_in <- (sum(max(in_degree_vec) - in_degree_vec)) /
   ((network_size - 1) * (network_size - 2))
 cat(sprintf("  ✓ Centralization (in-degree): %.4f\n", centralization_in))
 
 # Triad Census (for directed graphs)
-triad_census_vals <- triad_census(g_igraph)
+triad_census_vals <- triad_census(g)
 cat(sprintf("  ✓ Triad census computed (16 types of triads)\n"))
 
 # Create network metrics summary table
@@ -361,9 +361,9 @@ cat(sprintf("  %d network-level metrics computed\n", nrow(network_metrics)))
 cat("\n[3/4] Computing community structure...\n")
 # Louvain community detection (already computed in 3_StatnetAnalysis.R)
 # Re-compute if necessary
-comm_louvain <- igraph::cluster_louvain(as_undirected(g2))
+comm_louvain <- igraph::cluster_louvain(as_undirected(g))
 num_communities <- length(unique(comm_louvain$membership))
-modularity_louvain <- modularity(g_igraph, comm_louvain$membership)
+modularity_louvain <- modularity(g, comm_louvain$membership)
 cat(sprintf(
   "  ✓ Louvain detection: %d communities, modularity = %.4f\n",
   num_communities,
@@ -383,7 +383,7 @@ top_10_ids <- as.numeric(names(comm_sizes[1:10]))
 # Create list of subgraphs
 community_graphs <- lapply(top_10_ids, function(id) {
   nodes <- which(membership == id)
-  induced_subgraph(g2, nodes)
+  induced_subgraph(g, nodes)
 })
 
 # Name them for easy reference
@@ -423,9 +423,9 @@ community_metrics <- data.frame(
 )
 
 # Label propagation (can detect overlapping communities)
-comm_labelprop <- cluster_label_prop(g_igraph)
+comm_labelprop <- cluster_label_prop(g)
 num_communities_lp <- length(unique(comm_labelprop$membership))
-modularity_labelprop <- modularity(g_igraph, comm_labelprop$membership)
+modularity_labelprop <- modularity(g, comm_labelprop$membership)
 cat(sprintf(
   "  ✓ Label propagation: %d communities, modularity = %.4f\n",
   num_communities_lp,
@@ -546,7 +546,7 @@ cat(sprintf(
 ))
 cat(sprintf("Reciprocity:         %.4f (edgewise)\n", reciprocity_val))
 cat(sprintf(
-  "Path Length:         Avg: %.2f | Diameter: %d\n",
+  "Path Length:         Avg: %.2f | Diameter: %f\n",
   avg_path_length,
   diameter_val
 ))
