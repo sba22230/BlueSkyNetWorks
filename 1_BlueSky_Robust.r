@@ -96,3 +96,13 @@ plan(orig_plan)
 arrow::write_parquet(posts_df, "data/speirgorm_posts.parquet")
 arrow::write_parquet(reposts_df, "data/speirgorm_reposts.parquet")
 arrow::write_parquet(threads_df, "data/speirgorm_threads.parquet")
+
+cat("\n###  Clean up of temporary objects ###\n")
+
+tobermvd <- c(
+  'hydrated',
+  'hydrated_reposts_partial',
+  'hydrated_threads_partial',
+  'posts_to_hydrate'
+)
+rm(list = tobermvd)

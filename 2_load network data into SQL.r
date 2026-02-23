@@ -322,7 +322,9 @@ tryCatch(
     cat("  ⚠ Edge betweenness computation warning:", e$message, "\n")
   }
 )
-cat("\n=== Step 4e: Run Edge betweenness computation SQL Server using SQL ===\n")
+cat(
+  "\n=== Step 4e: Run Edge betweenness computation SQL Server using SQL ===\n"
+)
 
 # Read edges/nodes from SQL via RxSqlServerData
 edges_rx <- RxSqlServerData(
@@ -380,6 +382,9 @@ nodes_rx <- RxSqlServerData(
       ,[influence_score]
   FROM [BlueSkyNet].[dbo].[Person];",
   connectionString = connStr
+)
+cat(
+  "\n=== Step 4f: Run igraph/statnet inside SQL compute context ===\n"
 )
 rxSetComputeContext(sql_cc)
 # Run igraph/statnet inside SQL compute context
@@ -506,7 +511,7 @@ dbExecute(
 "
 )
 cat(
-  "\n=== Step 4f: Create network metrics in SQL Server using igraph in R (via RevoScaleR) ===\n"
+  "\n=== Step 4g: Create network metrics in SQL Server using igraph in R (via RevoScaleR) ===\n"
 )
 # dbExecute(odbc_con, "DROP TABLE dbo.centrality_tmp;")
 
@@ -591,3 +596,12 @@ write_parquet(edges, "graphs/speirgorm_edges.parquet")
 cat(
   "\n=== Step 5: Create edges and nodes csv files for later ===\n"
 )
+
+tobermvd <- c(
+  'posts_local',
+  'reposts_local',
+  'threads_df',
+  'posts_df',
+  'reposts_df'
+)
+rm(list = tobermvd)
