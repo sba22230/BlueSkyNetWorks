@@ -40,7 +40,6 @@ cat("Graph summary:\n")
 print(summary(g))
 
 
-
 cat("\n=== BlueSkyNetWorks: Computing Network Metrics using StatNet ===\n")
 
 # Convert igraph to statnet
@@ -63,7 +62,11 @@ betweenness_vals <- sna::betweenness(
 cat("  ✓ Betweenness centrality computed\n")
 
 # Closeness Centrality (suminvdir accounts for directed graphs)
-closeness_vals <- sna::closeness(bluSkynet, cmode = "suminvdir", ignore.eval = FALSE)
+closeness_vals <- sna::closeness(
+  bluSkynet,
+  cmode = "suminvdir",
+  ignore.eval = FALSE
+)
 cat("  ✓ Closeness centrality computed\n")
 
 # Eigenvector Centrality
