@@ -7,11 +7,11 @@
 # Step 0: Read raw data Parquet files locally
 # ---------------------------
 posts_local <- read_parquet(
-  "/../../Source/Repos/BlueSkyNetWorks/data/speirgorm_posts.parquet",
+  "./data/speirgorm_posts.parquet",
   stringsAsFactors = FALSE
 )
 reposts_local <- arrow::read_parquet(
-  "/../../Source/Repos/BlueSkyNetWorks/data/speirgorm_reposts.parquet",
+  "./data/speirgorm_reposts.parquet",
 
   stringsAsFactors = FALSE
 )
