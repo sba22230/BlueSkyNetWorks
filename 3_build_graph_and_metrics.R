@@ -433,10 +433,10 @@ cat(sprintf(
 ))
 
 # Fast greedy (for directed, may treat as undirected)
-comm_fastgreedy <- cluster_fast_greedy(as_undirected(g_igraph))
+comm_fastgreedy <- cluster_fast_greedy(as_undirected(g))
 num_communities_fg <- length(unique(comm_fastgreedy$membership))
 modularity_fastgreedy <- modularity(
-  as_undirected(g_igraph),
+  as_undirected(g),
   comm_fastgreedy$membership
 )
 cat(sprintf(
