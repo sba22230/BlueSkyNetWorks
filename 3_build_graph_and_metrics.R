@@ -6,7 +6,9 @@
 # source("3_StatnetAnalysis.R")
 
 # plan(multisession, workers = wrkrs)  ## to be moved closer to its use
-
+# ============================================================================
+# SECTION 1: Create the Graph
+# ============================================================================
 cat("\n=== Step 1: Build the initial graph... ===\n")
 
 # Step 1: Build edge list (who reposted whom)
@@ -39,10 +41,20 @@ g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 cat("Graph summary:\n")
 print(summary(g))
 
+# save the graph object for posterity
+rxWriteObject(
+  ds_Graphs,
+  paste0("g igraph object - all data ", nrow(nodes)),
+  g,
+  overwrite = TRUE
+)
+
 
 # ============================================================================
-# SECTION 1: Network-LEVEL METRICS
+# SECTION 2: Network-LEVEL METRICS
 # ============================================================================
+cat("\n=== Step 2a: Build out the metrics using igraph... ===\n")
+
 ig_cen <- igraph::dyad_census(g)
 ig_summary_df <- tibble(
   # DATEADD(DAY, CAST([analysis_timestamp] AS int), '1970-01-01')  AS analysis_timestamp
@@ -73,15 +85,16 @@ ig_sql <- RxSqlServerData(
   connectionString = connStr,
   colInfo = list('analysis_timestamp' = list(type = "Date"))
 )
-rxDataStep(ig_summary_df, ig_sql,  append = 'rows')
+rxDataStep(ig_summary_df, ig_sql, append = 'rows')
 
-cat("\n=== BlueSkyNetWorks: Computing Network Metrics using StatNet ===\n")
+cat(
+  "\n=== Step 2b: BlueSkyNetWorks: Computing Network Metrics using StatNet ===\n"
+)
 
 # Convert igraph to statnet
 library(network)
 bluSkynet <- asNetwork(g)
 
-cat("\n[1/4] Computing node-level centrality metrics for bluSkynet..\n")
 bsN_degree <- sna::degree(bluSkynet)
 bsN_ideg <- sna::degree(bluSkynet, cmode = "indegree")
 bsN_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
@@ -99,7 +112,7 @@ bsN_diameter <- max(dist_matrix[is.finite(dist_matrix)])
 
 bsN_summary_df <- tibble(
   #DATEADD(DAY, CAST([analysis_timestamp] AS int), '1970-01-01')  AS analysis_timestamp
-  analysis_timestamp = Sys.Date(), 
+  analysis_timestamp = Sys.Date(),
   method = "network/sna",
   network_size = network.size(bluSkynet),
   edge_count = network.edgecount(bluSkynet),
@@ -124,12 +137,43 @@ str(bsN_summary_df)
 ig_sql <- RxSqlServerData(
   table = "dbo.NetworkLevelMetrics",
   connectionString = connStr,
-  colInfo = list('analysis_timestamp' = list(type = "Date"))
+  colInfo = list("analysis_timestamp" = list(type = "Date"))
 )
-rxDataStep(bsN_summary_df, ig_sql,  append = 'rows')
+rxDataStep(bsN_summary_df, ig_sql, append = 'rows')
 
-comparison_table <- bind_rows(bsN_summary_df, ig_summary_df) %>%
-  mutate(across(-method, as.character)) %>% 
+cat("\n=== Step 2c: Show both Network Metrics in one table ===\n")
+
+desc_df <- tibble(
+  analysis_timestamp = "Date that the metrics were generated",
+  method = "description",
+  network_size = "Number of nodes (users) in network",
+  edge_count = "Number of directed edges (reposts)",
+  dyad_count = "Total number of possible dyadic pairs",
+  density = "Proportion of possible edges present",
+  mutual_pairs = "Number of mutual dyads (both directions present)",
+  asymetric_pairs = "Number of asymmetric dyads (one direction only)",
+  isolated_nodes = "Number of dyads with no connection",
+  diameter = "Longest shortest path between any two nodes",
+  avg_path_length = "Average shortest path across all node pairs",
+  neighbours_average = "Average number of adjacent nodes per node",
+  reciprocity_default = "Proportion of edges that are reciprocated (edgewise reciprocity)",
+  reciprocity_ratio = "Proportion of non-null dyads that are mutual (dyadic reciprocity)",
+  average_in_degree = "Average number of incoming ties per node",
+  average_out_degree = "Average number of outgoing ties per node",
+  most_replied_to = "Node with highest in-degree (most replies received)",
+  most_active_replier = "Node with highest out-degree (most replies/reposts sent)"
+)
+
+# Convert all metric columns to character BEFORE binding
+desc_df_chr <- desc_df %>% mutate(across(-method, as.character))
+bsN_summary_df_chr <- bsN_summary_df %>% mutate(across(-method, as.character))
+ig_summary_df_chr <- ig_summary_df %>% mutate(across(-method, as.character))
+
+comparison_table <- bind_rows(
+  desc_df_chr,
+  bsN_summary_df_chr,
+  ig_summary_df_chr
+) %>%
   pivot_longer(
     cols = -method,
     names_to = "metric",
@@ -140,19 +184,53 @@ comparison_table <- bind_rows(bsN_summary_df, ig_summary_df) %>%
     values_from = value
   ) %>%
   mutate(run_date = Sys.Date())
-
 datatable(comparison_table)
+
+
+### need to understand what is going on here
+
+# ============================================================================
+# SECTION 3: Network- Components
+# ============================================================================
+
+cat("\n=== Step 3: Determine the components of the Graph ===\n")
 
 # Connected components
 num_components <- igraph::components(g)$no
 largest_component_size <- max(igraph::components(g)$csize)
-giant_component_pct <- (largest_component_size / bsN_summary_df$network_size) * 100
+giant_component_pct <- (largest_component_size / bsN_summary_df$network_size) *
+  100
 cat(sprintf(
   "  ✓ Components: %d (largest: %d = %.1f%%)\n",
   num_components,
   largest_component_size,
   giant_component_pct
 ))
+
+comp <- igraph::components(g)
+
+# Identify small components (all except the largest)
+small_ids <- which(comp$csize < max(comp$csize))
+
+# Work out a sensible grid layout
+n <- length(small_ids)
+nrow <- ceiling(sqrt(n))
+ncol <- ceiling(n / nrow)
+
+par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
+
+for (i in small_ids) {
+  verts <- which(comp$membership == i)
+  subg <- induced_subgraph(g, verts)
+
+  plot(
+    subg,
+    main = paste("Component", i, "-", length(verts), "nodes"),
+    vertex.size = 12,
+    vertex.label.cex = 0.7,
+    edge.arrow.size = 0.3
+  )
+}
 
 # Transitivity (global clustering coefficient)
 transitivity_val <- transitivity(g, type = "global")
@@ -225,7 +303,7 @@ network_metrics <- tibble(
 cat("\n✓ Network metrics compiled into 'network_metrics' tibble\n")
 cat(sprintf("  %d network-level metrics computed\n", nrow(network_metrics)))
 
-## what is this code - these seem to be node level metrics calculated by SNA and network 
+## what is this code - these seem to be node level metrics calculated by SNA and network
 
 # Betweenness Centrality
 betweenness_vals <- sna::betweenness(
@@ -334,22 +412,14 @@ print(
 cat("\n[2/4] Computing network-level metrics...\n")
 
 
-
-
 # Network size and edges
 
 dyad_count <- network.dyadcount(bluSkynet)
 
 
-
-
-
-
-
 # Triad Census (for directed graphs)
 triad_census_vals <- triad_census(g)
 cat(sprintf("  ✓ Triad census computed (16 types of triads)\n"))
-
 
 
 # ============================================================================
