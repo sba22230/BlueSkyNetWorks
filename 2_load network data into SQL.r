@@ -601,6 +601,8 @@ cat(
 tobermvd <- c(
   'posts_local',
   'reposts_local',
-  'posts_df'
+  'posts_df',
+  'centrality_df'
 )
 rm(list = tobermvd)
+gc()

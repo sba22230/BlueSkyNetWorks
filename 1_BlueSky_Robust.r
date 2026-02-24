@@ -106,3 +106,4 @@ tobermvd <- c(
   'posts_to_hydrate'
 )
 rm(list = tobermvd)
+gc()

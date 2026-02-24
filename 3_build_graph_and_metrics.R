@@ -41,10 +41,12 @@ print(summary(g))
 
 
 # ============================================================================
-# SECTION 1: NODE-LEVEL METRICS
+# SECTION 1: Network-LEVEL METRICS
 # ============================================================================
 ig_cen <- igraph::dyad_census(g)
 ig_summary_df <- tibble(
+  # DATEADD(DAY, CAST([analysis_timestamp] AS int), '1970-01-01')  AS analysis_timestamp
+  analysis_timestamp = Sys.Date(),
   method = "igraph",
   network_size = vcount(g),
   edge_count = ecount(g),
@@ -65,6 +67,13 @@ ig_summary_df <- tibble(
 )
 
 str(ig_summary_df)
+# Write metrics back into network metric table
+ig_sql <- RxSqlServerData(
+  table = "dbo.NetworkLevelMetrics",
+  connectionString = connStr,
+  colInfo = list('analysis_timestamp' = list(type = "Date"))
+)
+rxDataStep(ig_summary_df, ig_sql,  append = 'rows')
 
 cat("\n=== BlueSkyNetWorks: Computing Network Metrics using StatNet ===\n")
 
@@ -73,7 +82,6 @@ library(network)
 bluSkynet <- asNetwork(g)
 
 cat("\n[1/4] Computing node-level centrality metrics for bluSkynet..\n")
-
 bsN_degree <- sna::degree(bluSkynet)
 bsN_ideg <- sna::degree(bluSkynet, cmode = "indegree")
 bsN_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
@@ -83,31 +91,28 @@ bsN_dyadcount <- sum(
   bsN_dyadcensus[[2]],
   bsN_dyadcensus[[3]]
 )
-
-bsN_edgecount <- network.edgecount(bluSkynet)
-bsN_netsize <- network.size(bluSkynet)
 bsN_cen <- sna::centralization(bluSkynet, sna::degree, cmode = "indegree")
 bsN_ceneig <- sna::centralization(bluSkynet, sna::evcent)
-bsN_gden <- gden(bluSkynet)
-bsN_grecip <- grecip(bluSkynet, measure = "dyadic")
-bsN_grecip_edgewise <- grecip(bluSkynet, measure = "edgewise")
 dist_matrix <- geodist(bluSkynet)$gdist
+gc()
 bsN_diameter <- max(dist_matrix[is.finite(dist_matrix)])
 
 bsN_summary_df <- tibble(
+  #DATEADD(DAY, CAST([analysis_timestamp] AS int), '1970-01-01')  AS analysis_timestamp
+  analysis_timestamp = Sys.Date(), 
   method = "network/sna",
-  network_size = bsN_netsize,
-  edge_count = bsN_edgecount,
+  network_size = network.size(bluSkynet),
+  edge_count = network.edgecount(bluSkynet),
   dyad_count = bsN_dyadcount,
-  density = bsN_gden,
+  density = gden(bluSkynet),
   mutual_pairs = bsN_dyadcensus[[1]],
   asymetric_pairs = bsN_dyadcensus[[2]],
   isolated_nodes = bsN_dyadcensus[[3]],
   diameter = bsN_diameter,
   avg_path_length = mean(dist_matrix[is.finite(dist_matrix)]),
   neighbours_average = mean(neighbors(g, V(g), mode = "all")),
-  reciprocity_default = bsN_grecip_edgewise,
-  reciprocity_ratio = bsN_grecip,
+  reciprocity_default = grecip(bluSkynet, measure = "edgewise"),
+  reciprocity_ratio = grecip(bluSkynet, measure = "dyadic.nonnull"),
   average_in_degree = mean(bsN_ideg),
   average_out_degree = mean(bsN_odeg),
   most_replied_to = network.vertex.names(bluSkynet)[which.max(bsN_ideg)],
@@ -115,9 +120,16 @@ bsN_summary_df <- tibble(
 )
 
 str(bsN_summary_df)
+# Write metrics back into network metric table
+ig_sql <- RxSqlServerData(
+  table = "dbo.NetworkLevelMetrics",
+  connectionString = connStr,
+  colInfo = list('analysis_timestamp' = list(type = "Date"))
+)
+rxDataStep(bsN_summary_df, ig_sql,  append = 'rows')
 
 comparison_table <- bind_rows(bsN_summary_df, ig_summary_df) %>%
-  mutate(across(-method, as.character)) %>% # ensure all values are same type
+  mutate(across(-method, as.character)) %>% 
   pivot_longer(
     cols = -method,
     names_to = "metric",
@@ -126,9 +138,95 @@ comparison_table <- bind_rows(bsN_summary_df, ig_summary_df) %>%
   pivot_wider(
     names_from = method,
     values_from = value
-  )
+  ) %>%
+  mutate(run_date = Sys.Date())
 
 datatable(comparison_table)
+
+# Connected components
+num_components <- igraph::components(g)$no
+largest_component_size <- max(igraph::components(g)$csize)
+giant_component_pct <- (largest_component_size / bsN_summary_df$network_size) * 100
+cat(sprintf(
+  "  ✓ Components: %d (largest: %d = %.1f%%)\n",
+  num_components,
+  largest_component_size,
+  giant_component_pct
+))
+
+# Transitivity (global clustering coefficient)
+transitivity_val <- transitivity(g, type = "global")
+cat(sprintf(
+  "  ✓ Global clustering coefficient (transitivity): %.4f\n",
+  transitivity_val
+))
+
+# Average local clustering
+avg_local_clustering <- mean(local_clustering, na.rm = TRUE)
+cat(sprintf("  ✓ Average local clustering: %.4f\n", avg_local_clustering))
+# Centralization (degree based)
+in_degree_vec <- igraph::degree(g, mode = "in")
+centralization_in <- (sum(max(in_degree_vec) - in_degree_vec)) /
+  ((bsN_summary_df$network_size - 1) * (bsN_summary_df$network_size - 2))
+cat(sprintf("  ✓ Centralization (in-degree): %.4f\n", centralization_in))
+
+# Create network metrics summary table
+network_metrics <- tibble(
+  metric_name = c(
+    "density",
+    "reciprocity_edgewise",
+    "reciprocity_dyadic",
+    "network_size",
+    "edge_count",
+    "dyad_count",
+    "diameter",
+    "avg_path_length",
+    "num_components",
+    "giant_component_size",
+    "giant_component_pct",
+    "global_clustering",
+    "avg_local_clustering",
+    "centralization_indegree"
+  ),
+  value = c(
+    bsN_summary_df$density,
+    bsN_summary_df$reciprocity_default,
+    bsN_summary_df$reciprocity_ratio,
+    bsN_summary_df$network_size,
+    bsN_summary_df$edge_count,
+    bsN_summary_df$dyad_count,
+    bsN_summary_df$diameter,
+    bsN_summary_df$avg_path_length,
+    num_components,
+    largest_component_size,
+    giant_component_pct,
+    transitivity_val,
+    avg_local_clustering,
+    centralization_in
+  ),
+  description = c(
+    "Proportion of possible edges present",
+    "Proportion of mutual reposts (edgewise)",
+    "Proportion of dyads with reciprocated edges",
+    "Number of nodes (users) in network",
+    "Number of directed edges (reposts)",
+    "Total number of possible dyadic pairs",
+    "Longest shortest path between any two nodes",
+    "Average shortest path across all node pairs",
+    "Number of disconnected components",
+    "Nodes in largest connected component",
+    "Percentage of nodes in largest component",
+    "Global clustering coefficient (transitivity)",
+    "Mean of local clustering coefficients",
+    "Degree centralization index (in-degree)"
+  )
+)
+
+cat("\n✓ Network metrics compiled into 'network_metrics' tibble\n")
+cat(sprintf("  %d network-level metrics computed\n", nrow(network_metrics)))
+
+## what is this code - these seem to be node level metrics calculated by SNA and network 
+
 # Betweenness Centrality
 betweenness_vals <- sna::betweenness(
   bluSkynet,
@@ -188,7 +286,7 @@ nodes_with_metrics <- nodes %>%
     betweenness = betweenness_vals,
     closeness = closeness_vals,
     eigenvector_centrality = eigen_vals,
-    kcore = kcore_vals,
+    kcore = as.numeric(kcore_vals),
     in_degree = in_degree,
     out_degree = out_degree,
     total_degree = total_degree,
@@ -235,124 +333,24 @@ print(
 
 cat("\n[2/4] Computing network-level metrics...\n")
 
-# Density
-density_val <- gden(bluSkynet)
-cat(sprintf("  ✓ Density: %.4f\n", density_val))
 
-# Reciprocity (edgewise = mutual reposts)
-reciprocity_val <- grecip(bluSkynet, measure = "edgewise")
-cat(sprintf("  ✓ Reciprocity (edgewise): %.4f\n", reciprocity_val))
 
-# Reciprocity dyadic
-reciprocity_dyadic <- grecip(bluSkynet, measure = "dyadic.nonnull")
-
-cat(sprintf("  ✓ Reciprocity (dyadic): %.4f\n", reciprocity_dyadic))
 
 # Network size and edges
-network_size <- network.size(bluSkynet)
-edge_count <- network.edgecount(bluSkynet)
+
 dyad_count <- network.dyadcount(bluSkynet)
-cat(sprintf(
-  "  ✓ Network size: %d nodes, %d edges, %d dyads\n",
-  network_size,
-  edge_count,
-  dyad_count
-))
 
-# Diameter (longest shortest path)
-diameter_val <- diameter(g, directed = TRUE, unconnected = TRUE)
-cat(sprintf("  ✓ Diameter: %f\n", diameter_val))
 
-# Average path length
-avg_path_length <- mean_distance(g, directed = TRUE)
-cat(sprintf("  ✓ Average path length: %.2f\n", avg_path_length))
 
-# Connected components
-num_components <- igraph::components(g)$no
-largest_component_size <- max(igraph::components(g)$csize)
-giant_component_pct <- (largest_component_size / network_size) * 100
-cat(sprintf(
-  "  ✓ Components: %d (largest: %d = %.1f%%)\n",
-  num_components,
-  largest_component_size,
-  giant_component_pct
-))
 
-# Transitivity (global clustering coefficient)
-transitivity_val <- transitivity(g, type = "global")
-cat(sprintf(
-  "  ✓ Global clustering coefficient (transitivity): %.4f\n",
-  transitivity_val
-))
 
-# Average local clustering
-avg_local_clustering <- mean(local_clustering, na.rm = TRUE)
-cat(sprintf("  ✓ Average local clustering: %.4f\n", avg_local_clustering))
 
-# Centralization (degree based)
-in_degree_vec <- igraph::degree(g, mode = "in")
-centralization_in <- (sum(max(in_degree_vec) - in_degree_vec)) /
-  ((network_size - 1) * (network_size - 2))
-cat(sprintf("  ✓ Centralization (in-degree): %.4f\n", centralization_in))
 
 # Triad Census (for directed graphs)
 triad_census_vals <- triad_census(g)
 cat(sprintf("  ✓ Triad census computed (16 types of triads)\n"))
 
-# Create network metrics summary table
-network_metrics <- tibble(
-  metric_name = c(
-    "density",
-    "reciprocity_edgewise",
-    "reciprocity_dyadic",
-    "network_size",
-    "edge_count",
-    "dyad_count",
-    "diameter",
-    "avg_path_length",
-    "num_components",
-    "giant_component_size",
-    "giant_component_pct",
-    "global_clustering",
-    "avg_local_clustering",
-    "centralization_indegree"
-  ),
-  value = c(
-    density_val,
-    reciprocity_val,
-    reciprocity_dyadic,
-    network_size,
-    edge_count,
-    dyad_count,
-    diameter_val,
-    avg_path_length,
-    num_components,
-    largest_component_size,
-    giant_component_pct,
-    transitivity_val,
-    avg_local_clustering,
-    centralization_in
-  ),
-  description = c(
-    "Proportion of possible edges present",
-    "Proportion of mutual reposts (edgewise)",
-    "Proportion of dyads with reciprocated edges",
-    "Number of nodes (users) in network",
-    "Number of directed edges (reposts)",
-    "Total number of possible dyadic pairs",
-    "Longest shortest path between any two nodes",
-    "Average shortest path across all node pairs",
-    "Number of disconnected components",
-    "Nodes in largest connected component",
-    "Percentage of nodes in largest component",
-    "Global clustering coefficient (transitivity)",
-    "Mean of local clustering coefficients",
-    "Degree centralization index (in-degree)"
-  )
-)
 
-cat("\n✓ Network metrics compiled into 'network_metrics' tibble\n")
-cat(sprintf("  %d network-level metrics computed\n", nrow(network_metrics)))
 
 # ============================================================================
 # SECTION 3: COMMUNITY STRUCTURE ANALYSIS
