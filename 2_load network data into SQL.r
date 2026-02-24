@@ -128,6 +128,7 @@ CREATE TABLE Person (
 END;"
 dbExecute(odbc_con, create_nodes_sql)
 
+cat("\n=== Step 2: populate the Nodes and Edges tables ===\n")
 populate_person_sql <- "TRUNCATE TABLE dbo.Person;
 INSERT INTO dbo.Person (
     handle,
@@ -173,7 +174,7 @@ FROM      posts_raw AS P INNER JOIN
 WHERE handle IS NOT NULL
 GROUP BY handle;"
 dbExecute(odbc_con, populate_person_sql)
-cat("\n=== Step 2: populate the Nodes and Edges tables ===\n")
+
 # ---------------------------
 # Step 3: Populate Reposted edge table
 # - Insert edges by resolving $node_id for from/to using Person.name
@@ -268,7 +269,7 @@ JOIN #in_degree_tmp AS c
 -- Clean up
 DROP TABLE #in_degree_tmp;"
 )
-cat("\n=== Step 4a: Create in-degree metrics in SQL Server using SQL ===\n")
+cat("\n=== Step 4a: Created in-degree metrics in SQL Server using SQL ===\n")
 
 dbExecute(
   odbc_con,
@@ -291,7 +292,7 @@ JOIN #out_degree_tmp AS c
 -- Clean up
 DROP TABLE #out_degree_tmp;"
 )
-cat("\n=== Step 4b: Create out-degree metrics in SQL Server using SQL ===\n")
+cat("\n=== Step 4b: Created out-degree metrics in SQL Server using SQL ===\n")
 
 # Execute the proc sp_ComputeInfluenceScore
 tryCatch(
@@ -302,7 +303,7 @@ tryCatch(
     cat("  ⚠ Influence score computation warning:", e$message, "\n")
   }
 )
-cat("\n=== Step 4c: Run Influence score computation SQL Server using SQL ===\n")
+cat("\n=== Step 4c: Ran Influence score computation SQL Server using SQL ===\n")
 # Execute the proc sp_ComputeEdgeweight
 tryCatch(
   {
@@ -312,7 +313,7 @@ tryCatch(
     cat("  ⚠ Edgeweight computation warning:", e$message, "\n")
   }
 )
-cat("\n=== Step 4d: Run Edgeweight computation SQL Server using SQL ===\n")
+cat("\n=== Step 4d: Ran Edgeweight computation SQL Server using SQL ===\n")
 # Execute the proc sp_ComputeEdgeBetweenness
 tryCatch(
   {
@@ -323,7 +324,7 @@ tryCatch(
   }
 )
 cat(
-  "\n=== Step 4e: Run Edge betweenness computation SQL Server using SQL ===\n"
+  "\n=== Step 4e: Ran Edge betweenness computation SQL Server using SQL ===\n"
 )
 
 # Read edges/nodes from SQL via RxSqlServerData
@@ -384,7 +385,7 @@ nodes_rx <- RxSqlServerData(
   connectionString = connStr
 )
 cat(
-  "\n=== Step 4f: Run igraph/statnet inside SQL compute context ===\n"
+  "\n=== Step 4f: Run igraph inside SQL compute context ===\n"
 )
 rxSetComputeContext(sql_cc)
 # Run igraph/statnet inside SQL compute context
@@ -511,7 +512,7 @@ dbExecute(
 "
 )
 cat(
-  "\n=== Step 4g: Create network metrics in SQL Server using igraph in R (via RevoScaleR) ===\n"
+  "\n=== Step 4g: Created network metrics in SQL Server using igraph in R (via RevoScaleR) ===\n"
 )
 # dbExecute(odbc_con, "DROP TABLE dbo.centrality_tmp;")
 
@@ -594,14 +595,12 @@ names(edges)
 
 write_parquet(edges, "graphs/speirgorm_edges.parquet")
 cat(
-  "\n=== Step 5: Create edges and nodes csv files for later ===\n"
+  "\n=== Step 5: Created edges and nodes csv files for later ===\n"
 )
 
 tobermvd <- c(
   'posts_local',
   'reposts_local',
-  'threads_df',
-  'posts_df',
-  'reposts_df'
+  'posts_df'
 )
 rm(list = tobermvd)
