@@ -302,7 +302,7 @@ for (i in bsN_small_ids) {
 
 par(old_par) # restore original par settings
 
-### need to understand what is going on here
+### These will be useful for a notebook === START
 
 ## what is this code - these seem to be node level metrics calculated by SNA and network
 
@@ -312,6 +312,14 @@ par(old_par) # restore original par settings
 # - Connects different communities.
 # - Has influence because they control who talks to whom.
 # - Often plays a “gatekeeper” or “broker” role.
+
+# A simple intuition
+# - Betweenness: “People have to go through me.”
+# - Closeness: “I can get to anyone quickly.”
+# They often diverge.
+# A person can have:
+# - High betweenness but low closeness → a bridge between two distant groups
+# - High closeness but low betweenness → centrally embedded in a dense cluster
 
 betweenness_vals <- sna::betweenness(
   bluSkynet,
@@ -409,22 +417,7 @@ print(
     head(10)
 )
 
-# ============================================================================
-# SECTION 2: NETWORK-LEVEL METRICS
-# ============================================================================
-
-cat("\n[2/4] Computing network-level metrics...\n")
-
-
-# Network size and edges
-
-dyad_count <- network.dyadcount(bluSkynet)
-
-
-# Triad Census (for directed graphs)
-triad_census_vals <- triad_census(g)
-cat(sprintf("  ✓ Triad census computed (16 types of triads)\n"))
-
+### These will be useful for a notebook === FINISH
 
 # ============================================================================
 # SECTION 3: COMMUNITY STRUCTURE ANALYSIS
@@ -450,13 +443,26 @@ membership <- membership(communities)
 
 # Get top 10 communities by size
 comm_sizes <- sort(table(membership), decreasing = TRUE)
-top_10_ids <- as.numeric(names(comm_sizes[1:10]))
+top_10_ids <- as.numeric(names(comm_sizes[1:12]))
 
-# Create list of subgraphs
-community_graphs <- lapply(top_10_ids, function(id) {
-  nodes <- which(membership == id)
-  induced_subgraph(g, nodes)
-})
+# Work out a sensible grid layout
+n <- length(top_10_ids)
+nrow <- ceiling(sqrt(n))
+ncol <- ceiling(n / nrow)
+
+par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
+
+for (i in top_10_ids) {
+  subg <- induced_subgraph(g, verts)
+
+  plot(
+    subg,
+    main = paste("Component", i, "-", length(verts), "nodes"),
+    vertex.size = 12,
+    vertex.label.cex = 0.7,
+    edge.arrow.size = 0.3
+  )
+}
 
 # Name them for easy reference
 names(community_graphs) <- paste0("Community_", top_10_ids)
