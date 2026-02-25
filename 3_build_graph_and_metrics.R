@@ -55,12 +55,25 @@ rxWriteObject(
 # ============================================================================
 cat("\n=== Step 2a: Build out the metrics using igraph... ===\n")
 
+ig_network_size = vcount(g)
+ig_comp <- igraph::components(g)
+# Connected components
+ig_num_components <- ig_comp$no
+ig_largest_component_size <- max(ig_comp$csize)
+ig_giant_component_pct <- (ig_largest_component_size / ig_network_size) *
+  100
+# Average local clustering
+ig_avg_local_clustering <- mean(nodes$local_clustering, na.rm = TRUE)
+# Centralization (degree based)
+
+ig_centralization_in <- (sum(max(nodes$in_degree) - nodes$in_degree)) /
+  ((ig_network_size - 1) * (ig_network_size - 2))
 ig_cen <- igraph::dyad_census(g)
 ig_summary_df <- tibble(
   # DATEADD(DAY, CAST([analysis_timestamp] AS int), '1970-01-01')  AS analysis_timestamp
   analysis_timestamp = Sys.Date(),
   method = "igraph",
-  network_size = vcount(g),
+  network_size = ig_network_size,
   edge_count = ecount(g),
   dyad_count = sum(ig_cen$mut, ig_cen$asym, ig_cen$null),
   density = edge_density(g),
@@ -75,7 +88,13 @@ ig_summary_df <- tibble(
   average_in_degree = mean(nodes$in_degree),
   average_out_degree = mean(nodes$out_degree),
   most_replied_to = nodes$name[which.max(nodes$in_degree)],
-  most_active_replier = nodes$name[which.max(nodes$out_degree)]
+  most_active_replier = nodes$name[which.max(nodes$out_degree)],
+  num_components = ig_num_components,
+  largest_component_size = ig_largest_component_size,
+  giant_component_pct = ig_giant_component_pct,
+  transitivity_val = transitivity(g, type = "global"),
+  avg_local_clustering = ig_avg_local_clustering,
+  centralization_in = ig_centralization_in
 )
 
 str(ig_summary_df)
@@ -95,6 +114,7 @@ cat(
 library(network)
 bluSkynet <- asNetwork(g)
 
+bsN_network_size = network.size(bluSkynet)
 bsN_degree <- sna::degree(bluSkynet)
 bsN_ideg <- sna::degree(bluSkynet, cmode = "indegree")
 bsN_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
@@ -109,12 +129,21 @@ bsN_ceneig <- sna::centralization(bluSkynet, sna::evcent)
 dist_matrix <- geodist(bluSkynet)$gdist
 gc()
 bsN_diameter <- max(dist_matrix[is.finite(dist_matrix)])
-
+bsN_comp <- component.dist(bluSkynet, connected = "weak")
+bsN_num_components <- length(bsN_comp$csize)
+bsN_largest_component_size <- max(bsN_comp$csize)
+bsN_largest_component_size_pct <- (bsN_largest_component_size / bsN_network_size) * 100
+# Local Clustering Coefficient (for directed graphs, variants exist)
+bsN_local_clustering <- ig_avg_local_clustering # Placeholder: SNA's clustering is more complex for directed graphs
+bsN_Global_clustering <- gtrans(bluSkynet, mode = "digraph", measure = "weak")
+# Centralization (degree based)
+bsN_centralization_in <- (sum(max(bsN_ideg) - bsN_ideg)) /
+  ((bsN_summary_df$network_size - 1) * (bsN_summary_df$network_size - 2))
 bsN_summary_df <- tibble(
   #DATEADD(DAY, CAST([analysis_timestamp] AS int), '1970-01-01')  AS analysis_timestamp
   analysis_timestamp = Sys.Date(),
   method = "network/sna",
-  network_size = network.size(bluSkynet),
+  network_size = bsN_network_size,
   edge_count = network.edgecount(bluSkynet),
   dyad_count = bsN_dyadcount,
   density = gden(bluSkynet),
@@ -129,7 +158,13 @@ bsN_summary_df <- tibble(
   average_in_degree = mean(bsN_ideg),
   average_out_degree = mean(bsN_odeg),
   most_replied_to = network.vertex.names(bluSkynet)[which.max(bsN_ideg)],
-  most_active_replier = network.vertex.names(bluSkynet)[which.max(bsN_odeg)]
+  most_active_replier = network.vertex.names(bluSkynet)[which.max(bsN_odeg)],
+  num_components = bsN_num_components,
+  largest_component_size = bsN_largest_component_size,
+  giant_component_pct = bsN_largest_component_size_pct,
+  transitivity_val = bsN_Global_clustering,
+  avg_local_clustering = bsN_local_clustering,
+  centralization_in = bsN_centralization_in
 )
 
 str(bsN_summary_df)
@@ -161,7 +196,13 @@ desc_df <- tibble(
   average_in_degree = "Average number of incoming ties per node",
   average_out_degree = "Average number of outgoing ties per node",
   most_replied_to = "Node with highest in-degree (most replies received)",
-  most_active_replier = "Node with highest out-degree (most replies/reposts sent)"
+  most_active_replier = "Node with highest out-degree (most replies/reposts sent)",
+  num_components = "Number of disconnected components",
+  largest_component_size = "Nodes in largest connected component",
+  giant_component_pct = "Percentage of nodes in largest component",
+  transitivity_val = "Global clustering coefficient (transitivity)",
+  avg_local_clustering = "Mean of local clustering coefficients",
+  centralization_in = "Degree centralization index (in-degree)"
 )
 
 # Convert all metric columns to character BEFORE binding
@@ -195,22 +236,17 @@ datatable(comparison_table)
 
 cat("\n=== Step 3: Determine the components of the Graph ===\n")
 
-# Connected components
-num_components <- igraph::components(g)$no
-largest_component_size <- max(igraph::components(g)$csize)
-giant_component_pct <- (largest_component_size / bsN_summary_df$network_size) *
-  100
+
 cat(sprintf(
   "  ✓ Components: %d (largest: %d = %.1f%%)\n",
-  num_components,
-  largest_component_size,
-  giant_component_pct
+  ig_num_components,
+  ig_largest_component_size,
+  ig_giant_component_pct
 ))
 
-comp <- igraph::components(g)
 
 # Identify small components (all except the largest)
-small_ids <- which(comp$csize < max(comp$csize))
+small_ids <- which(ig_comp$csize < max(ig_comp$csize))
 
 # Work out a sensible grid layout
 n <- length(small_ids)
@@ -232,20 +268,10 @@ for (i in small_ids) {
   )
 }
 
-# Transitivity (global clustering coefficient)
-transitivity_val <- transitivity(g, type = "global")
-cat(sprintf(
-  "  ✓ Global clustering coefficient (transitivity): %.4f\n",
-  transitivity_val
-))
 
-# Average local clustering
-avg_local_clustering <- mean(local_clustering, na.rm = TRUE)
+
 cat(sprintf("  ✓ Average local clustering: %.4f\n", avg_local_clustering))
-# Centralization (degree based)
-in_degree_vec <- igraph::degree(g, mode = "in")
-centralization_in <- (sum(max(in_degree_vec) - in_degree_vec)) /
-  ((bsN_summary_df$network_size - 1) * (bsN_summary_df$network_size - 2))
+
 cat(sprintf("  ✓ Centralization (in-degree): %.4f\n", centralization_in))
 
 # Create network metrics summary table
@@ -302,6 +328,7 @@ network_metrics <- tibble(
 
 cat("\n✓ Network metrics compiled into 'network_metrics' tibble\n")
 cat(sprintf("  %d network-level metrics computed\n", nrow(network_metrics)))
+datatable(network_metrics)
 
 ## what is this code - these seem to be node level metrics calculated by SNA and network
 
@@ -346,8 +373,7 @@ cat("  ✓ Degree metrics (in/out/total) computed\n")
 # authority_score <- hits$authority ## not available in SNA
 # cat("  ✓ HITS authority/hub scores computed\n") ## not available in SNA
 
-# Local Clustering Coefficient (for directed graphs, variants exist)
-local_clustering <- gtrans(bluSkynet, mode = "digraph", measure = "weak")
+
 
 cat("  ✓ Local clustering coefficient computed\n")
 
