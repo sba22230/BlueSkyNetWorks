@@ -337,6 +337,8 @@ closeness_vals <- sna::closeness(
 )
 cat("  ✓ Closeness centrality computed\n")
 
+gc()
+
 # Eigenvector Centrality
 eigen_vals <- sna::evcent(bluSkynet, gmode = "digraph", ignore.eval = FALSE)
 cat("  ✓ Eigenvector centrality computed\n")
@@ -435,7 +437,6 @@ cat(sprintf(
   modularity_louvain
 ))
 
-
 cat("\n Extract Community Subgraphs \n")
 # Assuming you have your community detection results
 communities <- comm_louvain # or your preferred method
@@ -456,11 +457,11 @@ nrow <- ceiling(sqrt(n))
 ncol <- ceiling(n / nrow)
 
 par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
+pal <- viridis::viridis(max(V(g)$kcore) + 1)
 
-for (i in seq(1,10)) {
+for (i in seq(1, 12)) {
   subg <- community_graphs[[i]]
-  pal <- viridis::viridis(max(V(subg)$kcore) + 1)
-  
+
   plot(
     subg,
     layout = layout_with_fr,
@@ -468,10 +469,10 @@ for (i in seq(1,10)) {
     vertex.size = V(subg)$pagerank + 1,
     vertex.label.cex = 0.2,
     edge.arrow.size = 0.3,
-    vertex.color = pal[V(subg)$kcore + 1]   # colour by k-core
-    
+    vertex.color = pal[V(subg)$kcore + 1] # colour by k-core
   )
 }
+
 
 # Name them for easy reference
 names(community_graphs) <- paste0("Community_", top_10_ids)
@@ -480,25 +481,28 @@ cat(
 For each community subgraph, examine: \n"
 )
 # For a single community
-comm_graph <- community_graphs[[1]]
+for (i in length(community_graphs)) {
+  comm_graph <- community_graphs[[i]]
 
-# Density
-edge_density(comm_graph)
+  # Key nodes within community
+  igraph::betweenness(comm_graph)
+  igraph::closeness(comm_graph)
+  igraph::degree(comm_graph)
 
-# Key nodes within community
-igraph::betweenness(comm_graph)
-igraph::closeness(comm_graph)
-igraph::degree(comm_graph)
+  # Clustering coefficient
+  transitivity(comm_graph, type = "local")
 
-# Clustering coefficient
-transitivity(comm_graph, type = "local")
+  # Diameter and average path length
+  diameter(comm_graph)
+  mean_distance(comm_graph)
 
-# Diameter and average path length
-diameter(comm_graph)
-mean_distance(comm_graph)
+  # Sub-communities within
+  sub_communities <- cluster_louvain(as_undirected(comm_graph))
+}
 
-# Sub-communities within
-sub_communities <- cluster_louvain(as_undirected(comm_graph))
+
+par(old_par) # restore original par settings
+
 # Batch Analysis
 # Analyze all top 10 at once
 community_metrics <- data.frame(
@@ -560,52 +564,6 @@ print(community_stats)
 # ============================================================================
 # SECTION 4: SAVE RESULTS
 # ============================================================================
-
-cat("\n[4/4] Saving results...\n")
-
-# Save node metrics
-arrow::write_parquet(nodes_with_metrics, "graphs/nodes_with_metrics.parquet")
-readr::write_csv(nodes_with_metrics, "graphs/nodes_with_metrics.csv")
-cat(
-  "✓ Saved: graphs/nodes_with_metrics.parquet | graphs/nodes_with_metrics.csv\n"
-)
-
-# Save network metrics
-arrow::write_parquet(network_metrics, "graphs/network_metrics.parquet")
-readr::write_csv(network_metrics, "graphs/network_metrics.csv")
-cat("  ✓ Saved: graphs/network_metrics.parquet | graphs/network_metrics.csv\n")
-
-# Save community stats
-arrow::write_parquet(community_stats, "graphs/community_stats.parquet")
-readr::write_csv(community_stats, "graphs/community_stats.csv")
-cat("  ✓ Saved: graphs/community_stats.parquet | graphs/community_stats.csv\n")
-
-# Save triad census results
-triad_census_df <- tibble(
-  triad_type = 0:15,
-  count = as.integer(triad_census_vals),
-  description = c(
-    "003: no edges",
-    "012: single directed edge",
-    "102: single undirected edge",
-    "021D: two asymmetric edges",
-    "021U: single undirected + one directed",
-    "021C: path of length 2",
-    "111D: three asymmetric edges",
-    "111U: two undirected + one directed",
-    "030T: transitive triple",
-    "030C: cyclic triple",
-    "201: bidirectional edge + isolated",
-    "120D: one mutual + one asymmetric",
-    "120U: one mutual + two directed",
-    "120C: one mutual + path",
-    "210: mutual edge + two directed",
-    "300: all mutual edges"
-  )
-)
-arrow::write_parquet(triad_census_df, "graphs/triad_census.parquet")
-readr::write_csv(triad_census_df, "graphs/triad_census.csv")
-cat("  ✓ Saved: graphs/triad_census.parquet | graphs/triad_census.csv\n")
 
 # Summary report
 cat("\n" %+% strrep("=", 70) %+% "\n")
