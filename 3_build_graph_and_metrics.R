@@ -445,6 +445,11 @@ membership <- membership(communities)
 comm_sizes <- sort(table(membership), decreasing = TRUE)
 top_10_ids <- as.numeric(names(comm_sizes[1:12]))
 
+community_graphs <- lapply(top_10_ids, function(id) {
+  nodes <- which(membership == id)
+  induced_subgraph(g, nodes)
+})
+
 # Work out a sensible grid layout
 n <- length(top_10_ids)
 nrow <- ceiling(sqrt(n))
@@ -452,15 +457,19 @@ ncol <- ceiling(n / nrow)
 
 par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
 
-for (i in top_10_ids) {
-  subg <- induced_subgraph(g, verts)
-
+for (i in seq(1,10)) {
+  subg <- community_graphs[[i]]
+  pal <- viridis::viridis(max(V(subg)$kcore) + 1)
+  
   plot(
     subg,
-    main = paste("Component", i, "-", length(verts), "nodes"),
-    vertex.size = 12,
-    vertex.label.cex = 0.7,
-    edge.arrow.size = 0.3
+    layout = layout_with_fr,
+    main = paste("Sub Graph", i, "-", vcount(subg), "nodes"),
+    vertex.size = V(subg)$pagerank + 1,
+    vertex.label.cex = 0.2,
+    edge.arrow.size = 0.3,
+    vertex.color = pal[V(subg)$kcore + 1]   # colour by k-core
+    
   )
 }
 
