@@ -129,16 +129,18 @@ bsN_ceneig <- sna::centralization(bluSkynet, sna::evcent)
 dist_matrix <- geodist(bluSkynet)$gdist
 gc()
 bsN_diameter <- max(dist_matrix[is.finite(dist_matrix)])
-bsN_comp <- component.dist(bluSkynet, connected = "weak")
+bsN_comp <- component.dist(bluSkynet, connected = "weak")
 bsN_num_components <- length(bsN_comp$csize)
 bsN_largest_component_size <- max(bsN_comp$csize)
-bsN_largest_component_size_pct <- (bsN_largest_component_size / bsN_network_size) * 100
+bsN_largest_component_size_pct <- (bsN_largest_component_size /
+  bsN_network_size) *
+  100
 # Local Clustering Coefficient (for directed graphs, variants exist)
 bsN_local_clustering <- ig_avg_local_clustering # Placeholder: SNA's clustering is more complex for directed graphs
 bsN_Global_clustering <- gtrans(bluSkynet, mode = "digraph", measure = "weak")
 # Centralization (degree based)
 bsN_centralization_in <- (sum(max(bsN_ideg) - bsN_ideg)) /
-  ((bsN_summary_df$network_size - 1) * (bsN_summary_df$network_size - 2))
+  ((bsN_network_size - 1) * (bsN_network_size - 2))
 bsN_summary_df <- tibble(
   #DATEADD(DAY, CAST([analysis_timestamp] AS int), '1970-01-01')  AS analysis_timestamp
   analysis_timestamp = Sys.Date(),
@@ -228,13 +230,11 @@ comparison_table <- bind_rows(
 datatable(comparison_table)
 
 
-### need to understand what is going on here
-
 # ============================================================================
-# SECTION 3: Network- Components
+# SECTION 3: Ploting Network - Components
 # ============================================================================
-
-cat("\n=== Step 3: Determine the components of the Graph ===\n")
+old_par <- par(no.readonly = TRUE) # save current par settings
+cat("\n=== Step 3: Plot the small components of the Graph ===\n")
 
 
 cat(sprintf(
@@ -244,7 +244,7 @@ cat(sprintf(
   ig_giant_component_pct
 ))
 
-
+cat("\n=== Step 3a: Plot the small components using the igraph ===\n")
 # Identify small components (all except the largest)
 small_ids <- which(ig_comp$csize < max(ig_comp$csize))
 
@@ -256,7 +256,7 @@ ncol <- ceiling(n / nrow)
 par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
 
 for (i in small_ids) {
-  verts <- which(comp$membership == i)
+  verts <- which(ig_comp$membership == i)
   subg <- induced_subgraph(g, verts)
 
   plot(
@@ -267,72 +267,52 @@ for (i in small_ids) {
     edge.arrow.size = 0.3
   )
 }
+cat("\n=== Step 3b: Plot the small components using the sna ===\n")
+cat(sprintf(
+  "  ✓ Components: %d (largest: %d = %.1f%%)\n",
+  bsN_num_components,
+  bsN_largest_component_size,
+  bsN_largest_component_size_pct
+))
 
+# Identify small components (all except the largest)
+bsN_small_ids <- which(bsN_comp$csize < max(bsN_comp$csize))
 
+# Work out a sensible grid layout
+n <- length(bsN_small_ids)
+nrow <- ceiling(sqrt(n))
+ncol <- ceiling(n / nrow)
 
-cat(sprintf("  ✓ Average local clustering: %.4f\n", avg_local_clustering))
+par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
 
-cat(sprintf("  ✓ Centralization (in-degree): %.4f\n", centralization_in))
+for (i in bsN_small_ids) {
+  verts <- which(bsN_comp$membership == i)
+  subg <- get.inducedSubgraph(bluSkynet, verts)
 
-# Create network metrics summary table
-network_metrics <- tibble(
-  metric_name = c(
-    "density",
-    "reciprocity_edgewise",
-    "reciprocity_dyadic",
-    "network_size",
-    "edge_count",
-    "dyad_count",
-    "diameter",
-    "avg_path_length",
-    "num_components",
-    "giant_component_size",
-    "giant_component_pct",
-    "global_clustering",
-    "avg_local_clustering",
-    "centralization_indegree"
-  ),
-  value = c(
-    bsN_summary_df$density,
-    bsN_summary_df$reciprocity_default,
-    bsN_summary_df$reciprocity_ratio,
-    bsN_summary_df$network_size,
-    bsN_summary_df$edge_count,
-    bsN_summary_df$dyad_count,
-    bsN_summary_df$diameter,
-    bsN_summary_df$avg_path_length,
-    num_components,
-    largest_component_size,
-    giant_component_pct,
-    transitivity_val,
-    avg_local_clustering,
-    centralization_in
-  ),
-  description = c(
-    "Proportion of possible edges present",
-    "Proportion of mutual reposts (edgewise)",
-    "Proportion of dyads with reciprocated edges",
-    "Number of nodes (users) in network",
-    "Number of directed edges (reposts)",
-    "Total number of possible dyadic pairs",
-    "Longest shortest path between any two nodes",
-    "Average shortest path across all node pairs",
-    "Number of disconnected components",
-    "Nodes in largest connected component",
-    "Percentage of nodes in largest component",
-    "Global clustering coefficient (transitivity)",
-    "Mean of local clustering coefficients",
-    "Degree centralization index (in-degree)"
+  gplot(
+    subg,
+    gmode = "digraph",
+    mode = "fruchtermanreingold",
+    main = paste("Component", i, "-", length(verts), "nodes"),
+    vertex.cex = 1.2,
+    label.cex = 0.7,
+    arrowhead.cex = 0.3
   )
-)
+}
 
-cat("\n✓ Network metrics compiled into 'network_metrics' tibble\n")
-cat(sprintf("  %d network-level metrics computed\n", nrow(network_metrics)))
-datatable(network_metrics)
+par(old_par) # restore original par settings
+
+### need to understand what is going on here
 
 ## what is this code - these seem to be node level metrics calculated by SNA and network
 
 # Betweenness Centrality
+# 1. Social networks
+# A person with high betweenness:
+# - Connects different communities.
+# - Has influence because they control who talks to whom.
+# - Often plays a “gatekeeper” or “broker” role.
+
 betweenness_vals <- sna::betweenness(
   bluSkynet,
   gmode = "digraph",
@@ -372,8 +352,6 @@ cat("  ✓ Degree metrics (in/out/total) computed\n")
 # hub_score <- hits$hub ## not available in SNA
 # authority_score <- hits$authority ## not available in SNA
 # cat("  ✓ HITS authority/hub scores computed\n") ## not available in SNA
-
-
 
 cat("  ✓ Local clustering coefficient computed\n")
 
