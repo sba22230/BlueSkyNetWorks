@@ -697,20 +697,32 @@ safe_rescale <- function(x) {
   scales::rescale(x, to = c(0, 1), from = rng)
 }
 
-layout_exec <- function(edges_data, nodes_data, layout_type, ...) {
+layout_exec <- function(
+  edges_data,
+  nodes_data,
+  graph = NULL,
+  layout_type,
+  ...
+) {
   library(igraph)
 
   # make absolutely sure this is a single scalar
   layout_type <- as.character(layout_type)[1]
+  # If a graph is supplied, use it directly
+  if (inherits(graph, "igraph")) {
+    g <- graph
+    nodes_df <- as.data.frame(vertex_attr(g))
+  } else {
+    edges_df <- rxImport(edges_data)
+    nodes_df <- rxImport(nodes_data)
 
-  edges_df <- rxImport(edges_data)
-  nodes_df <- rxImport(nodes_data)
-
-  g <- graph_from_data_frame(
-    d = edges_df,
-    vertices = nodes_df,
-    directed = FALSE
-  )
+    g <- graph_from_data_frame(
+      d = edges_df,
+      vertices = nodes_df,
+      directed = FALSE
+    )
+  }
+  net_size = vcount(g)
 
   coords <- switch(
     layout_type,
@@ -720,18 +732,31 @@ layout_exec <- function(edges_data, nodes_data, layout_type, ...) {
       seed = matrix(runif(vcount(g) * 2), ncol = 2)
     ),
     "drl_fast" = layout_with_drl(g, options = list(simmer.attraction = 0)),
+    "fr" = layout_with_fr(
+      g,
+      dim = 3,
+      niter = net_size * 3,
+      start.temp = sqrt(net_size),
+      weights = E(g)$weight
+    ),
     "graphopt" = layout_with_graphopt(
       g,
       start = matrix(runif(vcount(g) * 2), ncol = 2),
       niter = 400
     ),
-    "lgl" = layout_with_lgl(g, maxiter = 100, maxdelta = vcount(g) * 2),
+    "lgl" = layout_with_lgl(
+      g,
+      maxiter = net_size * 3,
+      maxdelta = vcount(g) * 2
+    ),
     "kk" = layout_with_kk(
       g,
       coords = matrix(runif(vcount(g) * 2), ncol = 2),
-      maxiter = 100,
+      maxiter = net_size * 3,
       weights = E(g)$weight
     ),
+    "mds" = layout_with_mds(g, dim = 4),
+    "nicely" = layout_nicely(g, dim = 3),
     "tree" = layout_as_tree(
       g,
       root = which(nodes_df$total_degree == max(nodes_df$total_degree)),
@@ -744,5 +769,6 @@ layout_exec <- function(edges_data, nodes_data, layout_type, ...) {
   df <- as.data.frame(coords)
   names(df) <- c("x", "y")
   df$name <- V(g)$name
+  base::attr(df, "layout_type") <- layout_type
   df
 }

@@ -10,9 +10,12 @@ res <- rxExec(
   layout_type = rxElemArg(c(
     "drl",
     "drl_fast",
+    "fr",
     "graphopt",
     "lgl",
     "kk",
+    "mds",
+    "nicely",
     "tree"
   )),
   execObjects = c("connStr", "layout_exec")
@@ -53,7 +56,7 @@ rxWriteObject(
   overwrite = TRUE
 )
 
-# --- end of one visualisation 
+# --- end of one visualisation
 
 # Step 5: Plot enriched network with ggraph
 g2 <- g
@@ -165,7 +168,7 @@ vis_nodes$isolated <- vis_nodes$degree == 0
 # ========================================================================
 # COMMUNITY CHARACTERIZATION & LABELING
 # ========================================================================
-# Analyze what defines each community to create meaningful labels 
+# Analyze what defines each community to create meaningful labels
 # TBD needs to use the communities already computed
 
 cat("\n=== ANALYZING COMMUNITIES ===\n")

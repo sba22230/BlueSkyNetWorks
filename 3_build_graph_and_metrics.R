@@ -302,9 +302,10 @@ for (i in bsN_small_ids) {
 
 par(old_par) # restore original par settings
 
-### These will be useful for a notebook === START
-
-## what is this code - these seem to be node level metrics calculated by SNA and network
+# ============================================================================
+# SECTION 4: Computing node Metrics using Statnet
+# - igraph is already in the Person table
+# ============================================================================
 
 # Betweenness Centrality
 # 1. Social networks
@@ -343,9 +344,6 @@ gc()
 eigen_vals <- sna::evcent(bluSkynet, gmode = "digraph", ignore.eval = FALSE)
 cat("  ✓ Eigenvector centrality computed\n")
 
-# Convert to igraph for additional metrics
-# g_igraph <- g3
-
 # Degree metrics (already computed but ensuring consistency)
 bsN_ideg <- sna::degree(bluSkynet, cmode = "indegree")
 bsN_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
@@ -363,12 +361,9 @@ cat("  ✓ Degree metrics (in/out/total) computed\n")
 # authority_score <- hits$authority ## not available in SNA
 # cat("  ✓ HITS authority/hub scores computed\n") ## not available in SNA
 
-cat("  ✓ Local clustering coefficient computed\n")
-
 # k-Core Decomposition
 kcore_vals <- sna::kcores(bluSkynet)
 cat("  ✓ k-core decomposition computed\n")
-
 
 # align numeric vectors to node order
 node_keys <- as.character(nodes$name)
@@ -419,6 +414,14 @@ print(
     head(10)
 )
 
+# Write node metrics back into node metric table
+nodes_sql <- RxSqlServerData(
+  table = "dbo.SNA_Node_LevelMetrics",
+  connectionString = connStr
+)
+rxDataStep(nodes_with_metrics, nodes_sql, overwrite = TRUE)
+
+
 ### These will be useful for a notebook === FINISH
 
 # ============================================================================
@@ -459,18 +462,52 @@ ncol <- ceiling(n / nrow)
 par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
 pal <- viridis::viridis(max(V(g)$kcore) + 1)
 
-for (i in seq(1, 12)) {
+for (i in seq(1, n)) {
   subg <- community_graphs[[i]]
-
-  plot(
-    subg,
-    layout = layout_with_fr,
-    main = paste("Sub Graph", i, "-", vcount(subg), "nodes"),
-    vertex.size = V(subg)$pagerank + 1,
-    vertex.label.cex = 0.2,
-    edge.arrow.size = 0.3,
-    vertex.color = pal[V(subg)$kcore + 1] # colour by k-core
+  res <- rxExec(
+    layout_exec,
+    graph = subg,
+    layout_type = rxElemArg(c(
+      "drl",
+      "drl_fast",
+      "fr",
+      "graphopt",
+      "lgl",
+      "kk",
+      "mds",
+      "nicely",
+      "tree"
+    )),
+    execObjects = c("connStr", "layout_exec")
   )
+
+  m <- length(res)
+  for (j in seq(1, m)) {
+    layout_type <- base::attr(res[[j]], "layout_type")
+    coords <- res[[j]]
+    coords <- as.matrix(coords[, c("x", "y")])
+    save_graph_svg(
+      plot_or_expr = function() {
+        plot.igraph(
+          subg,
+          layout = coords,
+          main = paste(
+            "Sub Graph",
+            i,
+            "-",
+            vcount(subg),
+            "nodes. Layout: ",
+            layout_type
+          ),
+          vertex.size = V(subg)$pagerank + 1,
+          vertex.label.cex = 0.2,
+          edge.arrow.size = 0.3,
+          vertex.color = pal[V(subg)$kcore + 1] # colour by k-core
+        )
+      },
+      filename = "degree_scatter.svg"
+    )
+  }
 }
 
 
