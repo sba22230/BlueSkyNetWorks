@@ -55,7 +55,7 @@ rxWriteObject(
 # ============================================================================
 cat("\n=== Step 2a: Build out the metrics using igraph... ===\n")
 
-ig_network_size = vcount(g)
+ig_network_size <- vcount(g)
 ig_comp <- igraph::components(g)
 # Connected components
 ig_num_components <- ig_comp$no
@@ -104,7 +104,7 @@ ig_sql <- RxSqlServerData(
   connectionString = connStr,
   colInfo = list('analysis_timestamp' = list(type = "Date"))
 )
-rxDataStep(ig_summary_df, ig_sql, append = 'rows')
+rxDataStep(ig_summary_df, ig_sql, append = "rows")
 
 cat(
   "\n=== Step 2b: BlueSkyNetWorks: Computing Network Metrics using StatNet ===\n"
@@ -114,7 +114,7 @@ cat(
 library(network)
 bluSkynet <- asNetwork(g)
 
-bsN_network_size = network.size(bluSkynet)
+bsN_network_size <- network.size(bluSkynet)
 bsN_degree <- sna::degree(bluSkynet)
 bsN_ideg <- sna::degree(bluSkynet, cmode = "indegree")
 bsN_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
@@ -176,7 +176,7 @@ ig_sql <- RxSqlServerData(
   connectionString = connStr,
   colInfo = list("analysis_timestamp" = list(type = "Date"))
 )
-rxDataStep(bsN_summary_df, ig_sql, append = 'rows')
+rxDataStep(bsN_summary_df, ig_sql, append = "rows")
 
 cat("\n=== Step 2c: Show both Network Metrics in one table ===\n")
 
@@ -484,6 +484,14 @@ for (i in seq(1, n)) {
   m <- length(res)
   for (j in seq(1, m)) {
     layout_type <- base::attr(res[[j]], "layout_type")
+    title <- paste(
+      "Sub Graph",
+      i,
+      "-",
+      vcount(subg),
+      "nodes. Layout: ",
+      layout_type
+    )
     coords <- res[[j]]
     coords <- as.matrix(coords[, c("x", "y")])
     save_graph_svg(
@@ -491,21 +499,14 @@ for (i in seq(1, n)) {
         plot.igraph(
           subg,
           layout = coords,
-          main = paste(
-            "Sub Graph",
-            i,
-            "-",
-            vcount(subg),
-            "nodes. Layout: ",
-            layout_type
-          ),
+          main = title,
           vertex.size = V(subg)$pagerank + 1,
           vertex.label.cex = 0.2,
           edge.arrow.size = 0.3,
           vertex.color = pal[V(subg)$kcore + 1] # colour by k-core
         )
       },
-      filename = "degree_scatter.svg"
+      filename = paste(title, ".svg")
     )
   }
 }
