@@ -1,8 +1,8 @@
 # source("0_functions.R")
 
 # Step 1: Load data
-posts_df <- read_parquet("data/speirgorm_network.parquet")
-reposts_df <- read_parquet("data/speirgorm_reposts.parquet")
+edges_df <- read_parquet("graphs/speirgorm_edges.parquet")
+nodes_df <- read_parquet("graphs/speirgorm_nodes.parquet")
 # edges <- read_parquet("graphs/speirgorm_edges.parquet")
 # nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
 # --- Optional: sample reposted posts and filter reposts_df -----------------
@@ -12,84 +12,21 @@ reposts_df <- read_parquet("data/speirgorm_reposts.parquet")
 
 set.seed(22230)
 
-num_posts <- nrow(posts_df)
+num_posts <- nrow(edges_df)
 num_posts <- 5000
 # if tthe num_posts is set, then we sample that many posts
 # else we keep all reposts
-if (!is.null(num_posts) && nrow(posts_df) > num_posts) {
-  n_iter <- num_posts / 2
-  sampled_posts <- posts_df %>%
-    dplyr::sample_n(num_posts) # or sample_frac(0.1)
-  head(sampled_posts, 5)
-  edges <- sampled_posts %>%
-    dplyr::filter(!is.na(RepostedBy)) %>%
-    dplyr::transmute(
-      from = RepostedBy,
-      to = PostedBy,
-      repost_uri = Post,
-      created_at = PostedOn,
-      like_count,
-      reply_count,
-      bookmark_count,
-      repost_count,
-      text,
-      reposts_received = repost_count, # or your own metric
-      edgeStarts = PostedOn,
-      edgeEnds = PostedOn # or NA if you prefer open-ended edges
-    )
-
-  # 3A. Posts authored
-  posts_authored <- sampled_posts %>%
-    dplyr::group_by(PostedBy) %>%
-    dplyr::summarise(
-      earliestPost = min(PostedOn, na.rm = TRUE),
-      latestPost = max(PostedOn, na.rm = TRUE),
-      posts_authored = dplyr::n(),
-      total_likes_on_posts = sum(like_count, na.rm = TRUE),
-      total_replies_on_posts = sum(reply_count, na.rm = TRUE),
-      total_bookmarks_on_posts = sum(bookmark_count, na.rm = TRUE)
-    ) %>%
-    dplyr::rename(name = PostedBy)
-
-  # 3B. Reposts made
-  reposts_made <- sampled_posts %>%
-    dplyr::filter(!is.na(RepostedBy)) %>%
-    dplyr::count(RepostedBy, name = "reposts_made") %>%
-    dplyr::rename(name = RepostedBy)
-
-  # 3C. Reposts received
-  reposts_received <- sampled_posts %>%
-    dplyr::filter(!is.na(RepostedBy)) %>%
-    dplyr::count(PostedBy, name = "reposts_received") %>%
-    dplyr::rename(name = PostedBy)
-
-  # 3D. Combine all node attributes
-  nodes <- posts_authored %>%
-    dplyr::left_join(reposts_made, by = "name") %>%
-    dplyr::left_join(reposts_received, by = "name") %>%
-    dplyr::mutate(
-      reposts_made = tidyr::replace_na(reposts_made, 0),
-      reposts_received = tidyr::replace_na(reposts_received, 0)
-    )
-
-  nodes <- nodes %>%
-    dplyr::mutate(
-      start = earliestPost,
-      end = latestPost
-    )
-
-  nodes_set <- nodes$name
-
-  edges <- edges %>%
-    dplyr::filter(from %in% nodes_set, to %in% nodes_set)
-
-  cat(
-    "Sampled",
-    num_posts,
-    "reposted posts; resulting reposts count:",
-    nrow(reposts_df),
-    "\n"
-  )
+if (!is.null(num_posts) && nrow(edges_df) > num_posts) {
+  # 1. Sample edges from edges_df
+  sampled_edges <- edges_df %>% dplyr::sample_n(num_posts)
+  # 2. Identify nodes appearing in sampled edges
+  nodes_set <- union(sampled_edges$from, sampled_edges$to)
+  # 3. Filter nodes_df to keep only relevant nodes
+  sampled_nodes <- nodes_df %>% dplyr::filter(name %in% nodes_set)
+  # 4. Assign to your expected output variables
+  edges <- sampled_edges
+  nodes <- sampled_nodes
+  cat("Sampled", num_posts, "edges; resulting nodes:", nrow(nodes), "\n")
 } else {
   n_iter <- num_posts / 2
   edges <- read_parquet("graphs/speirgorm_edges.parquet")

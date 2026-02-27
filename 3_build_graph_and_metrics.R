@@ -247,15 +247,18 @@ cat(sprintf(
 cat("\n=== Step 3a: Plot the small components using the igraph ===\n")
 # Identify small components (all except the largest)
 small_ids <- which(ig_comp$csize < max(ig_comp$csize))
-
+small_ids <- sort(small_ids, decreasing = TRUE)
 # Work out a sensible grid layout
-n <- length(small_ids)
+if (length(small_ids) > 6) {
+  n <- 6
+} else {
+n <- length(small_ids)}
 nrow <- ceiling(sqrt(n))
 ncol <- ceiling(n / nrow)
 
 par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
 
-for (i in small_ids) {
+for (i in seq(1,n)) {
   verts <- which(ig_comp$membership == i)
   subg <- induced_subgraph(g, verts)
 
