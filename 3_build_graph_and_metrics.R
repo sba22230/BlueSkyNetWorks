@@ -489,12 +489,13 @@ for (i in seq(1, n)) {
       i,
       "-",
       vcount(subg),
-      "nodes. Layout: ",
+      "nodes - Layout - ",
       layout_type
     )
     coords <- res[[j]]
     coords <- as.matrix(coords[, c("x", "y")])
     save_graph_svg(
+      
       plot_or_expr = function() {
         plot.igraph(
           subg,

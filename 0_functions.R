@@ -4,7 +4,7 @@ if (v$major == '4' && v$minor != '0.2') {
   library(furrr)
   library(rgexf)
   library(statnet)
-  wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.3))
+  wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.7))
 } else {
   wrkrs = 10
 }
