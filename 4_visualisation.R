@@ -21,25 +21,34 @@ res <- rxExec(
   execObjects = c("connStr", "layout_exec")
 )
 toc()
+#coords <- res[[j]]
+#coords <- as.matrix(coords[, c("x", "y")])
 
 # res is a list of 6 data.frames in the same order as layout_type
 coords_drl <- res[[1]]
+coords_drl <- as.matrix(coords_drl[, c("x", "y")])
 coords_drl_fast <- res[[2]]
-coords_graphopt <- res[[3]]
-coords_lgl <- res[[4]]
-coords_kk <- res[[5]]
-coords_tree <- res[[6]]
-
-coords <- coords_tree # heavy step, do once
-V(g)$x <- coords[, 1]
-V(g)$y <- coords[, 2]
+coords_drl_fast <- as.matrix(coords_drl_fast[, c("x", "y")])
+coords_graphopt <- res[[4]]
+coords_graphopt <- as.matrix(coords_graphopt[, c("x", "y")])
+coords_lgl <- res[[5]]
+coords_lgl <- as.matrix(coords_lgl[, c("x", "y")])
+coords_kk <- res[[6]]
+coords_kk <- as.matrix(coords_kk[, c("x", "y")])
+coords_nicely <- res[[8]]
+coords_nicely <- as.matrix(coords_nicely[, c("x", "y")])
 
 # Select top N nodes to label (e.g., top 50 by degree)
-deg <- igraph::degree(g)
+deg <- bsn_degree
 top_nodes <- names(sort(deg, decreasing = TRUE))[1:50]
 
 # Faster ggraph call
-gtn <- ggraph(g, layout = "manual", x = V(g)$x, y = V(g)$y) +
+gtn <- ggraph(
+  g,
+  layout = "manual",
+  x = coords_drl[, 1],
+  y = coords_drl[, 2]
+) +
   geom_edge_link(alpha = 0.3) +
   geom_node_point(size = 5) +
   geom_node_text(
@@ -59,29 +68,29 @@ rxWriteObject(
 # --- end of one visualisation
 
 # Step 5: Plot enriched network with ggraph
-g2 <- g
-coords2 <- layout_with_graphopt(g2, niter = 400) # heavy step, do once
-V(g2)$x <- coords2[, 1]
-V(g2)$y <- coords2[, 2]
-ggraph(g2, layout = "manual", x = V(g2)$x, y = V(g2)$y) +
+gto <- ggraph(
+  g,
+  layout = "manual",
+  x = coords_graphopt[, 1],
+  y = coords_graphopt[, 2]
+) +
   geom_edge_link(alpha = 0.3) +
   geom_node_point(aes(size = reposts_made, color = reposts_received)) +
   geom_node_text(aes(label = name), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +
   theme_void()
-cat("Final graph summary:\n")
-print(summary(g2))
+
 write_graph(
-  g2,
-  "graphs/g2 bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
+  g,
+  "graphs/g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
   format = "graphml"
 )
 rxWriteObject(
   ds_Graphs,
-  "g2_Graph - igraph - layout_with_graphopt",
-  g2,
-  overwrite
+  "g_Graph - igraph - layout_with_graphopt",
+  gto,
+  overwrite = TRUE
 )
 
 # Step 6: Interactive visualization with visNetwork
@@ -102,10 +111,10 @@ vis_edges <- edges %>%
 # add arrow pointing to the reposter node
 
 # Build igraph object from edges
-g3 <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
+vis_g <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
 
 # Compute degree for each node
-deg <- igraph::degree(g3, mode = "all")
+deg <- igraph::degree(vis_g, mode = "all")
 
 # Add degree to vis_nodes
 vis_nodes <- vis_nodes %>%
@@ -117,17 +126,17 @@ sorted_ids <- vis_nodes %>%
   pull(id)
 
 # --- Precompute layout coordinates with igraph ---
-comps <- igraph::components(g3)
+comps <- igraph::components(vis_g)
 layouts <- future_map(
   unique(comps$membership),
   function(comp_id) {
-    subg <- induced_subgraph(g3, which(comps$membership == comp_id))
+    subg <- induced_subgraph(vis_g, which(comps$membership == comp_id))
     if (vcount(subg) > 100) layout_with_lgl(subg) else layout_with_kk(subg)
   },
   .progress = TRUE,
   .options = furrr_options(seed = 22230)
 )
-coords3 <- matrix(NA, nrow = vcount(g3), ncol = 2)
+coords3 <- matrix(NA, nrow = vcount(vis_g), ncol = 2)
 offset <- 3
 
 comp_ids <- sort(unique(comps$membership))
@@ -148,12 +157,12 @@ top_nodes <- vis_nodes %>% arrange(desc(degree)) %>% slice(1:50) %>% pull(id)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 
 # Community detection
-comm <- cluster_walktrap(g3) # works on directed graphs
+comm <- cluster_walktrap(vis_g) # works on directed graphs
 
 rxWriteObject(
   ds_Graphs,
-  "g3_Graph - igraph - community detection",
-  g3,
+  "vis_g_Graph - igraph - community detection",
+  vis_g,
   overwrite = TRUE
 )
 
@@ -305,15 +314,26 @@ vis_obj <- visNetwork(
   width = "1600px",
   height = "1200px"
 ) %>%
-  visNodes(fixed = TRUE) %>%
+  visNodes(fixed = FALSE) %>%
   visOptions(
-    highlightNearest = TRUE,
-    nodesIdSelection = list(values = sorted_ids)
+    highlightNearest = list(enabled = TRUE, degree = 2),
+    nodesIdSelection = list(values = sorted_ids),
+    selectedBy = "community_label",
+    manipulation = TRUE
   ) %>%
   visEdges(arrows = "to", smooth = FALSE) %>%
   visLegend(useGroups = TRUE, position = "right") %>%
-  visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE) %>%
-  visPhysics(enabled = FALSE)
+  visInteraction(
+    navigationButtons = TRUE,
+    dragNodes = TRUE,
+    dragView = TRUE,
+    zoomView = TRUE
+  ) %>%
+  visPhysics(
+    enabled = TRUE,
+    solver = "forceAtlas2Based",
+    forceAtlas2Based = list(gravitationalConstant = -50)
+  )
 # save HTML and capture as SVG (requires webshot2 and
 # a headless Chrome/Chromium)
 htmlwidgets::saveWidget(
@@ -323,7 +343,7 @@ htmlwidgets::saveWidget(
 )
 rxWriteObject(
   ds_Graphs,
-  "g3_Visnetwork - visNetwork - layout_with_lgl",
+  "vis_g_Visnetwork - visNetwork - layout_with_lgl",
   vis_obj
 )
 ## Export the Visnetwork into GEXF with visual encodings preserved
@@ -468,7 +488,7 @@ gexf_obj <- write.gexf(
 # Save to file
 home_dir <- here::here()
 file_path <- file.path(home_dir, "graphs")
-file_name <- file.path(file_path, "g3 visnetwork_export.gexf")
+file_name <- file.path(file_path, "vis_g visnetwork_export.gexf")
 if (!dir.exists(file_path)) {
   dir.create(file_path, recursive = TRUE)
 }
