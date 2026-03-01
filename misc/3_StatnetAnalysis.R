@@ -92,18 +92,18 @@ list.edge.attributes(bluSkynet)
 bluSkynet %e% "edgeStarts"
 #as.sociomatrix.sna(bluSkynet, "created_at")
 
-bsN_degree <- degree(bluSkynet)
+degree <- degree(bluSkynet)
 
-bsN_ideg <- degree(bluSkynet, cmode = "indegree")
-bsN_odeg <- degree(bluSkynet, cmode = "outdegree")
+ideg <- degree(bluSkynet, cmode = "indegree")
+odeg <- degree(bluSkynet, cmode = "outdegree")
 
 save_graph_svg(
   plot_or_expr = function() {
-    plot(bsN_ideg, bsN_odeg, type = "n", xlab = "Incoming", ylab = "Outgoing")
+    plot(ideg, odeg, type = "n", xlab = "Incoming", ylab = "Outgoing")
     abline(0, 1, lty = 3)
     text(
-      jitter(bsN_ideg),
-      jitter(bsN_odeg),
+      jitter(ideg),
+      jitter(odeg),
       labels = network.vertex.names(bluSkynet),
       cex = 0.5,
       col = 2
@@ -115,7 +115,7 @@ save_graph_svg(
 save_graph_svg(
   plot_or_expr = function() {
     hist(
-      bsN_ideg,
+      ideg,
       xlab = "Indegree",
       main = "Indgree Distribution",
       prob = TRUE
@@ -127,7 +127,7 @@ save_graph_svg(
 save_graph_svg(
   plot_or_expr = function() {
     hist(
-      bsN_odeg,
+      odeg,
       xlab = "Outdegree",
       main = "Outdgree Distribution",
       prob = TRUE
@@ -136,47 +136,47 @@ save_graph_svg(
   filename = "outdegree_dist.svg"
 )
 
-bsN_dyadcensus <- sna::dyad.census(bluSkynet)
-#bsN_dyadcount <- network.dyadcount(bluSkynet)
-bsN_dyadcount <- sum(
-  bsN_dyadcensus[[1]],
-  bsN_dyadcensus[[2]],
-  bsN_dyadcensus[[3]]
+dyadcensus <- sna::dyad.census(bluSkynet)
+#dyadcount <- network.dyadcount(bluSkynet)
+dyadcount <- sum(
+  dyadcensus[[1]],
+  dyadcensus[[2]],
+  dyadcensus[[3]]
 )
-bsN_edgecount <- network.edgecount(bluSkynet)
-bsN_netsize <- network.size(bluSkynet)
-bsN_cen <- centralization(bluSkynet, degree, cmode = "indegree")
-bsN_ceneig <- centralization(bluSkynet, evcent)
-bsN_gden <- gden(bluSkynet)
-bsN_grecip <- grecip(bluSkynet, measure = "dyadic")
-bsN_grecip_edgewise <- grecip(bluSkynet, measure = "edgewise")
+edgecount <- network.edgecount(bluSkynet)
+netsize <- network.size(bluSkynet)
+cen <- centralization(bluSkynet, degree, cmode = "indegree")
+ceneig <- centralization(bluSkynet, evcent)
+gden <- gden(bluSkynet)
+grecip <- grecip(bluSkynet, measure = "dyadic")
+grecip_edgewise <- grecip(bluSkynet, measure = "edgewise")
 dist_matrix <- geodist(bluSkynet)$gdist
-bsN_diameter <- max(dist_matrix[is.finite(dist_matrix)])
+diameter <- max(dist_matrix[is.finite(dist_matrix)])
 
 
-bsN_summary_df <- tibble(
+summary_df <- tibble(
   method = "network/sna",
-  network_size = bsN_netsize,
-  edge_count = bsN_edgecount,
-  dyad_count = bsN_dyadcount,
-  density = bsN_gden,
-  mutual_pairs = bsN_dyadcensus[[1]],
-  asymetric_pairs = bsN_dyadcensus[[2]],
-  isolated_nodes = bsN_dyadcensus[[3]],
-  diameter = bsN_diameter,
+  network_size = netsize,
+  edge_count = edgecount,
+  dyad_count = dyadcount,
+  density = gden,
+  mutual_pairs = dyadcensus[[1]],
+  asymetric_pairs = dyadcensus[[2]],
+  isolated_nodes = dyadcensus[[3]],
+  diameter = diameter,
   avg_path_length = mean(dist_matrix[is.finite(dist_matrix)]),
   neighbours_average = mean(neighbors(g2, V(g2), mode = "all")),
-  reciprocity_default = bsN_grecip_edgewise,
-  reciprocity_ratio = bsN_grecip,
-  average_in_degree = mean(bsN_ideg),
-  average_out_degree = mean(bsN_odeg),
-  most_replied_to = network.vertex.names(bluSkynet)[which.max(bsN_ideg)],
-  most_active_replier = network.vertex.names(bluSkynet)[which.max(bsN_odeg)]
+  reciprocity_default = grecip_edgewise,
+  reciprocity_ratio = grecip,
+  average_in_degree = mean(ideg),
+  average_out_degree = mean(odeg),
+  most_replied_to = network.vertex.names(bluSkynet)[which.max(ideg)],
+  most_active_replier = network.vertex.names(bluSkynet)[which.max(odeg)]
 )
 
-str(bsN_summary_df)
+str(summary_df)
 
-comparison_table <- bind_rows(bsN_summary_df, ig_summary_df) %>%
+comparison_table <- bind_rows(summary_df, ig_summary_df) %>%
   mutate(across(-method, as.character)) %>% # ensure all values are same type
   pivot_longer(
     cols = -method,
@@ -190,8 +190,8 @@ comparison_table <- bind_rows(bsN_summary_df, ig_summary_df) %>%
 
 datatable(comparison_table)
 # very slow -
-#bsN_bet <- betweenness(bluSkynet, gmode = "graph") #  how often shortest paths pass through something
-#bsN_bet
+#bet <- betweenness(bluSkynet, gmode = "graph") #  how often shortest paths pass through something
+#bet
 
 #sN_clo <- closeness(bluSkynet, cmode = "suminvundir")
-#bsN_clo
+#clo
