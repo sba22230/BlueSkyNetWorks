@@ -1,18 +1,39 @@
 # source("0_functions.R")
 
-# Source 3_StatnetAnalysis.R if not already loaded
-# (comment out if already running in same session)
-# source("2_BluseSkyNetworking.R")
-# source("3_StatnetAnalysis.R")
+# Step 1: Load data
+edges_df <- read_parquet("graphs/speirgorm_edges.parquet")
+nodes_df <- read_parquet("graphs/speirgorm_nodes.parquet")
 
 # plan(multisession, workers = wrkrs)  ## to be moved closer to its use
 # ============================================================================
 # SECTION 1: Create the Graph
 # ============================================================================
 cat("\n=== Step 1: Build the initial graph... ===\n")
-
 # Step 1: Build edge list (who reposted whom)
-edges <- read_parquet("graphs/speirgorm_edges.parquet")
+set.seed(22230)
+num_posts <- nrow(edges_df)
+num_posts <- 3000
+# if tthe num_posts is set, then we sample that many posts
+# else we keep all reposts
+if (!is.null(num_posts) && nrow(edges_df) > num_posts) {
+  # 1. Sample edges from edges_df
+  sampled_edges <- edges_df %>% dplyr::sample_n(num_posts)
+  # 2. Identify nodes appearing in sampled edges
+  nodes_set <- union(sampled_edges$from, sampled_edges$to)
+  # 3. Filter nodes_df to keep only relevant nodes
+  sampled_nodes <- nodes_df %>% dplyr::filter(name %in% nodes_set)
+  # 4. Assign to your expected output variables
+  edges <- sampled_edges
+  nodes <- sampled_nodes
+  cat("Sampled", num_posts, "edges; resulting nodes:", nrow(nodes), "\n")
+} else {
+  edges <- edges_df
+  nodes <- nodes_df
+  cat("Keeping all reposts; total reposts count:", nrow(edges), "\n")
+}
+
+n_iter <- nrow(edges) / 2
+
 cat("Edges count:", nrow(edges), "\n")
 
 # Debug: inspect edges
@@ -26,7 +47,6 @@ print("Number of NAs per column:")
 print(na_per_column)
 
 # Step 2: Build node list (unique actors and posts)
-nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
 cat("Nodes count:", nrow(nodes), "\n")
 
 # Debug: inspect nodes
@@ -48,7 +68,6 @@ rxWriteObject(
   g,
   overwrite = TRUE
 )
-
 
 # ============================================================================
 # SECTION 2: Network-LEVEL METRICS
@@ -113,70 +132,115 @@ cat(
 # Convert igraph to statnet
 library(network)
 bluSkynet <- asNetwork(g)
-
-bsN_network_size <- network.size(bluSkynet)
-bsN_degree <- sna::degree(bluSkynet)
-bsN_ideg <- sna::degree(bluSkynet, cmode = "indegree")
-bsN_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
-bsN_dyadcensus <- sna::dyad.census(bluSkynet)
-bsN_dyadcount <- sum(
-  bsN_dyadcensus[[1]],
-  bsN_dyadcensus[[2]],
-  bsN_dyadcensus[[3]]
+rxWriteObject(
+  ds_Graphs,
+  paste0("bluSkynet_Graph - network - no posts: num_posts ", num_posts),
+  bluSkynet,
+  overwrite = TRUE
 )
-bsN_cen <- sna::centralization(bluSkynet, sna::degree, cmode = "indegree")
-bsN_ceneig <- sna::centralization(bluSkynet, sna::evcent)
+
+bsn_network_size <- network.size(bluSkynet)
+bsn_degree <- sna::degree(bluSkynet)
+bsn_ideg <- sna::degree(bluSkynet, cmode = "indegree")
+bsn_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
+save_graph_svg(
+  plot_or_expr = function() {
+    plot(bsn_ideg, bsn_odeg, type = "n", xlab = "Incoming", ylab = "Outgoing")
+    abline(0, 1, lty = 3)
+    text(
+      jitter(bsn_ideg),
+      jitter(bsn_odeg),
+      labels = network.vertex.names(bluSkynet),
+      cex = 0.5,
+      col = 2
+    )
+  },
+  filename = "degree_scatter.svg"
+)
+
+save_graph_svg(
+  plot_or_expr = function() {
+    hist(
+      bsn_ideg,
+      xlab = "Indegree",
+      main = "Indgree Distribution",
+      prob = TRUE
+    )
+  },
+  filename = "indegree_dist.svg"
+)
+
+save_graph_svg(
+  plot_or_expr = function() {
+    hist(
+      bsn_odeg,
+      xlab = "Outdegree",
+      main = "Outdgree Distribution",
+      prob = TRUE
+    )
+  },
+  filename = "outdegree_dist.svg"
+)
+
+bsn_dyadcensus <- sna::dyad.census(bluSkynet)
+bsn_dyadcount <- sum(
+  bsn_dyadcensus[[1]],
+  bsn_dyadcensus[[2]],
+  bsn_dyadcensus[[3]]
+)
+bsn_cen <- sna::centralization(bluSkynet, sna::degree, cmode = "indegree")
+bsn_ceneig <- sna::centralization(bluSkynet, sna::evcent)
 dist_matrix <- geodist(bluSkynet)$gdist
 gc()
-bsN_diameter <- max(dist_matrix[is.finite(dist_matrix)])
-bsN_comp <- component.dist(bluSkynet, connected = "weak")
-bsN_num_components <- length(bsN_comp$csize)
-bsN_largest_component_size <- max(bsN_comp$csize)
-bsN_largest_component_size_pct <- (bsN_largest_component_size /
-  bsN_network_size) *
+bsn_diameter <- max(dist_matrix[is.finite(dist_matrix)])
+bsn_comp <- component.dist(bluSkynet, connected = "weak")
+bsn_num_components <- length(bsn_comp$csize)
+bsn_largest_component_size <- max(bsn_comp$csize)
+bsn_largest_component_size_pct <- (bsn_largest_component_size /
+  bsn_network_size) *
   100
 # Local Clustering Coefficient (for directed graphs, variants exist)
-bsN_local_clustering <- ig_avg_local_clustering # Placeholder: SNA's clustering is more complex for directed graphs
-bsN_Global_clustering <- gtrans(bluSkynet, mode = "digraph", measure = "weak")
+bsn_local_clustering <- ig_avg_local_clustering # Placeholder: SNA's clustering is more complex for directed graphs
+bsn_Global_clustering <- gtrans(bluSkynet, mode = "digraph", measure = "weak")
 # Centralization (degree based)
-bsN_centralization_in <- (sum(max(bsN_ideg) - bsN_ideg)) /
-  ((bsN_network_size - 1) * (bsN_network_size - 2))
-bsN_summary_df <- tibble(
+bsn_centralization_in <- (sum(max(bsn_ideg) - bsn_ideg)) /
+  ((bsn_network_size - 1) * (bsn_network_size - 2))
+bsn_summary_df <- tibble(
   #DATEADD(DAY, CAST([analysis_timestamp] AS int), '1970-01-01')  AS analysis_timestamp
   analysis_timestamp = Sys.Date(),
   method = "network/sna",
-  network_size = bsN_network_size,
+  network_size = bsn_network_size,
   edge_count = network.edgecount(bluSkynet),
-  dyad_count = bsN_dyadcount,
+  dyad_count = bsn_dyadcount,
   density = gden(bluSkynet),
-  mutual_pairs = bsN_dyadcensus[[1]],
-  asymetric_pairs = bsN_dyadcensus[[2]],
-  isolated_nodes = bsN_dyadcensus[[3]],
-  diameter = bsN_diameter,
+  mutual_pairs = bsn_dyadcensus[[1]],
+  asymetric_pairs = bsn_dyadcensus[[2]],
+  isolated_nodes = bsn_dyadcensus[[3]],
+  diameter = bsn_diameter,
   avg_path_length = mean(dist_matrix[is.finite(dist_matrix)]),
   neighbours_average = mean(neighbors(g, V(g), mode = "all")),
   reciprocity_default = grecip(bluSkynet, measure = "edgewise"),
   reciprocity_ratio = grecip(bluSkynet, measure = "dyadic.nonnull"),
-  average_in_degree = mean(bsN_ideg),
-  average_out_degree = mean(bsN_odeg),
-  most_replied_to = network.vertex.names(bluSkynet)[which.max(bsN_ideg)],
-  most_active_replier = network.vertex.names(bluSkynet)[which.max(bsN_odeg)],
-  num_components = bsN_num_components,
-  largest_component_size = bsN_largest_component_size,
-  giant_component_pct = bsN_largest_component_size_pct,
-  transitivity_val = bsN_Global_clustering,
-  avg_local_clustering = bsN_local_clustering,
-  centralization_in = bsN_centralization_in
+  average_in_degree = mean(bsn_ideg),
+  average_out_degree = mean(bsn_odeg),
+  most_replied_to = network.vertex.names(bluSkynet)[which.max(bsn_ideg)],
+  most_active_replier = network.vertex.names(bluSkynet)[which.max(bsn_odeg)],
+  num_components = bsn_num_components,
+  largest_component_size = bsn_largest_component_size,
+  giant_component_pct = bsn_largest_component_size_pct,
+  transitivity_val = bsn_Global_clustering,
+  avg_local_clustering = bsn_local_clustering,
+  centralization_in = bsn_centralization_in
 )
 
-str(bsN_summary_df)
+str(bsn_summary_df)
 # Write metrics back into network metric table
 ig_sql <- RxSqlServerData(
   table = "dbo.NetworkLevelMetrics",
   connectionString = connStr,
   colInfo = list("analysis_timestamp" = list(type = "Date"))
 )
-rxDataStep(bsN_summary_df, ig_sql, append = "rows")
+rxDataStep(bsn_summary_df, ig_sql, append = "rows")
 
 cat("\n=== Step 2c: Show both Network Metrics in one table ===\n")
 
@@ -209,12 +273,12 @@ desc_df <- tibble(
 
 # Convert all metric columns to character BEFORE binding
 desc_df_chr <- desc_df %>% mutate(across(-method, as.character))
-bsN_summary_df_chr <- bsN_summary_df %>% mutate(across(-method, as.character))
+bsn_summary_df_chr <- bsn_summary_df %>% mutate(across(-method, as.character))
 ig_summary_df_chr <- ig_summary_df %>% mutate(across(-method, as.character))
 
 comparison_table <- bind_rows(
   desc_df_chr,
-  bsN_summary_df_chr,
+  bsn_summary_df_chr,
   ig_summary_df_chr
 ) %>%
   pivot_longer(
@@ -229,13 +293,11 @@ comparison_table <- bind_rows(
   mutate(run_date = Sys.Date())
 datatable(comparison_table)
 
-
 # ============================================================================
 # SECTION 3: Ploting Network - Components
 # ============================================================================
 old_par <- par(no.readonly = TRUE) # save current par settings
 cat("\n=== Step 3: Plot the small components of the Graph ===\n")
-
 
 cat(sprintf(
   "  ✓ Components: %d (largest: %d = %.1f%%)\n",
@@ -247,15 +309,19 @@ cat(sprintf(
 cat("\n=== Step 3a: Plot the small components using the igraph ===\n")
 # Identify small components (all except the largest)
 small_ids <- which(ig_comp$csize < max(ig_comp$csize))
-
+small_ids <- sort(small_ids, decreasing = TRUE)
 # Work out a sensible grid layout
-n <- length(small_ids)
+if (length(small_ids) > 6) {
+  n <- 6
+} else {
+  n <- length(small_ids)
+}
 nrow <- ceiling(sqrt(n))
 ncol <- ceiling(n / nrow)
 
 par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
 
-for (i in small_ids) {
+for (i in seq(1, n)) {
   verts <- which(ig_comp$membership == i)
   subg <- induced_subgraph(g, verts)
 
@@ -267,26 +333,31 @@ for (i in small_ids) {
     edge.arrow.size = 0.3
   )
 }
+par(old_par) # restore original par settings
 cat("\n=== Step 3b: Plot the small components using the sna ===\n")
 cat(sprintf(
   "  ✓ Components: %d (largest: %d = %.1f%%)\n",
-  bsN_num_components,
-  bsN_largest_component_size,
-  bsN_largest_component_size_pct
+  bsn_num_components,
+  bsn_largest_component_size,
+  bsn_largest_component_size_pct
 ))
 
 # Identify small components (all except the largest)
-bsN_small_ids <- which(bsN_comp$csize < max(bsN_comp$csize))
+bsn_small_ids <- which(bsn_comp$csize < max(bsn_comp$csize))
 
 # Work out a sensible grid layout
-n <- length(bsN_small_ids)
+if (length(bsn_small_ids) > 6) {
+  n <- 6
+} else {
+  n <- length(bsn_small_ids)
+}
 nrow <- ceiling(sqrt(n))
 ncol <- ceiling(n / nrow)
 
 par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
 
-for (i in bsN_small_ids) {
-  verts <- which(bsN_comp$membership == i)
+for (j in seq(1, n)) {
+  verts <- which(bsn_comp$membership == j)
   subg <- get.inducedSubgraph(bluSkynet, verts)
 
   gplot(
@@ -345,9 +416,9 @@ eigen_vals <- sna::evcent(bluSkynet, gmode = "digraph", ignore.eval = FALSE)
 cat("  ✓ Eigenvector centrality computed\n")
 
 # Degree metrics (already computed but ensuring consistency)
-bsN_ideg <- sna::degree(bluSkynet, cmode = "indegree")
-bsN_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
-total_degree <- bsN_ideg + bsN_odeg
+bsn_ideg <- sna::degree(bluSkynet, cmode = "indegree")
+bsn_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
+total_degree <- bsn_ideg + bsn_odeg
 cat("  ✓ Degree metrics (in/out/total) computed\n")
 
 ### == these are already computed - no need to do it again == ###
@@ -495,7 +566,6 @@ for (i in seq(1, n)) {
     coords <- res[[j]]
     coords <- as.matrix(coords[, c("x", "y")])
     save_graph_svg(
-      
       plot_or_expr = function() {
         plot.igraph(
           subg,
@@ -538,7 +608,6 @@ for (i in length(community_graphs)) {
   # Sub-communities within
   sub_communities <- cluster_louvain(as_undirected(comm_graph))
 }
-
 
 par(old_par) # restore original par settings
 
@@ -598,7 +667,7 @@ community_stats <- nodes_with_metrics %>%
   arrange(desc(community_size))
 
 cat("\n✓ Community analysis complete:\n")
-print(community_stats)
+datatable(community_stats)
 
 # ============================================================================
 # SECTION 4: SAVE RESULTS
@@ -610,37 +679,43 @@ cat("METRICS COMPUTATION SUMMARY\n")
 cat(strrep("=", 70) %+% "\n")
 cat(sprintf(
   "Network Size:        %d nodes, %d edges\n",
-  network_size,
-  edge_count
+  ig_summary_df$network_size,
+  ecount(g)
 ))
 cat(sprintf(
   "Density:             %.4f (%.2f%% of possible edges)\n",
-  density_val,
-  density_val * 100
+  ig_summary_df$density,
+  ig_summary_df$density * 100
 ))
 cat(sprintf(
   "Clustering:          Global: %.4f | Local mean: %.4f\n",
-  transitivity_val,
-  avg_local_clustering
+  ig_summary_df$transitivity_val,
+  ig_summary_df$avg_local_clustering
 ))
 cat(sprintf(
   "Communities:         %d (Louvain, modularity = %.4f)\n",
   num_communities,
   modularity_louvain
 ))
-cat(sprintf("Reciprocity:         %.4f (edgewise)\n", reciprocity_val))
+cat(sprintf(
+  "Reciprocity:         %.4f (edgewise)\n",
+  ig_summary_df$reciprocity_default
+))
 cat(sprintf(
   "Path Length:         Avg: %.2f | Diameter: %f\n",
-  avg_path_length,
-  diameter_val
+  mean_distance(g, directed = TRUE),
+  bsn_diameter
 ))
-cat(sprintf("Centralization:      %.4f (in-degree based)\n", centralization_in))
+cat(sprintf(
+  "Centralization:      %.4f (in-degree based)\n",
+  ig_summary_df$centralization_in
+))
 cat(sprintf(
   "Components:          %d (giant component: %.1f%%)\n",
-  num_components,
-  giant_component_pct
+  ig_num_components,
+  ig_giant_component_pct
 ))
-cat(strrep("=", 70) %+% "\n")
+cat(strrep("=", 70), "\n")
 
 cat("\n✓ Metrics computation complete. Results saved to graphs/\n")
 cat("  Use nodes_with_metrics for per-user analysis\n")

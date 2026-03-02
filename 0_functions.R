@@ -722,7 +722,7 @@ layout_exec <- function(
       directed = FALSE
     )
   }
-  net_size = vcount(g)
+  net_size <- vcount(g)
 
   coords <- switch(
     layout_type,
