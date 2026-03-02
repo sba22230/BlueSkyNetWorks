@@ -12,7 +12,7 @@ cat("\n=== Step 1: Build the initial graph... ===\n")
 # Step 1: Build edge list (who reposted whom)
 set.seed(22230)
 num_posts <- nrow(edges_df)
-num_posts <- 3000
+num_posts <- 7000
 # if tthe num_posts is set, then we sample that many posts
 # else we keep all reposts
 if (!is.null(num_posts) && nrow(edges_df) > num_posts) {
@@ -134,7 +134,7 @@ library(network)
 bluSkynet <- asNetwork(g)
 rxWriteObject(
   ds_Graphs,
-  paste0("bluSkynet_Graph - network - no posts: num_posts ", num_posts),
+  paste0("bluSkynet_Graph - network - no posts: ", num_posts),
   bluSkynet,
   overwrite = TRUE
 )
