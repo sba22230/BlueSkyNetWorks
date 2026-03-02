@@ -21,8 +21,6 @@ res <- rxExec(
   execObjects = c("connStr", "layout_exec")
 )
 toc()
-#coords <- res[[j]]
-#coords <- as.matrix(coords[, c("x", "y")])
 
 # res is a list of 6 data.frames in the same order as layout_type
 coords_drl <- res[[1]]
