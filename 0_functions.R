@@ -772,3 +772,5 @@ layout_exec <- function(
   base::attr(df, "layout_type") <- layout_type
   df
 }
+
+gc()

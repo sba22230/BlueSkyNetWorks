@@ -721,3 +721,5 @@ cat("\n✓ Metrics computation complete. Results saved to graphs/\n")
 cat("  Use nodes_with_metrics for per-user analysis\n")
 cat("  Use network_metrics for global statistics\n")
 cat("  Use community_stats to understand cluster structure\n\n")
+
+gc()
