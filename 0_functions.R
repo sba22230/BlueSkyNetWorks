@@ -755,7 +755,7 @@ layout_exec <- function(
       maxiter = net_size * 3,
       weights = E(g)$weight
     ),
-    "mds" = layout_with_mds(g, dim = 4),
+    "mds" = layout_with_mds(g, dim = 2),
     "nicely" = layout_nicely(g, dim = 3),
     "tree" = layout_as_tree(
       g,
