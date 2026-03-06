@@ -503,10 +503,11 @@ cat("\n[3/4] Computing community structure...\n")
 # Louvain community detection (already computed in 3_StatnetAnalysis.R)
 # Re-compute if necessary
 comm_louvain <- igraph::cluster_louvain(as_undirected(g))
+comm_louvain <- igraph::cluster_leiden(as_undirected(g), objective_function= "modularity",  n_iterations = 45, initial_membership = nodes$community)
 num_communities <- length(unique(comm_louvain$membership))
 modularity_louvain <- modularity(g, comm_louvain$membership)
 cat(sprintf(
-  "  ✓ Louvain detection: %d communities, modularity = %.4f\n",
+  "  ✓ Leiden detection: %d communities, modularity = %.4f\n",
   num_communities,
   modularity_louvain
 ))
