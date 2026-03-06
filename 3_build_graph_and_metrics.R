@@ -82,10 +82,10 @@ ig_largest_component_size <- max(ig_comp$csize)
 ig_giant_component_pct <- (ig_largest_component_size / ig_network_size) *
   100
 # Average local clustering
-ig_avg_local_clustering <- mean(nodes$local_clustering, na.rm = TRUE)
+ig_avg_local_clustering <- mean(V(g)$local_clustering, na.rm = TRUE)
 # Centralization (degree based)
 
-ig_centralization_in <- (sum(max(nodes$in_degree) - nodes$in_degree)) /
+ig_centralization_in <- (sum(max(V(g)$in_degree) - V(g)$in_degree)) /
   ((ig_network_size - 1) * (ig_network_size - 2))
 ig_cen <- igraph::dyad_census(g)
 ig_summary_df <- tibble(
@@ -104,10 +104,10 @@ ig_summary_df <- tibble(
   neighbours_average = mean(neighbors(g, V(g), mode = "all")),
   reciprocity_default = reciprocity(g, mode = "default"),
   reciprocity_ratio = reciprocity(g, mode = "ratio"),
-  average_in_degree = mean(nodes$in_degree),
-  average_out_degree = mean(nodes$out_degree),
-  most_replied_to = nodes$name[which.max(nodes$in_degree)],
-  most_active_replier = nodes$name[which.max(nodes$out_degree)],
+  average_in_degree = mean(V(g)$in_degree),
+  average_out_degree = mean(V(g)$out_degree),
+  most_replied_to = V(g)$name[which.max(V(g)$in_degree)],
+  most_active_replier = V(g)$name[which.max(V(g)$out_degree)],
   num_components = ig_num_components,
   largest_component_size = ig_largest_component_size,
   giant_component_pct = ig_giant_component_pct,
@@ -437,7 +437,7 @@ kcore_vals <- sna::kcores(bluSkynet)
 cat("  ✓ k-core decomposition computed\n")
 
 # align numeric vectors to node order
-node_keys <- as.character(nodes$name)
+node_keys <- as.character(V(g)$name)
 
 nodes_with_metrics <- nodes %>%
   dplyr::mutate(
@@ -503,7 +503,12 @@ cat("\n[3/4] Computing community structure...\n")
 # Louvain community detection (already computed in 3_StatnetAnalysis.R)
 # Re-compute if necessary
 comm_louvain <- igraph::cluster_louvain(as_undirected(g))
-comm_louvain <- igraph::cluster_leiden(as_undirected(g), objective_function= "modularity",  n_iterations = 45, initial_membership = nodes$community)
+comm_louvain <- igraph::cluster_leiden(
+  as_undirected(g),
+  objective_function = "modularity",
+  n_iterations = 45,
+  initial_membership = nodes$community
+)
 num_communities <- length(unique(comm_louvain$membership))
 modularity_louvain <- modularity(g, comm_louvain$membership)
 cat(sprintf(
@@ -517,7 +522,7 @@ cat("\n Extract Community Subgraphs \n")
 communities <- comm_louvain # or your preferred method
 membership <- membership(communities)
 
-# Get top 10 communities by size
+# Get top communities and subgraphs (unchanged)
 comm_sizes <- sort(table(membership), decreasing = TRUE)
 top_10_ids <- as.numeric(names(comm_sizes[1:12]))
 
@@ -526,63 +531,111 @@ community_graphs <- lapply(top_10_ids, function(id) {
   induced_subgraph(g, nodes)
 })
 
-# Work out a sensible grid layout
-n <- length(top_10_ids)
-nrow <- ceiling(sqrt(n))
-ncol <- ceiling(n / nrow)
+# compute layouts in parallel for all community x layout combinations
+layout_types <- c(
+  "drl",
+  "drl_fast",
+  "fr",
+  "graphopt",
+  "lgl",
+  "kk",
+  "mds",
+  "nicely",
+  "tree"
+)
+n_comm <- length(community_graphs)
+# replicate indices/layouts so rxExec runs every combo
+graph_idx_rep <- rep(seq_len(n_comm), each = length(layout_types))
+layout_rep <- rep(layout_types, times = n_comm)
+graphs_arg <- lapply(graph_idx_rep, function(ii) community_graphs[[ii]])
 
-par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
-pal <- viridis::viridis(max(V(g)$kcore) + 1)
+# run layout_exec in parallel across the cluster once
+res_all <- rxExec(
+  layout_exec,
+  graph = rxElemArg(graphs_arg),
+  layout_type = rxElemArg(layout_rep),
+  execObjects = c("connStr", "layout_exec")
+)
 
-for (i in seq(1, n)) {
-  subg <- community_graphs[[i]]
-  res <- rxExec(
-    layout_exec,
-    graph = subg,
-    layout_type = rxElemArg(c(
-      "drl",
-      "drl_fast",
-      "fr",
-      "graphopt",
-      "lgl",
-      "kk",
-      "mds",
-      "nicely",
-      "tree"
-    )),
-    execObjects = c("connStr", "layout_exec")
+# assemble nested list: community_layouts[[i]] = list(id, graph, layouts = named list(layout -> coord_matrix))
+community_layouts <- vector("list", n_comm)
+names(community_layouts) <- paste0("Community_", top_10_ids)
+for (i in seq_len(n_comm)) {
+  community_layouts[[i]] <- list(
+    id = top_10_ids[i],
+    graph = community_graphs[[i]],
+    layouts = list()
   )
+}
 
-  m <- length(res)
-  for (j in seq(1, m)) {
-    layout_type <- base::attr(res[[j]], "layout_type")
-    title <- paste(
-      "Sub Graph",
-      i,
-      "-",
-      vcount(subg),
-      "nodes - Layout - ",
-      layout_type
-    )
-    coords <- res[[j]]
-    coords <- as.matrix(coords[, c("x", "y")])
-    save_graph_svg(
-      plot_or_expr = function() {
+for (k in seq_along(res_all)) {
+  comm_i <- graph_idx_rep[k]
+  lt <- as.character(attr(res_all[[k]], "layout_type"))
+  coords_df <- res_all[[k]]
+  coords_mat <- as.matrix(coords_df[, c("x", "y")])
+  community_layouts[[comm_i]]$layouts[[lt]] <- coords_mat
+}
+
+# Plot all layouts for each community into a single SVG (one file per community)
+old_par <- par(no.readonly = TRUE)
+pal <- viridis::viridis(max(V(g)$kcore, na.rm = TRUE) + 1)
+
+for (i in seq_len(n_comm)) {
+  entry <- community_layouts[[i]]
+  subg <- entry$graph
+  layouts_list <- entry$layouts
+  m <- length(layouts_list)
+  if (m == 0) {
+    next
+  }
+
+  plot_nrow <- ceiling(sqrt(m))
+  plot_ncol <- ceiling(m / plot_nrow)
+
+  save_graph_svg(
+    plot_or_expr = function() {
+      par(mfrow = c(plot_nrow, plot_ncol), mar = c(1, 1, 2, 1))
+
+      vsize <- if (!is.null(V(subg)$pagerank)) {
+        V(subg)$pagerank + 1
+      } else {
+        rep(6, vcount(subg))
+      }
+      vcol <- if (!is.null(V(subg)$kcore)) {
+        pal[as.integer(V(subg)$kcore) + 1]
+      } else {
+        "steelblue"
+      }
+
+      for (k in seq_len(m)) {
+        layout_name <- names(layouts_list)[k]
+        coords <- layouts_list[[k]]
+        main_title <- paste0(
+          "Community ",
+          entry$id,
+          " — ",
+          vcount(subg),
+          " nodes\n(",
+          layout_name,
+          ")"
+        )
         plot.igraph(
           subg,
           layout = coords,
-          main = title,
-          vertex.size = V(subg)$pagerank + 1,
+          main = main_title,
+          vertex.size = vsize,
           vertex.label.cex = 0.2,
           edge.arrow.size = 0.3,
-          vertex.color = pal[V(subg)$kcore + 1] # colour by k-core
+          vertex.color = vcol
         )
-      },
-      filename = paste(title, ".svg")
-    )
-  }
+      }
+    },
+    filename = paste0("Community_", entry$id, "_layouts.svg"),
+    folder = "images"
+  )
 }
 
+par(old_par)
 
 # Name them for easy reference
 names(community_graphs) <- paste0("Community_", top_10_ids)
