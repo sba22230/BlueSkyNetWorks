@@ -13,10 +13,7 @@ res <- rxExec(
     "fr",
     "graphopt",
     "lgl",
-    "kk",
-    "mds",
-    "nicely",
-    "tree"
+    "kk"
   )),
   execObjects = c("connStr", "layout_exec")
 )
@@ -27,14 +24,16 @@ coords_drl <- res[[1]]
 coords_drl <- as.matrix(coords_drl[, c("x", "y")])
 coords_drl_fast <- res[[2]]
 coords_drl_fast <- as.matrix(coords_drl_fast[, c("x", "y")])
+coords_fr <- res[[3]]
+coords_fr <- as.matrix(coords_frl[, c("x", "y")])
 coords_graphopt <- res[[4]]
 coords_graphopt <- as.matrix(coords_graphopt[, c("x", "y")])
 coords_lgl <- res[[5]]
 coords_lgl <- as.matrix(coords_lgl[, c("x", "y")])
 coords_kk <- res[[6]]
 coords_kk <- as.matrix(coords_kk[, c("x", "y")])
-coords_nicely <- res[[8]]
-coords_nicely <- as.matrix(coords_nicely[, c("x", "y")])
+#coords_nicely <- res[[8]]
+#coords_nicely <- as.matrix(coords_nicely[, c("x", "y")])
 
 # Select top N nodes to label (e.g., top 50 by degree)
 deg <- bsn_degree

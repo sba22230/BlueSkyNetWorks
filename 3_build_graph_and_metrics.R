@@ -32,7 +32,7 @@ if (!is.null(num_posts) && nrow(edges_df) > num_posts) {
   cat("Keeping all reposts; total reposts count:", nrow(edges), "\n")
 }
 
-n_iter <- nrow(edges) / 2
+n_iter <- round(nrow(edges) / 100)
 
 cat("Edges count:", nrow(edges), "\n")
 
@@ -300,7 +300,7 @@ old_par <- par(no.readonly = TRUE) # save current par settings
 cat("\n=== Step 3: Plot the small components of the Graph ===\n")
 
 cat(sprintf(
-  "  ✓ Components: %d (largest: %d = %.1f%%)\n",
+  "  âœ“ Components: %d (largest: %d = %.1f%%)\n",
   ig_num_components,
   ig_largest_component_size,
   ig_giant_component_pct
@@ -336,7 +336,7 @@ for (i in seq(1, n)) {
 par(old_par) # restore original par settings
 cat("\n=== Step 3b: Plot the small components using the sna ===\n")
 cat(sprintf(
-  "  ✓ Components: %d (largest: %d = %.1f%%)\n",
+  "  âœ“ Components: %d (largest: %d = %.1f%%)\n",
   bsn_num_components,
   bsn_largest_component_size,
   bsn_largest_component_size_pct
@@ -383,15 +383,15 @@ par(old_par) # restore original par settings
 # A person with high betweenness:
 # - Connects different communities.
 # - Has influence because they control who talks to whom.
-# - Often plays a “gatekeeper” or “broker” role.
+# - Often plays a â€œgatekeeperâ€ or â€œbrokerâ€ role.
 
 # A simple intuition
-# - Betweenness: “People have to go through me.”
-# - Closeness: “I can get to anyone quickly.”
+# - Betweenness: â€œPeople have to go through me.â€
+# - Closeness: â€œI can get to anyone quickly.â€
 # They often diverge.
 # A person can have:
-# - High betweenness but low closeness → a bridge between two distant groups
-# - High closeness but low betweenness → centrally embedded in a dense cluster
+# - High betweenness but low closeness â†’ a bridge between two distant groups
+# - High closeness but low betweenness â†’ centrally embedded in a dense cluster
 
 betweenness_vals <- sna::betweenness(
   bluSkynet,
@@ -399,7 +399,7 @@ betweenness_vals <- sna::betweenness(
   diag = FALSE,
   ignore.eval = FALSE
 )
-cat("  ✓ Betweenness centrality computed\n")
+cat("  âœ“ Betweenness centrality computed\n")
 
 # Closeness Centrality (suminvdir accounts for directed graphs)
 closeness_vals <- sna::closeness(
@@ -407,34 +407,34 @@ closeness_vals <- sna::closeness(
   cmode = "suminvdir",
   ignore.eval = FALSE
 )
-cat("  ✓ Closeness centrality computed\n")
+cat("  âœ“ Closeness centrality computed\n")
 
 gc()
 
 # Eigenvector Centrality
 eigen_vals <- sna::evcent(bluSkynet, gmode = "digraph", ignore.eval = FALSE)
-cat("  ✓ Eigenvector centrality computed\n")
+cat("  âœ“ Eigenvector centrality computed\n")
 
 # Degree metrics (already computed but ensuring consistency)
 bsn_ideg <- sna::degree(bluSkynet, cmode = "indegree")
 bsn_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
 total_degree <- bsn_ideg + bsn_odeg
-cat("  ✓ Degree metrics (in/out/total) computed\n")
+cat("  âœ“ Degree metrics (in/out/total) computed\n")
 
 ### == these are already computed - no need to do it again == ###
 # PageRank (weighted by influence)
 # pagerank_vals <- page_rank(g_igraph, directed = TRUE)$vector ## not available in SNA
-# cat("  ✓ PageRank computed\n")
+# cat("  âœ“ PageRank computed\n")
 
 # HITS (Hub and Authority scores)
 # hits <- hits_scores(g_igraph, scale = TRUE) ## not available in SNA
 # hub_score <- hits$hub ## not available in SNA
 # authority_score <- hits$authority ## not available in SNA
-# cat("  ✓ HITS authority/hub scores computed\n") ## not available in SNA
+# cat("  âœ“ HITS authority/hub scores computed\n") ## not available in SNA
 
 # k-Core Decomposition
 kcore_vals <- sna::kcores(bluSkynet)
-cat("  ✓ k-core decomposition computed\n")
+cat("  âœ“ k-core decomposition computed\n")
 
 # align numeric vectors to node order
 node_keys <- as.character(V(g)$name)
@@ -454,7 +454,7 @@ nodes_with_metrics <- nodes %>%
     authority_norm = safe_rescale(authority_score)
   )
 
-cat("\n✓ Node-level metrics compiled into 'nodes_with_metrics' tibble\n")
+cat("\nâœ“ Node-level metrics compiled into 'nodes_with_metrics' tibble\n")
 cat(sprintf(
   "  Rows: %d nodes | Cols: %d features\n",
   nrow(nodes_with_metrics),
@@ -512,7 +512,7 @@ comm_louvain <- igraph::cluster_leiden(
 num_communities <- length(unique(comm_louvain$membership))
 modularity_louvain <- modularity(g, comm_louvain$membership)
 cat(sprintf(
-  "  ✓ Leiden detection: %d communities, modularity = %.4f\n",
+  "  âœ“ Leiden detection: %d communities, modularity = %.4f\n",
   num_communities,
   modularity_louvain
 ))
@@ -613,7 +613,7 @@ for (i in seq_len(n_comm)) {
         main_title <- paste0(
           "Community ",
           entry$id,
-          " — ",
+          " â€” ",
           vcount(subg),
           " nodes\n(",
           layout_name,
@@ -680,7 +680,7 @@ comm_labelprop <- cluster_label_prop(g)
 num_communities_lp <- length(unique(comm_labelprop$membership))
 modularity_labelprop <- modularity(g, comm_labelprop$membership)
 cat(sprintf(
-  "  ✓ Label propagation: %d communities, modularity = %.4f\n",
+  "  âœ“ Label propagation: %d communities, modularity = %.4f\n",
   num_communities_lp,
   modularity_labelprop
 ))
@@ -693,7 +693,7 @@ modularity_fastgreedy <- modularity(
   comm_fastgreedy$membership
 )
 cat(sprintf(
-  "  ✓ Fast greedy: %d communities, modularity = %.4f\n",
+  "  âœ“ Fast greedy: %d communities, modularity = %.4f\n",
   num_communities_fg,
   modularity_fastgreedy
 ))
@@ -720,7 +720,7 @@ community_stats <- nodes_with_metrics %>%
   ) %>%
   arrange(desc(community_size))
 
-cat("\n✓ Community analysis complete:\n")
+cat("\nâœ“ Community analysis complete:\n")
 datatable(community_stats)
 
 # ============================================================================
@@ -771,9 +771,6 @@ cat(sprintf(
 ))
 cat(strrep("=", 70), "\n")
 
-cat("\n✓ Metrics computation complete. Results saved to graphs/\n")
+cat("\nâœ“ Metrics computation complete. Results saved to graphs/\n")
 cat("  Use nodes_with_metrics for per-user analysis\n")
-cat("  Use network_metrics for global statistics\n")
-cat("  Use community_stats to understand cluster structure\n\n")
-
-gc()
+cat("  Use network_met
