@@ -735,7 +735,7 @@ layout_exec <- function(
     "fr" = layout_with_fr(
       g,
       dim = 3,
-      niter = net_size * 3,
+      niter = net_size / 3,
       start.temp = sqrt(net_size),
       weights = E(g)$weight
     ),
@@ -746,17 +746,17 @@ layout_exec <- function(
     ),
     "lgl" = layout_with_lgl(
       g,
-      maxiter = net_size * 3,
+      maxiter = net_size / 3,
       maxdelta = vcount(g) * 2
     ),
     "kk" = layout_with_kk(
       g,
       coords = matrix(runif(vcount(g) * 2), ncol = 2),
-      maxiter = net_size * 3,
+      maxiter = net_size / 3,
       weights = E(g)$weight
     ),
     "mds" = layout_with_mds(g, dim = 2),
-    "nicely" = layout_nicely(g, dim = 3),
+    "nicely" = layout_nicely(g, dim = 2),
     "tree" = layout_as_tree(
       g,
       root = which(nodes_df$total_degree == max(nodes_df$total_degree)),
