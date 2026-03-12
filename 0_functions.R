@@ -398,7 +398,7 @@ get_thread_df <- function(uri) {
 
 # Chunking helper
 chunk_vec <- function(x, size) split(x, ceiling(seq_along(x) / size))
-
+plan(multisession, workers = wrkrs)
 hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
   uris_reposts <- posts_df %>%
     filter(repost_count > 0) %>%
@@ -772,5 +772,5 @@ layout_exec <- function(
   base::attr(df, "layout_type") <- layout_type
   df
 }
-
+plan(orig_plan)
 gc()

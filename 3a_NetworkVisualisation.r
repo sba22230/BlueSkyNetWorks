@@ -6,7 +6,7 @@ g2 <- rxReadObject(
 )
 
 # Network is already created in 3_StatnetAnalysis.R as 'g4_sample'
-# --- this code bloc needs to go into the vis file 
+# --- this code bloc needs to go into the vis file
 library(tictoc)
 tic()
 res <- rxExec(
@@ -59,7 +59,7 @@ rxWriteObject(
   overwrite = TRUE
 )
 
-# --- end of one visualisation 
+# --- end of one visualisation
 
 # Step 5: Plot enriched network with ggraph
 g2 <- g
@@ -175,6 +175,7 @@ node_hex <- ifelse(
   vis_nodes$color.background
 )
 # parallel parse nodes
+plan(multisession, workers = wrkrs)
 node_rgba_df <- furrr::future_map_dfr(
   node_hex,
   function(cl) {
@@ -202,7 +203,7 @@ ge_nodesVizAtt <- list(
     a = as.numeric(node_rgba_df$a)
   )
 )
-
+plan(orig_plan)
 # Edges and attributes (preserve width/weight and color)
 ge_edges <- data.frame(
   source = vis_edges$from,
@@ -246,6 +247,7 @@ g3 <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
 
 # safe color parsing for edges
 # parallel parse edges
+plan(multisession, workers = wrkrs)
 edge_rgba_df <- furrr::future_map_dfr(
   ge_edgesAtt$color_raw,
   function(cl) {
@@ -283,7 +285,7 @@ gexf_obj <- write.gexf(
   defaultedgetype = "directed"
 )
 
-
+plan(orig_plan)
 # Save to file
 home_dir <- here::here()
 file_path <- file.path(home_dir, "graphs")

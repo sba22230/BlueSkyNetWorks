@@ -123,6 +123,7 @@ sorted_ids <- vis_nodes %>%
   pull(id)
 
 # --- Precompute layout coordinates with igraph ---
+plan(multisession, workers = wrkrs)
 comps <- igraph::components(vis_g)
 layouts <- future_map(
   unique(comps$membership),
@@ -133,6 +134,7 @@ layouts <- future_map(
   .progress = TRUE,
   .options = furrr_options(seed = 22230)
 )
+
 coords3 <- matrix(NA, nrow = vcount(vis_g), ncol = 2)
 offset <- 3
 
@@ -460,6 +462,7 @@ ge_edgesVizColor <- data.frame(
   a = as.numeric(edge_rgba_df$a)
 )
 
+plan(orig_plan)
 ge_nodes$id <- sanitize_xml(as.character(ge_nodes$id))
 ge_nodes$label <- sanitize_xml(as.character(ge_nodes$label))
 char_cols <- sapply(ge_nodesAtt, is.character)
