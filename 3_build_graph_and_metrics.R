@@ -390,15 +390,15 @@ par(old_par) # restore original par settings
 # A person with high betweenness:
 # - Connects different communities.
 # - Has influence because they control who talks to whom.
-# - Often plays a â€œgatekeeperâ€ or â€œbrokerâ€ role.
+# - Often plays a gatekeeper or broker role.
 
 # A simple intuition
-# - Betweenness: â€œPeople have to go through me.â€
-# - Closeness: â€œI can get to anyone quickly.â€
+# - Betweenness: People have to go through me.
+# - Closeness: I can get to anyone quickly.
 # They often diverge.
 # A person can have:
-# - High betweenness but low closeness â†’ a bridge between two distant groups
-# - High closeness but low betweenness â†’ centrally embedded in a dense cluster
+# - High betweenness but low closeness at a bridge between two distant groups
+# - High closeness but low betweenness at centrally embedded in a dense cluster
 
 betweenness_vals <- sna::betweenness(
   bluSkynet,
@@ -625,7 +625,7 @@ for (i in seq_len(n_comm)) {
         main_title <- paste0(
           "Community ",
           entry$id,
-          " â€” ",
+          " ” ",
           vcount(subg),
           " nodes\n(",
           layout_name,
