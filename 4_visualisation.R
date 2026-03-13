@@ -1,39 +1,48 @@
 # source("0_functions.R")
 
 cat("\n=== igraph layouts: Computing different layouts for igraph ===\n")
+
+layout_types <- c(
+  "drl",
+  "drl_fast",
+  "fr",
+  "graphopt",
+  "lgl",
+  "kk",
+  "mds",
+  "nicely",
+  "tree"
+)
+
+n_comm <- 1
+# replicate indices/layouts so rxExec runs every combo
+graph_idx_rep <- rep(seq_len(n_comm), each = length(layout_types))
+layout_rep <- rep(layout_types, times = n_comm)
+# Use the main graph object (g) instead of community-specific graphs
+graphs_arg <- lapply(graph_idx_rep, function(ii) g)
+
 library(tictoc)
 tic()
-res <- rxExec(
+# run layout_exec in parallel across the cluster once
+res_g <- rxExec(
   layout_exec,
-  edges_data = edges,
-  nodes_data = nodes,
-  layout_type = rxElemArg(c(
-    "drl",
-    "drl_fast",
-    "fr",
-    "graphopt",
-    "lgl",
-    "kk"
-  )),
+  graph = rxElemArg(graphs_arg),
+  layout_type = rxElemArg(layout_rep),
   execObjects = c("connStr", "layout_exec")
 )
+
 toc()
 
-# res is a list of 6 data.frames in the same order as layout_type
-coords_drl <- res[[1]]
-coords_drl <- as.matrix(coords_drl[, c("x", "y")])
-coords_drl_fast <- res[[2]]
-coords_drl_fast <- as.matrix(coords_drl_fast[, c("x", "y")])
-coords_fr <- res[[3]]
-coords_fr <- as.matrix(coords_frl[, c("x", "y")])
-coords_graphopt <- res[[4]]
-coords_graphopt <- as.matrix(coords_graphopt[, c("x", "y")])
-coords_lgl <- res[[5]]
-coords_lgl <- as.matrix(coords_lgl[, c("x", "y")])
-coords_kk <- res[[6]]
-coords_kk <- as.matrix(coords_kk[, c("x", "y")])
-#coords_nicely <- res[[8]]
-#coords_nicely <- as.matrix(coords_nicely[, c("x", "y")])
+# assemble nested list: community_layouts[[i]] = list(id, graph, layouts = named list(layout -> coord_matrix))
+community_layouts <- vector("list", n_comm)
+names(community_layouts) <- paste0("Community_", top_10_ids)
+for (i in seq_len(n_comm)) {
+  community_layouts[[i]] <- list(
+    id = top_10_ids[i],
+    graph = community_graphs[[i]],
+    layouts = list()
+  )
+}
 
 # Select top N nodes to label (e.g., top 50 by degree)
 deg <- bsn_degree
