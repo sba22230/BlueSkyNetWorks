@@ -6,7 +6,7 @@ bs_user <- bs_get_user()
 bs_pass <- bs_get_pass()
 bs_auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
 
-orig_plan <- plan()
+
 plan(multisession, workers = wrkrs)
 # Run deep search
 posts_df <- deep_search_posts(

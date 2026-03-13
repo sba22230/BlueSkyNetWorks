@@ -27,7 +27,7 @@ library(stringr)
 library(tibble)
 library(tidyr)
 library(visNetwork)
-
+orig_plan <- plan()
 safe_chr <- function(x, ...) {
   val <- purrr::pluck(x, ..., .default = NA_character_)
   if (is.null(val)) NA_character_ else as.character(val)
@@ -811,7 +811,8 @@ layout_exec <- function(
           maxdelta = list(...)$maxdelta %||% net_size,
           area = net_size^2, # Explicit default
           coolexp = 1.2, # Slightly faster cooling
-          root = if (!is.null(list(...)$root)) list(...)$root else NULL # Optional root
+          root = if (!is.null(list(...)$root)) list(...)$root else NULL
+          # Optional root
         ),
         "kk" = layout_with_kk(
           graph_obj,
@@ -844,7 +845,8 @@ layout_exec <- function(
 
   # Prepare output data frame
   result_df <- as.data.frame(coords)
-  colnames(result_df) <- if (ncol(result_df) >= 2) c("x", "y") else c("x") # Handle potential 1D
+  colnames(result_df) <- if (ncol(result_df) >= 2) c("x", "y") else c("x")
+  # Handle potential 1D
   result_df$name <- V(graph_obj)$name
   attr(result_df, "layout_type") <- layout_type
   attr(result_df, "net_size") <- net_size # Optional metadata
