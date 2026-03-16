@@ -33,17 +33,84 @@ res_g <- rxExec(
 
 toc()
 
+rxWriteObject(
+  ds_Graphs,
+  "layout_exec_results",
+  res_g,
+  overwrite = TRUE
+)
+
 # assemble nested list: community_layouts[[i]] = list(id, graph, layouts = named list(layout -> coord_matrix))
+old_par <- par(no.readonly = TRUE)
+pal <- viridis::viridis(max(V(g)$kcore, na.rm = TRUE) + 1)
 community_layouts <- vector("list", n_comm)
-names(community_layouts) <- paste0("Community_", top_10_ids)
+names(community_layouts) <- paste0("Main Graph ", vcount(g), " nodes") # or use community names if available
 for (i in seq_len(n_comm)) {
   community_layouts[[i]] <- list(
-    id = top_10_ids[i],
-    graph = community_graphs[[i]],
+    id = g,
+    graph = g,
     layouts = list()
   )
-}
 
+  for (k in seq_along(res_g)) {
+    comm_i <- graph_idx_rep[k]
+    lt <- as.character(attr(res_g[[k]], "layout_type"))
+    coords_df <- res_g[[k]]
+    coords_mat <- as.matrix(coords_df[, c("x", "y")])
+    community_layouts[[comm_i]]$layouts[[lt]] <- coords_mat
+  }
+
+  entry <- community_layouts[[i]]
+  subg <- entry$graph
+  layouts_list <- entry$layouts
+  m <- length(layouts_list)
+  if (m == 0) {
+    next
+  }
+
+  plot_nrow <- ceiling(sqrt(m))
+  plot_ncol <- ceiling(m / plot_nrow)
+  save_graph_svg(
+    plot_or_expr = function() {
+      par(mfrow = c(plot_nrow, plot_ncol), mar = c(1, 1, 2, 1))
+
+      vsize <- if (!is.null(V(subg)$pagerank)) {
+        V(subg)$pagerank + 1
+      } else {
+        rep(6, vcount(subg))
+      }
+      vcol <- if (!is.null(V(subg)$kcore)) {
+        pal[as.integer(V(subg)$kcore) + 1]
+      } else {
+        "steelblue"
+      }
+
+      for (k in seq_len(m)) {
+        layout_name <- names(layouts_list)[k]
+        coords <- layouts_list[[k]]
+        main_title <- paste0(
+          "Main Graph ",
+          vcount(subg),
+          " nodes\n(",
+          layout_name,
+          ")"
+        )
+        plot.igraph(
+          subg,
+          layout = coords,
+          main = main_title,
+          vertex.size = vsize,
+          vertex.label.cex = 0.2,
+          edge.arrow.size = 0.3,
+          vertex.color = vcol
+        )
+      }
+    },
+    filename = paste0("Main Graph_layouts.svg"),
+    folder = "images"
+  )
+}
+darpar(old_par)
 # Select top N nodes to label (e.g., top 50 by degree)
 deg <- bsn_degree
 top_nodes <- names(sort(deg, decreasing = TRUE))[1:50]
@@ -62,6 +129,7 @@ gtn <- ggraph(
     repel = TRUE,
     max.overlaps = 1000
   )
+
 
 save_graph_svg(gtn, "gtn_TopNodes_Speirgorm_Network.svg")
 rxWriteObject(

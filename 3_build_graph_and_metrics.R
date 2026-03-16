@@ -655,26 +655,6 @@ cat(
   "\n=== Step 5f: Analyze Internal Structure, 
 For each community subgraph, examine: ===\n"
 )
-# For a single community
-for (i in length(community_graphs)) {
-  comm_graph <- community_graphs[[i]]
-
-  # Key nodes within community
-  igraph::betweenness(comm_graph)
-  igraph::closeness(comm_graph)
-  igraph::degree(comm_graph)
-
-  # Clustering coefficient
-  transitivity(comm_graph, type = "local")
-
-  # Diameter and average path length
-  diameter(comm_graph)
-  mean_distance(comm_graph)
-
-  # Sub-communities within
-  sub_communities <- cluster_louvain(as_undirected(comm_graph))
-}
-
 # Batch Analysis
 # Analyze all top 10 at once
 cat("\n=== Step 5g: Batch analysis of community metrics ===\n")
@@ -683,7 +663,16 @@ community_metrics <- data.frame(
   size = sapply(community_graphs, vcount),
   density = sapply(community_graphs, edge_density),
   diameter = sapply(community_graphs, diameter),
-  avg_path = sapply(community_graphs, mean_distance)
+  avg_path = sapply(community_graphs, mean_distance),
+  transitivity = sapply(community_graphs, function(g) {
+    transitivity(g, type = "global")
+  }),
+  betweenness_avg = sapply(community_graphs, function(g) {
+    mean(igraph::betweenness(g))
+  }),
+  degree_avg = sapply(community_graphs, function(g) {
+    mean(igraph::degree(g))
+  })
 )
 
 # Label propagation (can detect overlapping communities)
@@ -718,7 +707,7 @@ nodes_with_metrics <- nodes_with_metrics %>%
   )
 
 # Community statistics (size, internal density, external connections)
-community_stats <- nodes_with_metrics %>%
+community_stats <- nodes %>%
   group_by(community) %>%
   summarise(
     community_size = n(),
