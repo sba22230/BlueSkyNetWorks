@@ -110,12 +110,13 @@ for (i in seq_len(n_comm)) {
     folder = "images"
   )
 }
-darpar(old_par)
+par(old_par)
 # Select top N nodes to label (e.g., top 50 by degree)
 deg <- bsn_degree
 top_nodes <- names(sort(deg, decreasing = TRUE))[1:50]
 
 # Faster ggraph call
+coords_drl <- res_g[[1]]
 gtn <- ggraph(
   g,
   layout = "manual",
@@ -142,6 +143,7 @@ rxWriteObject(
 # --- end of one visualisation
 
 # Step 5: Plot enriched network with ggraph
+coords_graphopt <- res_g[[4]]
 gto <- ggraph(
   g,
   layout = "manual",
@@ -231,7 +233,7 @@ vis_nodes$y <- coords3[, 2]
 
 top_nodes <- vis_nodes %>% arrange(desc(degree)) %>% slice(1:50) %>% pull(id)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
-
+plan(orig_plan)
 # Community detection
 comm <- cluster_walktrap(vis_g) # works on directed graphs
 
