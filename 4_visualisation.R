@@ -432,7 +432,8 @@ htmlwidgets::saveWidget(
 rxWriteObject(
   ds_Graphs,
   "vis_g_Visnetwork - visNetwork - layout_with_lgl",
-  vis_obj
+  vis_obj,
+  overwrite = TRUE
 )
 ## Export the Visnetwork into GEXF with visual encodings preserved
 # Nodes (basic)
