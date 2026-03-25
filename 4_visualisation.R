@@ -110,9 +110,10 @@ for (i in seq_len(n_comm)) {
     folder = "images"
   )
 }
-par(old_par)
+#par(old_par)
 # Select top N nodes to label (e.g., top 50 by degree)
-deg <- bsn_degree
+deg <- degree(g, mode = "all")
+
 top_nodes <- names(sort(deg, decreasing = TRUE))[1:50]
 
 # Faster ggraph call
@@ -417,7 +418,7 @@ vis_obj <- visNetwork(
 htmlwidgets::saveWidget(
   vis_obj,
   "graphs/visnetwork_tmp.html",
-  selfcontained = TRUE
+  selfcontained = FALSE
 )
 rxWriteObject(
   ds_Graphs,
