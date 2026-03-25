@@ -1,6 +1,8 @@
 # source("0_functions.R")
 
-cat("\n=== igraph layouts: Computing different layouts for igraph ===\n")
+cat(
+  "\n=== Step 4a: igraph layouts: Computing different layouts for igraph ===\n"
+)
 
 layout_types <- c(
   "drl",
@@ -43,8 +45,10 @@ rxWriteObject(
 # assemble nested list: community_layouts[[i]] = list(id, graph, layouts = named list(layout -> coord_matrix))
 old_par <- par(no.readonly = TRUE)
 pal <- viridis::viridis(max(V(g)$kcore, na.rm = TRUE) + 1)
+
 community_layouts <- vector("list", n_comm)
-names(community_layouts) <- paste0("Main Graph ", vcount(g), " nodes") # or use community names if available
+names(community_layouts) <- paste0("Main Graph ", vcount(g), " nodes")
+
 for (i in seq_len(n_comm)) {
   community_layouts[[i]] <- list(
     id = g,
@@ -52,6 +56,7 @@ for (i in seq_len(n_comm)) {
     layouts = list()
   )
 
+  # Fill layout matrices
   for (k in seq_along(res_g)) {
     comm_i <- graph_idx_rep[k]
     lt <- as.character(attr(res_g[[k]], "layout_type"))
@@ -68,33 +73,36 @@ for (i in seq_len(n_comm)) {
     next
   }
 
-  plot_nrow <- ceiling(sqrt(m))
-  plot_ncol <- ceiling(m / plot_nrow)
-  save_graph_svg(
-    plot_or_expr = function() {
-      par(mfrow = c(plot_nrow, plot_ncol), mar = c(1, 1, 2, 1))
+  # Precompute vertex aesthetics
+  vsize <- if (!is.null(V(subg)$pagerank)) {
+    V(subg)$pagerank + 1
+  } else {
+    rep(6, vcount(subg))
+  }
+  vcol <- if (!is.null(V(subg)$kcore)) {
+    pal[as.integer(V(subg)$kcore) + 1]
+  } else {
+    "steelblue"
+  }
 
-      vsize <- if (!is.null(V(subg)$pagerank)) {
-        V(subg)$pagerank + 1
-      } else {
-        rep(6, vcount(subg))
-      }
-      vcol <- if (!is.null(V(subg)$kcore)) {
-        pal[as.integer(V(subg)$kcore) + 1]
-      } else {
-        "steelblue"
-      }
+  # ---- NEW: Save one SVG per layout ----
+  for (k in seq_len(m)) {
+    layout_name <- names(layouts_list)[k]
+    coords <- layouts_list[[k]]
 
-      for (k in seq_len(m)) {
-        layout_name <- names(layouts_list)[k]
-        coords <- layouts_list[[k]]
-        main_title <- paste0(
-          "Main Graph ",
-          vcount(subg),
-          " nodes\n(",
-          layout_name,
-          ")"
-        )
+    main_title <- paste0(
+      "Main Graph ",
+      vcount(subg),
+      " nodes\n(",
+      layout_name,
+      ")"
+    )
+
+    out_file <- paste0("MainGraph_", vcount(subg), "_", layout_name, ".svg")
+
+    save_graph_svg(
+      plot_or_expr = function() {
+        par(mar = c(1, 1, 2, 1))
         plot.igraph(
           subg,
           layout = coords,
@@ -104,13 +112,14 @@ for (i in seq_len(n_comm)) {
           edge.arrow.size = 0.3,
           vertex.color = vcol
         )
-      }
-    },
-    filename = paste0("Main Graph_layouts.svg"),
-    folder = "images"
-  )
+      },
+      filename = out_file,
+      folder = "images"
+    )
+  }
 }
-#par(old_par)
+
+par(old_par)
 # Select top N nodes to label (e.g., top 50 by degree)
 deg <- degree(g, mode = "all")
 

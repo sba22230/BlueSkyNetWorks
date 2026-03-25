@@ -8,6 +8,9 @@ bs_auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
 
 
 plan(multisession, workers = wrkrs)
+cat(
+  "\n=== Step 1a: Deep search for posts ===\n"
+)
 # Run deep search
 posts_df <- deep_search_posts(
   "Speirgorm",
@@ -18,6 +21,9 @@ posts_df <- deep_search_posts(
 
 
 # Load existing reposts/threads or start fresh
+cat(
+  "\n=== Step 1b: Loading existing reposts and threads ===\n"
+)
 reposts_df <- tryCatch(
   arrow::read_parquet("data/speirgorm_reposts.parquet"),
   error = function(e) tibble(original_uri = character())
@@ -93,11 +99,14 @@ threads_df <- bind_rows(threads_df, hydrated$threads_df) %>%
   distinct(original_uri, author, uri, .keep_all = TRUE)
 
 plan(orig_plan)
+cat(
+  "\n=== Step 1c: Write out posts, reposts and threads into parquet ===\n"
+)
 arrow::write_parquet(posts_df, "data/speirgorm_posts.parquet")
 arrow::write_parquet(reposts_df, "data/speirgorm_reposts.parquet")
 arrow::write_parquet(threads_df, "data/speirgorm_threads.parquet")
 
-cat("\n###  Clean up of temporary objects ###\n")
+cat("\n=== Step 1d Clean up of temporary objects ===\n")
 
 tobermvd <- c(
   'hydrated',

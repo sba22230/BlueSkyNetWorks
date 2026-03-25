@@ -8,7 +8,7 @@ nodes_df <- read_parquet("graphs/speirgorm_nodes.parquet")
 # ============================================================================
 # SECTION 1: Create the Graph
 # ============================================================================
-cat("\n=== Step 1a: Build the initial graph... ===\n")
+cat("\n=== Step 3a: Build the initial graph... ===\n")
 # Step 1: Build edge list (who reposted whom)
 set.seed(22230)
 num_posts <- nrow(edges_df)
@@ -46,7 +46,7 @@ na_per_column <- colSums(is.na(edges))
 print("Number of NAs per column:")
 print(na_per_column)
 
-cat("\n=== Step 1b: Build node list (unique actors and posts ===\n")
+cat("\n=== Step 3b: Build node list (unique actors and posts ===\n")
 
 # Step 2: Build node list (unique actors and posts)
 cat("Nodes count:", nrow(nodes), "\n")
@@ -58,7 +58,7 @@ na_per_column <- colSums(is.na(nodes))
 print("Number of NAs per column:")
 print(na_per_column)
 
-cat("\n=== Step 1c: Build igraph object and plot basic network ===\n")
+cat("\n=== Step 3c: Build igraph object and plot basic network ===\n")
 # Step 3: Build igraph object and plot basic network
 g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 cat("Graph summary:\n")
@@ -75,7 +75,7 @@ rxWriteObject(
 # ============================================================================
 # SECTION 2: Network-LEVEL METRICS
 # ============================================================================
-cat("\n=== Step 2a: Build out the metrics using igraph... ===\n")
+cat("\n=== Step 3d: Build out the metrics using igraph... ===\n")
 
 ig_network_size <- vcount(g)
 ig_comp <- igraph::components(g)
@@ -129,7 +129,7 @@ ig_sql <- RxSqlServerData(
 rxDataStep(ig_summary_df, ig_sql, append = "rows")
 
 cat(
-  "\n=== Step 2b: BlueSkyNetWorks: Computing Network Metrics using StatNet ===\n"
+  "\n=== Step 3e: BlueSkyNetWorks: Computing Network Metrics using StatNet ===\n"
 )
 
 # Convert igraph to statnet
@@ -147,7 +147,7 @@ bsn_degree <- sna::degree(bluSkynet)
 bsn_ideg <- sna::degree(bluSkynet, cmode = "indegree")
 bsn_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
 
-cat("\n=== Step 2c: Plotting degree distributions and scatter plot ===\n")
+cat("\n=== Step 3f: Plotting degree distributions and scatter plot ===\n")
 
 save_graph_svg(
   plot_or_expr = function() {
@@ -188,7 +188,7 @@ save_graph_svg(
   filename = "outdegree_dist.svg"
 )
 
-cat("\n=== Step 2d: Compute network metrics using StatNet ===\n")
+cat("\n=== Step 3g: Compute network metrics using StatNet ===\n")
 bsn_dyadcensus <- sna::dyad.census(bluSkynet)
 bsn_dyadcount <- sum(
   bsn_dyadcensus[[1]],
@@ -249,7 +249,7 @@ ig_sql <- RxSqlServerData(
 )
 rxDataStep(bsn_summary_df, ig_sql, append = "rows")
 
-cat("\n=== Step 2e: Show both Network Metrics in one table ===\n")
+cat("\n=== Step 3h: Show both Network Metrics in one table ===\n")
 
 desc_df <- tibble(
   analysis_timestamp = "Date that the metrics were generated",
@@ -304,7 +304,7 @@ datatable(comparison_table)
 # SECTION 3: Ploting Network - Components
 # ============================================================================
 old_par <- par(no.readonly = TRUE) # save current par settings
-cat("\n=== Step 3a: Plot the small components of the Graph ===\n")
+cat("\n=== Step 3i: Plot the small components of the Graph ===\n")
 
 cat(sprintf(
   "Components: %d (largest: %d = %.1f%%)\n",
@@ -313,7 +313,7 @@ cat(sprintf(
   ig_giant_component_pct
 ))
 
-cat("\n=== Step 3b: Plot the small components using the igraph ===\n")
+cat("\n=== Step 3j: Plot the small components using the igraph ===\n")
 # Identify small components (all except the largest)
 small_ids <- which(ig_comp$csize < max(ig_comp$csize))
 small_ids <- sort(small_ids, decreasing = TRUE)
@@ -341,7 +341,7 @@ for (i in seq(1, n)) {
   )
 }
 par(old_par) # restore original par settings
-cat("\n=== Step 3c: Plot the small components using the sna ===\n")
+cat("\n=== Step 3k: Plot the small components using the sna ===\n")
 cat(sprintf(
   "Components: %d (largest: %d = %.1f%%)\n",
   bsn_num_components,
@@ -406,7 +406,7 @@ betweenness_vals <- sna::betweenness(
   diag = FALSE,
   ignore.eval = FALSE
 )
-cat("\n=== Step 4a: Betweenness centrality computed ===\n")
+cat("\n=== Step 3l: Betweenness centrality computed ===\n")
 
 # Closeness Centrality (suminvdir accounts for directed graphs)
 closeness_vals <- sna::closeness(
@@ -414,19 +414,19 @@ closeness_vals <- sna::closeness(
   cmode = "suminvdir",
   ignore.eval = FALSE
 )
-cat("\n=== Step 4b: Closeness centrality computed ===\n")
+cat("\n=== Step 3m: Closeness centrality computed ===\n")
 
 gc()
 
 # Eigenvector Centrality
 eigen_vals <- sna::evcent(bluSkynet, gmode = "digraph", ignore.eval = FALSE)
-cat("\n=== Step 4c: Eigenvector centrality computed ===\n")
+cat("\n=== Step 3n: Eigenvector centrality computed ===\n")
 
 # Degree metrics (already computed but ensuring consistency)
 bsn_ideg <- sna::degree(bluSkynet, cmode = "indegree")
 bsn_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
 total_degree <- bsn_ideg + bsn_odeg
-cat("\n=== Step 4d: Degree metrics (in/out/total) computed ===\n")
+cat("\n=== Step 3o: Degree metrics (in/out/total) computed ===\n")
 
 ### == these are already computed - no need to do it again == ###
 # PageRank (weighted by influence)
@@ -441,7 +441,7 @@ cat("\n=== Step 4d: Degree metrics (in/out/total) computed ===\n")
 
 # k-Core Decomposition
 kcore_vals <- sna::kcores(bluSkynet)
-cat("\n=== Step 4e: k-core decomposition computed ===\n")
+cat("\n=== Step 3p: k-core decomposition computed ===\n")
 
 # align numeric vectors to node order
 node_keys <- as.character(V(g)$name)
@@ -462,7 +462,7 @@ nodes_with_metrics <- nodes %>%
   )
 
 cat(
-  "\n=== Step 4f: Node-level metrics compiled into 'nodes_with_metrics' tibble ===\n"
+  "\n=== Step 3q: Node-level metrics compiled into 'nodes_with_metrics' tibble ===\n"
 )
 cat(sprintf(
   "  Rows: %d nodes | Cols: %d features\n",
@@ -508,7 +508,7 @@ rxDataStep(nodes_with_metrics, nodes_sql, overwrite = TRUE)
 # SECTION 5: COMMUNITY STRUCTURE ANALYSIS
 # ============================================================================
 
-cat("\n=== Step 5a: Computing community structure... ===\n")
+cat("\n=== Step 3r: Computing community structure... ===\n")
 # Louvain community detection (already computed in 3_StatnetAnalysis.R)
 # Re-compute if necessary
 comm_louvain <- igraph::cluster_louvain(as_undirected(g))
@@ -521,12 +521,12 @@ comm_louvain <- igraph::cluster_leiden(
 num_communities <- length(unique(comm_louvain$membership))
 modularity_louvain <- modularity(g, comm_louvain$membership)
 cat(sprintf(
-  "\n=== Step 5b: Leiden detection: %d communities, modularity = %.4f ===\n",
+  "\n=== Step 3s: Leiden detection: %d communities, modularity = %.4f ===\n",
   num_communities,
   modularity_louvain
 ))
 
-cat("\n=== Step 5c: Extracting Community Subgraphs ===\n")
+cat("\n=== Step 3t: Extracting Community Subgraphs ===\n")
 # Assuming you have your community detection results
 communities <- comm_louvain # or your preferred method
 membership <- membership(communities)
@@ -540,7 +540,7 @@ community_graphs <- lapply(top_10_ids, function(id) {
   induced_subgraph(g, nodes)
 })
 
-cat("\n=== Step 5d: Computing layouts for each community in parallel ===\n")
+cat("\n=== Step 3u: Computing layouts for each community in parallel ===\n")
 # compute layouts in parallel for all community x layout combinations
 layout_types <- c(
   "drl",
@@ -586,7 +586,7 @@ for (k in seq_along(res_all)) {
   community_layouts[[comm_i]]$layouts[[lt]] <- coords_mat
 }
 cat(
-  "\n=== Step 5e: Layouts computed for each community and plotting the graphs ===\n"
+  "\n=== Step 3v: Layouts computed for each community and plotting the graphs ===\n"
 )
 # Plot all layouts for each community into a single SVG (one file per community)
 old_par <- par(no.readonly = TRUE)
@@ -652,12 +652,12 @@ par(old_par)
 # Name them for easy reference
 names(community_graphs) <- paste0("Community_", top_10_ids)
 cat(
-  "\n=== Step 5f: Analyze Internal Structure, 
+  "\n=== Step 3w: Analyze Internal Structure, 
 For each community subgraph, examine: ===\n"
 )
 # Batch Analysis
 # Analyze all top 10 at once
-cat("\n=== Step 5g: Batch analysis of community metrics ===\n")
+cat("\n=== Step 3x: Batch analysis of community metrics ===\n")
 community_metrics <- data.frame(
   community = names(community_graphs),
   size = sapply(community_graphs, vcount),
