@@ -42,7 +42,10 @@ rxWriteObject(
   overwrite = TRUE
 )
 
-# assemble nested list: community_layouts[[i]] = list(id, graph, layouts = named list(layout -> coord_matrix))
+res_g <- rxReadObject(ds_Graphs, "layout_exec_results")
+
+# assemble nested list: community_layouts[[i]] = list(id, graph,
+# layouts = named list(layout -> coord_matrix))
 old_par <- par(no.readonly = TRUE)
 pal <- viridis::viridis(max(V(g)$kcore, na.rm = TRUE) + 1)
 
@@ -140,7 +143,6 @@ gtn <- ggraph(
     repel = TRUE,
     max.overlaps = 1000
   )
-
 
 save_graph_svg(gtn, "gtn_TopNodes_Speirgorm_Network.svg")
 rxWriteObject(
@@ -256,7 +258,6 @@ rxWriteObject(
 
 # Add community membership to nodes
 vis_nodes$community <- comm$membership
-
 
 # ensure community is used as the visNetwork group and add colours
 vis_nodes$group <- as.character(vis_nodes$community)
@@ -468,6 +469,7 @@ node_hex <- ifelse(
   vis_nodes$color.background
 )
 # parallel parse nodes
+plan(multisession, workers = wrkrs)
 node_rgba_df <- furrr::future_map_dfr(
   node_hex,
   function(cl) {
@@ -522,7 +524,7 @@ if (any(c("width", "weight", "color") %in% names(vis_edges))) {
       edge_start = as.character(edgeStarts),
       edge_end = as.character(edgeEnds)
     ) %>%
-    select(-from, -to, -any_of(c("width", "weight", "color")))
+    select(-from, -to, -any_of(c("width", "color")))
 } else {
   ge_edgesAtt <- vis_edges %>%
     mutate(
@@ -532,6 +534,17 @@ if (any(c("width", "weight", "color") %in% names(vis_edges))) {
       edge_end = as.character(edgeEnds)
     ) %>%
     select(-from, -to)
+}
+
+ge_edgeDynamic <- if (
+  "edge_start" %in% names(ge_edgesAtt) && "edge_end" %in% names(ge_edgesAtt)
+) {
+  data.frame(
+    start = ge_edgesAtt$edge_start,
+    end = ge_edgesAtt$edge_end
+  )
+} else {
+  NULL
 }
 
 # safe color parsing for edges
@@ -567,13 +580,17 @@ gexf_obj <- write.gexf(
   nodesAtt = ge_nodesAtt,
   edgesAtt = ge_edgesAtt %>% select(-color_raw),
   nodesVizAtt = ge_nodesVizAtt,
+  edgeDynamic = ge_edgeDynamic,
   edgesVizAtt = list(
     color = ge_edgesVizColor,
     size = as.numeric(ge_edgesAtt$weight)
   ),
-  defaultedgetype = "directed"
+  encoding = "UTF-8",
+  defaultedgetype = "directed",
+  rescale.node.size = TRUE,
+  relsize = max(0.01, 1 / nrow(nodes)),
+  radius = 500
 )
-
 
 # Save to file
 home_dir <- here::here()

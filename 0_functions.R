@@ -822,6 +822,48 @@ layout_exec <- function(
 
   pre_coords <- precompute_layout(nodes_df, community_separation)
 
+  # NEW: Helper for random community-clustered coordinates
+  precompute_random_community_coords <- function(nodes_df, net_size) {
+    if (!"community" %in% names(nodes_df)) {
+      # Fallback to fully random if no community info
+      warning("No 'community' column found; using fully random coordinates.")
+      return(matrix(
+        runif(net_size * 2),
+        ncol = 2,
+        dimnames = list(NULL, c("x_init", "y_init"))
+      ))
+    }
+
+    comms <- as.factor(nodes_df$community)
+    unique_comms <- levels(comms)
+    n_comms <- length(unique_comms)
+
+    # Generate random centers for each community (spread them out)
+    comm_centers <- matrix(runif(n_comms * 2, -10, 10), ncol = 2)
+    # Centers in a rough square
+
+    # For each node, add small random noise around its community's center
+    coords <- matrix(NA, nrow = nrow(nodes_df), ncol = 2)
+    for (i in seq_along(unique_comms)) {
+      comm <- unique_comms[i]
+      idx <- which(comms == comm)
+      noise <- matrix(rnorm(length(idx) * 2, mean = 0, sd = 1), ncol = 2)
+      # Gaussian noise
+      coords[idx, ] <- matrix(
+        rep(comm_centers[i, ], each = length(idx)),
+        ncol = 2
+      ) +
+        noise
+    }
+
+    colnames(coords) <- c("x_init", "y_init")
+    coords
+  }
+
+  rand_coords <- precompute_random_community_coords(
+    nodes_df,
+    net_size
+  )
   #-------------------------------
   # 6. Compute layout
   #-------------------------------
@@ -847,7 +889,7 @@ layout_exec <- function(
           niter = list(...)$niter %||% (net_size / 3),
           start.temp = sqrt(net_size),
           weights = edge_weights,
-          coords = pre_coords
+          coords = rand_coords
         ),
 
         "graphopt" = layout_with_graphopt(
@@ -865,12 +907,12 @@ layout_exec <- function(
           maxdelta = list(...)$maxdelta %||% net_size,
           area = net_size^2,
           coolexp = 1.2,
-          root = if (!is.null(list(...)$root)) list(...)$root else NULL
+          root = which(nodes_df$total_degree == max(nodes_df$total_degree))
         ),
 
         "kk" = layout_with_kk(
           graph_obj,
-          coords = pre_coords,
+          coords = rand_coords,
           maxiter = list(...)$maxiter %||% (net_size / 3),
           weights = edge_weights
         ),
