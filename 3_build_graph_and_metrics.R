@@ -503,45 +503,10 @@ rxDataStep(nodes_with_metrics, nodes_sql, overwrite = TRUE)
 
 
 ### These will be useful for a notebook === FINISH
-
-# ============================================================================
-# SECTION 5: COMMUNITY STRUCTURE ANALYSIS
-# ============================================================================
-
-cat("\n=== Step 3r: Computing community structure... ===\n")
-# Louvain community detection (already computed in 3_StatnetAnalysis.R)
-# Re-compute if necessary
-comm_louvain <- igraph::cluster_louvain(as_undirected(g))
-comm_louvain <- igraph::cluster_leiden(
-  as_undirected(g),
-  objective_function = "modularity",
-  n_iterations = 45,
-  initial_membership = nodes$community
+cat(
+  "\n=== Step 4a: igraph layouts: Computing different layouts for igraph ===\n"
 )
-num_communities <- length(unique(comm_louvain$membership))
-modularity_louvain <- modularity(g, comm_louvain$membership)
-cat(sprintf(
-  "\n=== Step 3s: Leiden detection: %d communities, modularity = %.4f ===\n",
-  num_communities,
-  modularity_louvain
-))
 
-cat("\n=== Step 3t: Extracting Community Subgraphs ===\n")
-# Assuming you have your community detection results
-communities <- comm_louvain # or your preferred method
-membership <- membership(communities)
-
-# Get top communities and subgraphs (unchanged)
-comm_sizes <- sort(table(membership), decreasing = TRUE)
-top_10_ids <- as.numeric(names(comm_sizes[1:12]))
-
-community_graphs <- lapply(top_10_ids, function(id) {
-  nodes <- which(membership == id)
-  induced_subgraph(g, nodes)
-})
-
-cat("\n=== Step 3u: Computing layouts for each community in parallel ===\n")
-# compute layouts in parallel for all community x layout combinations
 layout_types <- c(
   "drl",
   "drl_fast",
@@ -553,46 +518,59 @@ layout_types <- c(
   "nicely",
   "tree"
 )
-n_comm <- length(community_graphs)
+
+n_comm <- 1
 # replicate indices/layouts so rxExec runs every combo
 graph_idx_rep <- rep(seq_len(n_comm), each = length(layout_types))
 layout_rep <- rep(layout_types, times = n_comm)
-graphs_arg <- lapply(graph_idx_rep, function(ii) community_graphs[[ii]])
+# Use the main graph object (g) instead of community-specific graphs
+graphs_arg <- lapply(graph_idx_rep, function(ii) g)
 
+library(tictoc)
+tic()
 # run layout_exec in parallel across the cluster once
-res_all <- rxExec(
+res_g <- rxExec(
   layout_exec,
   graph = rxElemArg(graphs_arg),
   layout_type = rxElemArg(layout_rep),
   execObjects = c("connStr", "layout_exec")
 )
 
-# assemble nested list: community_layouts[[i]] = list(id, graph, layouts = named list(layout -> coord_matrix))
-community_layouts <- vector("list", n_comm)
-names(community_layouts) <- paste0("Community_", top_10_ids)
-for (i in seq_len(n_comm)) {
-  community_layouts[[i]] <- list(
-    id = top_10_ids[i],
-    graph = community_graphs[[i]],
-    layouts = list()
-  )
-}
+toc()
 
-for (k in seq_along(res_all)) {
-  comm_i <- graph_idx_rep[k]
-  lt <- as.character(attr(res_all[[k]], "layout_type"))
-  coords_df <- res_all[[k]]
-  coords_mat <- as.matrix(coords_df[, c("x", "y")])
-  community_layouts[[comm_i]]$layouts[[lt]] <- coords_mat
-}
-cat(
-  "\n=== Step 3v: Layouts computed for each community and plotting the graphs ===\n"
+rxWriteObject(
+  ds_Graphs,
+  "layout_exec_results",
+  res_g,
+  overwrite = TRUE
 )
-# Plot all layouts for each community into a single SVG (one file per community)
+
+res_g <- rxReadObject(ds_Graphs, "layout_exec_results")
+
+# assemble nested list: community_layouts[[i]] = list(id, graph,
+# layouts = named list(layout -> coord_matrix))
 old_par <- par(no.readonly = TRUE)
 pal <- viridis::viridis(max(V(g)$kcore, na.rm = TRUE) + 1)
 
+community_layouts <- vector("list", n_comm)
+names(community_layouts) <- paste0("Main Graph ", vcount(g), " nodes")
+
 for (i in seq_len(n_comm)) {
+  community_layouts[[i]] <- list(
+    id = g,
+    graph = g,
+    layouts = list()
+  )
+
+  # Fill layout matrices
+  for (k in seq_along(res_g)) {
+    comm_i <- graph_idx_rep[k]
+    lt <- as.character(attr(res_g[[k]], "layout_type"))
+    coords_df <- res_g[[k]]
+    coords_mat <- as.matrix(coords_df[, c("x", "y")])
+    community_layouts[[comm_i]]$layouts[[lt]] <- coords_mat
+  }
+
   entry <- community_layouts[[i]]
   subg <- entry$graph
   layouts_list <- entry$layouts
@@ -601,36 +579,36 @@ for (i in seq_len(n_comm)) {
     next
   }
 
-  plot_nrow <- ceiling(sqrt(m))
-  plot_ncol <- ceiling(m / plot_nrow)
+  # Precompute vertex aesthetics
+  vsize <- if (!is.null(V(subg)$pagerank)) {
+    V(subg)$pagerank + 1
+  } else {
+    rep(6, vcount(subg))
+  }
+  vcol <- if (!is.null(V(subg)$kcore)) {
+    pal[as.integer(V(subg)$kcore) + 1]
+  } else {
+    "steelblue"
+  }
 
-  save_graph_svg(
-    plot_or_expr = function() {
-      par(mfrow = c(plot_nrow, plot_ncol), mar = c(1, 1, 2, 1))
+  # ---- NEW: Save one SVG per layout ----
+  for (k in seq_len(m)) {
+    layout_name <- names(layouts_list)[k]
+    coords <- layouts_list[[k]]
 
-      vsize <- if (!is.null(V(subg)$pagerank)) {
-        V(subg)$pagerank + 1
-      } else {
-        rep(6, vcount(subg))
-      }
-      vcol <- if (!is.null(V(subg)$kcore)) {
-        pal[as.integer(V(subg)$kcore) + 1]
-      } else {
-        "steelblue"
-      }
+    main_title <- paste0(
+      "Main Graph ",
+      vcount(subg),
+      " nodes\n(",
+      layout_name,
+      ")"
+    )
 
-      for (k in seq_len(m)) {
-        layout_name <- names(layouts_list)[k]
-        coords <- layouts_list[[k]]
-        main_title <- paste0(
-          "Community ",
-          entry$id,
-          " ” ",
-          vcount(subg),
-          " nodes\n(",
-          layout_name,
-          ")"
-        )
+    out_file <- paste0("MainGraph_", vcount(subg), "_", layout_name, ".svg")
+
+    save_graph_svg(
+      plot_or_expr = function() {
+        par(mar = c(1, 1, 2, 1))
         plot.igraph(
           subg,
           layout = coords,
@@ -640,89 +618,71 @@ for (i in seq_len(n_comm)) {
           edge.arrow.size = 0.3,
           vertex.color = vcol
         )
-      }
-    },
-    filename = paste0("Community_", entry$id, "_layouts.svg"),
-    folder = "images"
-  )
+      },
+      filename = out_file,
+      folder = "images"
+    )
+  }
 }
 
 par(old_par)
+# Select top N nodes to label (e.g., top 50 by degree)
+deg <- degree(g, mode = "all")
 
-# Name them for easy reference
-names(community_graphs) <- paste0("Community_", top_10_ids)
-cat(
-  "\n=== Step 3w: Analyze Internal Structure, 
-For each community subgraph, examine: ===\n"
-)
-# Batch Analysis
-# Analyze all top 10 at once
-cat("\n=== Step 3x: Batch analysis of community metrics ===\n")
-community_metrics <- data.frame(
-  community = names(community_graphs),
-  size = sapply(community_graphs, vcount),
-  density = sapply(community_graphs, edge_density),
-  diameter = sapply(community_graphs, diameter),
-  avg_path = sapply(community_graphs, mean_distance),
-  transitivity = sapply(community_graphs, function(g) {
-    transitivity(g, type = "global")
-  }),
-  betweenness_avg = sapply(community_graphs, function(g) {
-    mean(igraph::betweenness(g))
-  }),
-  degree_avg = sapply(community_graphs, function(g) {
-    mean(igraph::degree(g))
-  })
-)
+top_nodes <- names(sort(deg, decreasing = TRUE))[1:50]
 
-# Label propagation (can detect overlapping communities)
-comm_labelprop <- cluster_label_prop(g)
-num_communities_lp <- length(unique(comm_labelprop$membership))
-modularity_labelprop <- modularity(g, comm_labelprop$membership)
-cat(sprintf(
-  "Label propagation: %d communities, modularity = %.4f\n",
-  num_communities_lp,
-  modularity_labelprop
-))
-
-# Fast greedy (for directed, may treat as undirected)
-comm_fastgreedy <- cluster_fast_greedy(as_undirected(g))
-num_communities_fg <- length(unique(comm_fastgreedy$membership))
-modularity_fastgreedy <- modularity(
-  as_undirected(g),
-  comm_fastgreedy$membership
-)
-cat(sprintf(
-  "Fast greedy: %d communities, modularity = %.4f\n",
-  num_communities_fg,
-  modularity_fastgreedy
-))
-
-# Add best community assignment to nodes
-best_comm <- comm_louvain$membership
-nodes_with_metrics <- nodes_with_metrics %>%
-  dplyr::mutate(
-    community = best_comm[name],
-    modularity = modularity_louvain
+# Faster ggraph call
+coords_drl <- res_g[[1]]
+gtn <- ggraph(
+  g,
+  layout = "manual",
+  x = coords_drl[, 1],
+  y = coords_drl[, 2]
+) +
+  geom_edge_link(alpha = 0.3) +
+  geom_node_point(size = 5) +
+  geom_node_text(
+    aes(label = ifelse(name %in% top_nodes, name, "")),
+    repel = TRUE,
+    max.overlaps = 1000
   )
 
-# Community statistics (size, internal density, external connections)
-community_stats <- nodes %>%
-  group_by(community) %>%
-  summarise(
-    community_size = n(),
-    # rough estimate
-    internal_edges = sum(in_degree[name %in% name], na.rm = TRUE) / 2,
-    avg_internal_degree = mean(in_degree + out_degree, na.rm = TRUE),
-    avg_pagerank = mean(pagerank, na.rm = TRUE),
-    avg_authority = mean(authority_score, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  arrange(desc(community_size))
+save_graph_svg(gtn, "gtn_TopNodes_Speirgorm_Network.svg")
+rxWriteObject(
+  ds_Graphs,
+  "gtn_Graph - ggraph - layout_with_drl",
+  gtn,
+  overwrite = TRUE
+)
 
-cat(sprintf(" Community analysis complete:\n"))
-datatable(community_stats)
+# --- end of one visualisation
 
+# Step 5: Plot enriched network with ggraph
+coords_graphopt <- res_g[[4]]
+gto <- ggraph(
+  g,
+  layout = "manual",
+  x = coords_graphopt[, 1],
+  y = coords_graphopt[, 2]
+) +
+  geom_edge_link(alpha = 0.3) +
+  geom_node_point(aes(size = reposts_made, color = reposts_received)) +
+  geom_node_text(aes(label = name), repel = TRUE) +
+  scale_size_continuous(range = c(3, 12)) +
+  scale_color_gradient(low = "lightblue", high = "red") +
+  theme_void()
+
+write_graph(
+  g,
+  "graphs/g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
+  format = "graphml"
+)
+rxWriteObject(
+  ds_Graphs,
+  "g_Graph - igraph - layout_with_graphopt",
+  gto,
+  overwrite = TRUE
+)
 # ============================================================================
 # SECTION 6: SAVE RESULTS
 # ============================================================================
@@ -748,7 +708,7 @@ cat(sprintf(
 ))
 cat(sprintf(
   "Communities:         %d (Louvain, modularity = %.4f)\n",
-  num_communities,
+  length(unique(nodes$community)),
   modularity_louvain
 ))
 cat(sprintf(
