@@ -706,6 +706,8 @@ cat(sprintf(
   ig_summary_df$transitivity_val,
   ig_summary_df$avg_local_clustering
 ))
+comm_louvain <- igraph::cluster_louvain(as_undirected(g))
+modularity_louvain <- modularity(g, comm_louvain$membership)
 cat(sprintf(
   "Communities:         %d (Louvain, modularity = %.4f)\n",
   length(unique(nodes$community)),
@@ -737,3 +739,4 @@ cat("  Use network_metrics for global statistics\n")
 cat("  Use community_stats to understand cluster structure\n\n")
 
 gc()
+
