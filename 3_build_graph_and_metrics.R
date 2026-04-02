@@ -683,6 +683,121 @@ rxWriteObject(
   gto,
   overwrite = TRUE
 )
+
+# ============================================================================
+# SECTION 1.5: Create Subgraphs by Year and Month
+# ============================================================================
+cat(
+  "\n=== Step 3c.5: Creating subgraphs filtered by year and month of edgeStarts ===\n"
+)
+
+# Assuming edgeStarts is a Date or can be converted to Date
+edge_dates <- E(g)$edgeStarts
+if (!inherits(edge_dates, "Date")) {
+  edge_dates <- as.Date(edge_dates)
+}
+
+# Extract year-month as string "YYYY-MM"
+year_month <- format(edge_dates, "%Y-%m")
+unique_ym <- unique(year_month)
+unique_ym <- sort(unique_ym) # Sort for consistency
+
+subgraphs_igraph <- list()
+subgraphs_statnet <- list()
+
+for (ym in unique_ym) {
+  eids <- which(year_month == ym)
+  if (length(eids) > 0) {
+    # Create igraph subgraph
+    sub_g <- subgraph.edges(g, eids)
+    subgraphs_igraph[[ym]] <- sub_g
+
+    # Convert to statnet network
+    sub_net <- asNetwork(sub_g)
+    subgraphs_statnet[[ym]] <- sub_net
+
+    cat(
+      "Created subgraph for",
+      ym,
+      "with",
+      vcount(sub_g),
+      "nodes and",
+      ecount(sub_g),
+      "edges\n"
+    )
+
+    main_title <- paste0(
+      "Sub Graph ",
+      vcount(sub_g),
+      " nodes\n(",
+      ym,
+      ")"
+    )
+
+    # Precompute vertex aesthetics
+    vsize <- if (!is.null(V(sub_g)$pagerank)) {
+      V(sub_g)$pagerank + 1
+    } else {
+      rep(6, vcount(subg))
+    }
+    vcol <- if (!is.null(V(sub_g)$kcore)) {
+      pal[as.integer(V(sub_g)$kcore) + 1]
+    } else {
+      "steelblue"
+    }
+
+    out_file <- paste0("SubGraph_", vcount(sub_g), "_", ym, ".svg")
+
+    save_graph_svg(
+      plot_or_expr = function() {
+        par(mar = c(1, 1, 2, 1))
+        plot.igraph(
+          sub_g,
+          layout = layout_nicely(sub_g, dim = 2),
+          main = main_title,
+          vertex.size = vsize,
+          vertex.label.cex = 0.2,
+          edge.arrow.size = 0.3,
+          vertex.color = vcol
+        )
+      },
+      filename = out_file,
+      folder = "images"
+    )
+
+    # Optionally save each subgraph
+    rxWriteObject(
+      ds_Graphs,
+      paste0("subgraph_igraph_", ym),
+      sub_g,
+      overwrite = TRUE
+    )
+    rxWriteObject(
+      ds_Graphs,
+      paste0("subgraph_statnet_", ym),
+      sub_net,
+      overwrite = TRUE
+    )
+  }
+}
+
+# Save the lists of subgraphs
+rxWriteObject(
+  ds_Graphs,
+  "subgraphs_igraph_by_ym",
+  subgraphs_igraph,
+  overwrite = TRUE
+)
+rxWriteObject(
+  ds_Graphs,
+  "subgraphs_statnet_by_ym",
+  subgraphs_statnet,
+  overwrite = TRUE
+)
+
+cat("Subgraphs created and saved.\n")
+
+
 # ============================================================================
 # SECTION 6: SAVE RESULTS
 # ============================================================================
@@ -739,4 +854,3 @@ cat("  Use network_metrics for global statistics\n")
 cat("  Use community_stats to understand cluster structure\n\n")
 
 gc()
-
