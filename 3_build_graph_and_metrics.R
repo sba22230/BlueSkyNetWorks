@@ -657,32 +657,6 @@ rxWriteObject(
 
 # --- end of one visualisation
 
-# Step 5: Plot enriched network with ggraph
-coords_graphopt <- res_g[[4]]
-gto <- ggraph(
-  g,
-  layout = "manual",
-  x = coords_graphopt[, 1],
-  y = coords_graphopt[, 2]
-) +
-  geom_edge_link(alpha = 0.3) +
-  geom_node_point(aes(size = reposts_made, color = reposts_received)) +
-  geom_node_text(aes(label = name), repel = TRUE) +
-  scale_size_continuous(range = c(3, 12)) +
-  scale_color_gradient(low = "lightblue", high = "red") +
-  theme_void()
-
-write_graph(
-  g,
-  "graphs/g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
-  format = "graphml"
-)
-rxWriteObject(
-  ds_Graphs,
-  "g_Graph - igraph - layout_with_graphopt",
-  gto,
-  overwrite = TRUE
-)
 
 # ============================================================================
 # SECTION 1.5: Create Subgraphs by Year and Month
@@ -797,6 +771,33 @@ rxWriteObject(
 
 cat("Subgraphs created and saved.\n")
 
+# Step 5: Plot enriched network with ggraph
+coords_graphopt <- res_g[[4]]
+gto <- ggraph(
+  g,
+  layout = "manual",
+  x = coords_graphopt[, 1],
+  y = coords_graphopt[, 2]
+) +
+  geom_edge_link(alpha = 0.3) +
+  geom_node_point(aes(size = reposts_made, color = reposts_received)) +
+  geom_node_text(aes(label = name), repel = TRUE) +
+  scale_size_continuous(range = c(3, 12)) +
+  scale_color_gradient(low = "lightblue", high = "red") +
+  transition_states(edge_dates)
+  theme_void()
+
+write_graph(
+  g,
+  "graphs/g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
+  format = "graphml"
+)
+rxWriteObject(
+  ds_Graphs,
+  "g_Graph - igraph - layout_with_graphopt",
+  gto,
+  overwrite = TRUE
+)
 
 # ============================================================================
 # SECTION 6: SAVE RESULTS
