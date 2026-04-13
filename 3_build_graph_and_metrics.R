@@ -657,7 +657,6 @@ rxWriteObject(
 
 # --- end of one visualisation
 
-
 # ============================================================================
 # SECTION 1.5: Create Subgraphs by Year and Month
 # ============================================================================
@@ -772,6 +771,7 @@ rxWriteObject(
 cat("Subgraphs created and saved.\n")
 
 # Step 5: Plot enriched network with ggraph
+library(gganimate)
 coords_graphopt <- res_g[[4]]
 gto <- ggraph(
   g,
@@ -784,7 +784,7 @@ gto <- ggraph(
   geom_node_text(aes(label = name), repel = TRUE) +
   scale_size_continuous(range = c(3, 12)) +
   scale_color_gradient(low = "lightblue", high = "red") +
-  transition_states(edge_dates)
+  transition_states(edge_dates) +
   theme_void()
 
 write_graph(
