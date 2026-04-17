@@ -433,7 +433,6 @@ rxWriteObject(
 # ============================================================================
 
 cat("\n=== Step 3r: Computing community structure... ===\n")
-# Louvain community detection (already computed in 3_StatnetAnalysis.R)
 # Re-compute if necessary
 comm_louvain <- igraph::cluster_louvain(as_undirected(g))
 comm_louvain <- igraph::cluster_leiden(
@@ -463,6 +462,8 @@ community_graphs <- lapply(top_10_ids, function(id) {
   nodes <- which(membership == id)
   induced_subgraph(g, nodes)
 })
+
+rxWriteObject(ds_Graphs, "Community Graphs", community_graphs, overwrite = TRUE)
 
 cat("\n=== Step 3u: Computing layouts for each community in parallel ===\n")
 # compute layouts in parallel for all community x layout combinations
@@ -571,6 +572,8 @@ for (i in seq_len(n_comm)) {
   )
 }
 
+# Write the Community Layouts to SQL 
+rxWriteObject(ds_Graphs, "Top 12 Sub Graphs", community_layouts, overwrite = TRUE)
 par(old_par)
 
 # Name them for easy reference
