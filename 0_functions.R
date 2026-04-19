@@ -58,7 +58,8 @@ dedup_posts <- function(posts) {
     tibble::as_tibble() %>%
     distinct(uri, .keep_all = TRUE)
 }
-if (v$os != "linux-gnu" && !sql_server_available()) {
+if (v$os != "linux-gnu" && sql_server_available()) {
+  
   # ---------------------------
   # Configuration: SQL Server
   # ---------------------------
