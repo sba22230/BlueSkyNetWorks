@@ -37,13 +37,28 @@ safe_int <- function(x, ...) {
   if (is.null(val)) NA_integer_ else as.integer(val)
 }
 
+sql_server_available <- function() {
+  tryCatch({
+    con <- dbConnect(
+      odbc(),
+      Driver = "SQL Server",
+      Server = "localhost",
+      Database = "master",
+      Trusted_Connection = "Yes",
+      Port = 1433
+    )
+    dbDisconnect(con)
+    TRUE
+  }, error = function(e) FALSE)
+}
+
 # Deduplicate by URI
 dedup_posts <- function(posts) {
   posts %>%
     tibble::as_tibble() %>%
     distinct(uri, .keep_all = TRUE)
 }
-if (v$os != "linux-gnu") {
+if (v$os != "linux-gnu" && !sql_server_available()) {
   # ---------------------------
   # Configuration: SQL Server
   # ---------------------------
