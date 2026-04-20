@@ -13,20 +13,26 @@ library(DT)
 library(DBI)
 library(dplyr)
 library(ggraph)
+library(ggrepel)
+library(ggplot2)
 library(igraph)
 library(intergraph)
 library(lubridate)
 library(odbc)
+library(patchwork)
 library(purrr)
 library(readr)
 library(retry)
 library(RevoScaleR) # RevoScaleR provides RxSqlServerData, rxDataStep, etc.
+library(scales)
 library(sna)
 library(stringi)
 library(stringr)
 library(tibble)
 library(tidyr)
+library(tidytext)
 library(visNetwork)
+
 orig_plan <- plan()
 safe_chr <- function(x, ...) {
   val <- purrr::pluck(x, ..., .default = NA_character_)
@@ -971,5 +977,114 @@ layout_exec <- function(
 
   result_df
 }
+
+plot_word_comparison_date <- function(graph, community_id) {
+  
+  # ---- 1. Extract posts from edges ----
+  posts <- cbind(E(graph)$text, E(graph)$created_at) |>
+    as.data.frame() |>
+    mutate(V2 = ymd(V2))
+  colnames(posts) <- c("text", "created_at")
+  
+  # ---- 2. Tidy text ----
+  tidy_posts <- posts |>
+    filter(!str_detect(text, "^RT")) |>
+    mutate(text = str_replace_all(text, replace_reg, "")) |>
+    unnest_tokens(word, text, token = "regex", pattern = unnest_reg) |>
+    filter(
+      !word %in% stop_words$word,
+      !word %in% str_remove_all(stop_words$word, "'"),
+      str_detect(word, "[a-z]")
+    )
+  word_time <- tidy_posts |>
+    group_by(word) |>
+    summarise(median_time = median(created_at))
+  
+  # ---- 3. Compute counts + Dirichlet log-odds ----
+  counts_long <- tidy_posts |> count(word, name = "n")
+  N <- sum(counts_long$n)
+  alpha <- 0.01
+  
+  counts <- counts_long |>
+    mutate(
+      log_odds = log((n + alpha) / (N - n + alpha))
+    )
+  
+  # ---- 4. Compute frequencies ----
+  frequency <- tidy_posts |>
+    count(word, name = "n") |>
+    mutate(freq = n / sum(n))
+  
+  frequency <- frequency |>
+    left_join(global_freq, by = "word")
+  
+  
+  # ---- 5. Join log-odds onto frequency ----
+  frequency <- frequency |>
+    left_join(counts |> select(word, log_odds), by = "word")
+  
+  frequency <- frequency |>
+    left_join(word_time, by = "word")
+  
+  # ---- 6. Identify distinctive + common words ----
+  top_words <- frequency |> slice_max(log_odds, n = 15)
+  
+  common_words <- frequency |>
+    mutate(diff = abs(freq - global_freq)) |>
+    slice_min(diff, n = 5)
+  
+  
+  # ---- 7. Community metadata ----
+  n_nodes <- vcount(graph)
+  n_edges <- ecount(graph)
+  avg_degree <- mean(degree(graph))
+  density <- edge_density(graph)
+  
+  title_text <- paste0(
+    "Community ", community_id,
+    " — ", n_nodes, " nodes, ",
+    n_edges, " edges\n",
+    "Avg degree: ", round(avg_degree, 2),
+    " | Density: ", round(density, 4)
+  )
+  
+  # ---- 8. Build the plot ----
+  p <- ggplot(frequency, aes(x = median_time, y = log_odds)) +
+    geom_point(alpha = 0.4, size = 2, color = "#1f77b4") +
+    geom_density_2d(color = "grey85", alpha = 0.3) +
+    geom_text_repel(
+      data = top_words,
+      aes(label = word),
+      size = 4,
+      fontface = "bold",
+      color = "#1f78b4"
+    ) +
+    geom_text_repel(
+      data = common_words,
+      aes(label = word),
+      size = 3,
+      fontface = "bold",
+      color = "#33a02c"
+    ) +
+    scale_x_date(date_labels = "%Y-%m-%d") +
+    #scale_x_log10(labels = percent_format()) +
+    #scale_y_log10(labels = percent_format()) +
+    labs(
+      x = "Median posting time",
+      y = "Distinctiveness (Dirichlet log-odds)",
+      title = title_text,
+      subtitle = "Distinctive (blue bold) and common (green bold) words"
+    ) +
+    theme_minimal(base_size = 11) +
+    theme(
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_line(color = "grey90"),
+      plot.title = element_text(size = 12, face = "bold"),
+      plot.subtitle = element_text(size = 10)
+    )
+  
+  return(p)
+}
+
 plan(orig_plan)
 gc()
