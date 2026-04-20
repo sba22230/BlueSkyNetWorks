@@ -21,7 +21,6 @@ global_freq <- tidy_posts |>
   count(word, name = "global_n") |>
   mutate(global_freq = global_n / sum(global_n))
 
-
 frequency <- tidy_posts |>
   count(V1, word, sort = TRUE) |>
   left_join(
@@ -32,13 +31,14 @@ frequency <- tidy_posts |>
 
 frequency <- frequency |>
   select(V1, word, freq) |>
+  filter(V1 %in% c("fionadoris.bsky.social", "stiofanoaodh.bsky.social")) |>
   pivot_wider(names_from = V1, values_from = freq) |>
-  arrange(fionadoris.bsky.social, sharrow.eurosky.social)
+  arrange(fionadoris.bsky.social, stiofanoaodh.bsky.social)
 
 library(scales)
 ggplot(
   frequency,
-  aes(x = fionadoris.bsky.social , y = sharrow.eurosky.social)
+  aes(x = fionadoris.bsky.social , y = stiofanoaodh.bsky.social)
 ) +
   geom_jitter(alpha = 0.1, size = 2.5, width = 0.25, height = ) +
   geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
@@ -47,7 +47,7 @@ ggplot(
   geom_abline(color = "red", linetype = "dashed") +
   labs(
     x = "Frequency in fionadoris.bsky.social",
-    y = "Frequency in sharrow.eurosky.social"
+    y = "Frequency in stiofanoaodh.bsky.social"
   ) +
   theme_minimal()
 
@@ -213,7 +213,6 @@ ggplot(
     legend.position = "bottom",
     panel.grid.minor = element_blank()
   )
-
 
 community_graphs <- rxReadObject(ds_Graphs, "Community Graphs")
 n_comm <- length(community_graphs)
