@@ -463,7 +463,7 @@ community_graphs <- lapply(top_10_ids, function(id) {
   induced_subgraph(g, nodes)
 })
 
-rxWriteObject(ds_Graphs, "Community Graphs", community_graphs, overwrite = TRUE)
+
 
 cat("\n=== Step 3u: Computing layouts for each community in parallel ===\n")
 # compute layouts in parallel for all community x layout combinations
@@ -578,6 +578,8 @@ par(old_par)
 
 # Name them for easy reference
 names(community_graphs) <- paste0("Community_", top_10_ids)
+rxWriteObject(ds_Graphs, "Community Graphs", community_graphs, overwrite = TRUE)
+
 cat(
   "\n=== Step 3w: Analyze Internal Structure, 
 For each community subgraph, examine: ===\n"
