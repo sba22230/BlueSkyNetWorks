@@ -5,7 +5,7 @@ posts <- as.data.frame(posts)
 posts <- posts |> mutate(V3 = lubridate::ymd(V3))
 
 replace_reg <- "https?://t.co/[A-Za-z\\d]+|http://[A-Za-z\\d]+|&amp;|&lt;|&gt;|RT|https"
-unnest_reg <- "([^\\p{L}\\d#@']|'(?![\\p{L}\\d#@]))" # updated for all charahcters 
+unnest_reg <- "([^\\p{L}\\d#@']|'(?![\\p{L}\\d#@]))" # updated for all charahcters
 
 tidy_posts <- posts |>
   filter(!str_detect(V2, "^RT")) |>
@@ -38,7 +38,7 @@ frequency <- frequency |>
 library(scales)
 ggplot(
   frequency,
-  aes(x = fionadoris.bsky.social , y = stiofanoaodh.bsky.social)
+  aes(x = fionadoris.bsky.social, y = stiofanoaodh.bsky.social)
 ) +
   geom_jitter(alpha = 0.1, size = 2.5, width = 0.25, height = ) +
   geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
@@ -105,7 +105,7 @@ counts <- counts |>
   mutate(
     log_odds_55 = log((`55` + alpha) / (N55 - `55` + alpha)),
     log_odds_66 = log((`66` + alpha) / (N66 - `66` + alpha)),
-    log_odds    = log_odds_55 - log_odds_66
+    log_odds = log_odds_55 - log_odds_66
   )
 
 # 4. Frequencies (as you had)
@@ -216,7 +216,7 @@ ggplot(
 
 community_graphs <- rxReadObject(ds_Graphs, "Community Graphs")
 n_comm <- length(community_graphs)
-# for each sub graph plot the post timeline 
+# for each sub graph plot the post timeline
 all_posts <- lapply(seq_len(n_comm), function(i) {
   graph <- community_graphs[[i]]
   posts <- cbind(E(graph)$text, E(graph)$created_at)
@@ -225,11 +225,12 @@ all_posts <- lapply(seq_len(n_comm), function(i) {
   colnames(posts) <- c("text", "created_at")
   posts$community_id <- i
   posts
-}) |> dplyr::bind_rows()
+}) |>
+  dplyr::bind_rows()
 
 ggplot(all_posts, aes(x = created_at)) +
   geom_bar(show.legend = FALSE) +
-  facet_wrap(~community_id, ncol = 3, scales = "free_y") +   # <-- key fix
+  facet_wrap(~community_id, ncol = 3, scales = "free_y") + # <-- key fix
   labs(
     x = "Date of posts",
     y = "Count of posts",
@@ -243,10 +244,9 @@ plots <- lapply(seq_len(n_comm), function(i) {
 
 show_plots <- function(plots, page = 1, per_page = 4) {
   start <- (page - 1) * per_page + 1
-  end   <- min(page * per_page, length(plots))
-  wrap_plots(plots[start:end], ncol = 2)  & 
+  end <- min(page * per_page, length(plots))
+  wrap_plots(plots[start:end], ncol = 2) &
     theme(plot.margin = margin(10, 10, 10, 10))
-  
 }
 
 show_plots(plots, page = 1, per_page = 4)
