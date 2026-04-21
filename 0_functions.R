@@ -44,18 +44,21 @@ safe_int <- function(x, ...) {
 }
 
 sql_server_available <- function() {
-  tryCatch({
-    con <- dbConnect(
-      odbc(),
-      Driver = "SQL Server",
-      Server = "localhost",
-      Database = "master",
-      Trusted_Connection = "Yes",
-      Port = 1433
-    )
-    dbDisconnect(con)
-    TRUE
-  }, error = function(e) FALSE)
+  tryCatch(
+    {
+      con <- dbConnect(
+        odbc(),
+        Driver = "SQL Server",
+        Server = "localhost",
+        Database = "master",
+        Trusted_Connection = "Yes",
+        Port = 1433
+      )
+      dbDisconnect(con)
+      TRUE
+    },
+    error = function(e) FALSE
+  )
 }
 
 # Deduplicate by URI
@@ -65,7 +68,6 @@ dedup_posts <- function(posts) {
     distinct(uri, .keep_all = TRUE)
 }
 if (v$os != "linux-gnu" && sql_server_available()) {
-  
   # ---------------------------
   # Configuration: SQL Server
   # ---------------------------
@@ -979,75 +981,78 @@ layout_exec <- function(
 }
 
 plot_word_comparison_date <- function(graph, community_id) {
-  
   # ---- 1. Extract posts from edges ----
-  posts <- cbind(E(graph)$text, E(graph)$created_at) |>
-    as.data.frame() |>
+  posts <- cbind(E(graph)$text, E(graph)$created_at) %>%
+    as.data.frame() %>%
     mutate(V2 = ymd(V2))
   colnames(posts) <- c("text", "created_at")
-  
+
   # ---- 2. Tidy text ----
-  tidy_posts <- posts |>
-    filter(!str_detect(text, "^RT")) |>
-    mutate(text = str_replace_all(text, replace_reg, "")) |>
-    unnest_tokens(word, text, token = "regex", pattern = unnest_reg) |>
+  tidy_posts <- posts %>%
+    filter(!str_detect(text, "^RT")) %>%
+    mutate(text = str_replace_all(text, replace_reg, "")) %>%
+    unnest_tokens(word, text, token = "regex", pattern = unnest_reg) %>%
     filter(
       !word %in% stop_words$word,
       !word %in% str_remove_all(stop_words$word, "'"),
       str_detect(word, "[a-z]")
     )
-  word_time <- tidy_posts |>
-    group_by(word) |>
+  word_time <- tidy_posts %>%
+    group_by(word) %>%
     summarise(median_time = median(created_at))
-  
+
   # ---- 3. Compute counts + Dirichlet log-odds ----
-  counts_long <- tidy_posts |> count(word, name = "n")
+  counts_long <- tidy_posts %>% count(word, name = "n")
   N <- sum(counts_long$n)
   alpha <- 0.01
-  
-  counts <- counts_long |>
+
+  counts <- counts_long %>%
     mutate(
       log_odds = log((n + alpha) / (N - n + alpha))
     )
-  
+
   # ---- 4. Compute frequencies ----
-  frequency <- tidy_posts |>
-    count(word, name = "n") |>
+  frequency <- tidy_posts %>%
+    count(word, name = "n") %>%
     mutate(freq = n / sum(n))
-  
-  frequency <- frequency |>
+
+  frequency <- frequency %>%
     left_join(global_freq, by = "word")
-  
-  
+
   # ---- 5. Join log-odds onto frequency ----
-  frequency <- frequency |>
-    left_join(counts |> select(word, log_odds), by = "word")
-  
-  frequency <- frequency |>
+  frequency <- frequency %>%
+    left_join(counts %>% select(word, log_odds), by = "word")
+
+  frequency <- frequency %>%
     left_join(word_time, by = "word")
-  
+
   # ---- 6. Identify distinctive + common words ----
-  top_words <- frequency |> slice_max(log_odds, n = 15)
-  
-  common_words <- frequency |>
-    mutate(diff = abs(freq - global_freq)) |>
+  top_words <- frequency %>% slice_max(log_odds, n = 15)
+
+  common_words <- frequency %>%
+    mutate(diff = abs(freq - global_freq)) %>%
     slice_min(diff, n = 5)
-  
-  
+
   # ---- 7. Community metadata ----
   n_nodes <- vcount(graph)
   n_edges <- ecount(graph)
   avg_degree <- mean(degree(graph))
   density <- edge_density(graph)
-  
+
   title_text <- paste0(
-    "Community ", community_id,
-    " — ", n_nodes, " nodes, ",
-    n_edges, " edges\n",
-    "Avg degree: ", round(avg_degree, 2),
-    " | Density: ", round(density, 4)
+    "Community ",
+    community_id,
+    " — ",
+    n_nodes,
+    " nodes, ",
+    n_edges,
+    " edges\n",
+    "Avg degree: ",
+    round(avg_degree, 2),
+    " | Density: ",
+    round(density, 4)
   )
-  
+
   # ---- 8. Build the plot ----
   p <- ggplot(frequency, aes(x = median_time, y = log_odds)) +
     geom_point(alpha = 0.4, size = 2, color = "#1f77b4") +
@@ -1082,8 +1087,142 @@ plot_word_comparison_date <- function(graph, community_id) {
       plot.title = element_text(size = 12, face = "bold"),
       plot.subtitle = element_text(size = 10)
     )
-  
+
   return(p)
+}
+
+ViewPostsByDate <- function(filter, comm_1, comm_2) {
+  posts <- posts %>%
+    filter(community == comm_1 | community == comm_2)
+
+  ggplot(posts, aes(x = created_at, fill = community)) +
+    geom_bar(position = "identity", show.legend = FALSE) +
+    facet_wrap(~community, ncol = 1)
+}
+
+ViewCommunityContrastedByWords <- function(
+  totals,
+  counts,
+  tidy_posts,
+  comm_1,
+  comm_2
+) {
+  N1 <- totals$N[totals$community == comm_1]
+  N2 <- totals$N[totals$community == comm_2]
+  alpha <- 0.01
+
+  # 1. counts for the two communities
+  counts_sub <- counts %>%
+    select(
+      word,
+      count_1 = all_of(as.character(comm_1)),
+      count_2 = all_of(as.character(comm_2))
+    ) %>%
+    mutate(
+      count_1 = replace_na(count_1, 0),
+      count_2 = replace_na(count_2, 0)
+    )
+
+  # 2. log-odds
+  counts_sub <- counts_sub %>%
+    mutate(
+      log_odds_1 = log((count_1 + alpha) / (N1 - count_1 + alpha)),
+      log_odds_2 = log((count_2 + alpha) / (N2 - count_2 + alpha)),
+      log_odds = log_odds_1 - log_odds_2
+    )
+
+  # 3. frequencies
+  freq <- tidy_posts %>%
+    filter(community %in% c(comm_1, comm_2)) %>%
+    count(community, word, name = "n") %>%
+    left_join(
+      tidy_posts %>%
+        filter(community %in% c(comm_1, comm_2)) %>%
+        count(community, name = "total"),
+      by = "community"
+    ) %>%
+    mutate(freq = n / total) %>%
+    select(community, word, freq) %>%
+    pivot_wider(
+      names_from = community,
+      values_from = freq,
+      values_fill = 0
+    )
+
+  # derive the actual column names, e.g. "26", "22"
+  col_1 <- as.character(comm_1)
+  col_2 <- as.character(comm_2)
+
+  df <- freq %>%
+    rename(
+      freq_1 = all_of(col_1),
+      freq_2 = all_of(col_2)
+    ) %>%
+    left_join(counts_sub %>% select(word, log_odds), by = "word") %>%
+    mutate(
+      freq_1 = ifelse(freq_1 == 0, 1e-6, freq_1),
+      freq_2 = ifelse(freq_2 == 0, 1e-6, freq_2),
+      dominant = case_when(
+        freq_1 > freq_2 ~ "1",
+        freq_2 > freq_1 ~ "2",
+        TRUE ~ "equal"
+      )
+    )
+
+  top_1 <- df %>% slice_max(log_odds, n = 10)
+  top_2 <- df %>% slice_min(log_odds, n = 10)
+  top20 <- bind_rows(top_1, top_2)
+
+  common_words <- df %>%
+    mutate(log_ratio = abs(log10(freq_1) - log10(freq_2))) %>%
+    slice_min(log_ratio, n = 10)
+  plot_df <- df %>%
+    semi_join(top20, by = "word") %>%
+    bind_rows(common_words) %>%
+    distinct(word, .keep_all = TRUE)
+
+  ggplot(plot_df, aes(x = freq_1, y = freq_2)) +
+    geom_point(aes(color = dominant), alpha = 0.4, size = 2) +
+    geom_density_2d(color = "grey70", alpha = 0.3) +
+    geom_text_repel(
+      data = top20,
+      aes(label = word),
+      size = 4,
+      fontface = "bold",
+      color = "black",
+      max.overlaps = Inf
+    ) +
+    geom_text_repel(
+      data = common_words,
+      aes(label = word),
+      size = 3,
+      color = "grey20",
+      fontface = "italic",
+      max.overlaps = Inf
+    ) +
+    scale_x_log10(labels = percent_format()) +
+    scale_y_log10(labels = percent_format()) +
+    scale_color_manual(
+      values = c("1" = "#1f77b4", "2" = "#d62728", "equal" = "grey40"),
+      name = "More frequent in"
+    ) +
+    geom_abline(color = "red", linetype = "dashed") +
+    labs(
+      x = paste("Frequency in", comm_1),
+      y = paste("Frequency in", comm_2),
+      title = paste(
+        "Word Frequency Comparison Between Communities",
+        comm_1,
+        "and",
+        comm_2
+      ),
+      subtitle = "Log-odds distinctive words (bold) and common words (italic)"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      legend.position = "bottom",
+      panel.grid.minor = element_blank()
+    )
 }
 
 plan(orig_plan)
