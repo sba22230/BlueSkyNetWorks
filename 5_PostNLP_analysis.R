@@ -138,3 +138,86 @@ show_plots <- function(plots, page = 1, per_page = 4) {
 show_plots(plots, page = 1, per_page = 4)
 show_plots(plots, page = 2, per_page = 4)
 show_plots(plots, page = 3, per_page = 4)
+
+
+posts <- cbind(edges$from, edges$text, edges$created_at)
+posts <- as.data.frame(posts)
+posts <- posts |>
+  mutate(V3 = lubridate::ymd(V3)) %>%
+  mutate(document = row_number())
+
+colnames <- c("name", "text", "created_at", "document")
+colnames(posts) <- colnames
+
+posts <- merge(
+  posts,
+  nodes[, c("name", "community")],
+  by = "name",
+  all.x = TRUE
+)
+
+tidy_posts <- posts %>%
+  unnest_tokens(word, text) %>%
+  group_by(word) %>%
+  filter(n() > 10) %>%
+  ungroup()
+
+head(tidy_posts)
+#install.packages('rsample')
+library(rsample)
+posts_split <- posts %>%
+  select(document) %>%
+  initial_split()
+
+train_data <- training(posts_split)
+test_data <- testing(posts_split)
+
+sparse_words <- tidy_posts %>%
+  count(document, word) %>%
+  inner_join(train_data) %>%
+  cast_sparse(document, word, n)
+
+class(sparse_words)
+dim(sparse_words)
+
+word_rownames <- as.integer(rownames(sparse_words))
+
+posts_joined <- data_frame(document = word_rownames) %>%
+  left_join(
+    posts %>%
+      select(document, community)
+  )
+
+library(glmnet)
+library(doParallel)
+
+registerDoParallel(cores = 8)
+
+is_comm <- posts_joined$community == "1"
+model <- cv.glmnet(
+  sparse_words,
+  is_comm,
+  family = "binomial",
+  parallel = TRUE,
+  keep = TRUE
+)
+plot(model)
+plot(model$glmnet.fit)
+
+library(broom)
+
+coefs <- model$glmnet.fit %>%
+  tidy() %>%
+  filter(lambda == model$lambda.1se)
+
+coefs %>%
+  group_by(estimate > 0) %>%
+  top_n(10, abs(estimate)) %>%
+  ungroup() %>%
+  ggplot(aes(fct_reorder(term, estimate), estimate, fill = estimate > 0)) +
+  geom_col(alpha = 0.8, show.legend = FALSE) +
+  coord_flip() +
+  labs(
+    x = NULL,
+    title = "Coefficients that increase/decrease probability the most"
+  )
