@@ -210,6 +210,7 @@ coefs <- model$glmnet.fit %>%
   tidy() %>%
   filter(lambda == model$lambda.1se)
 
+library(forcats)
 coefs %>%
   group_by(estimate > 0) %>%
   top_n(10, abs(estimate)) %>%
@@ -221,3 +222,58 @@ coefs %>%
     x = NULL,
     title = "Coefficients that increase/decrease probability the most"
   )
+
+# Bayesian Sentiment Analysis 
+# https://codezup.com/sentiment-analysis-naive-bayes-r/
+
+library(text2vec)
+library(glmnet)
+library(caret)
+library(dplyr)
+library(readr)
+
+
+sentimentdataset <- read_csv(
+  "data/sentimentdataset.csv",
+  col_types = cols(
+    `Unnamed: 0` = col_skip(),
+    User = col_skip(),
+    Country = col_skip(),
+    Year = col_skip(),
+    Month = col_skip(),
+    Day = col_skip(),
+    Hour = col_skip()
+  )
+) |>
+  rename(doc_id = 1, text = 2)
+
+# Fix class labels for glmnet
+sentimentdataset$Sentiment <- factor(make.names(sentimentdataset$Sentiment))
+
+
+tokens <- sentimentdataset$text |>
+  tolower() |>
+  word_tokenizer()
+
+it <- itoken(tokens, ids = sentimentdataset$doc_id, progressbar = FALSE)
+
+vocab <- create_vocabulary(it) |>
+  prune_vocabulary(term_count_min = 5)
+
+vectorizer <- vocab_vectorizer(vocab)
+
+dtm <- create_dtm(it, vectorizer)
+
+tfidf <- TfIdf$new()
+dtm_tfidf <- tfidf$fit_transform(dtm)
+
+y <- sentimentdataset$Sentiment
+
+cvfit <- cv.glmnet(
+  x = dtm_tfidf,
+  y = y,
+  family = "multinomial",
+  type.measure = "class",
+  nfolds = 5,
+  parallel = FALSE
+)
