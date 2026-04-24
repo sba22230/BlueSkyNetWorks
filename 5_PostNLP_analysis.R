@@ -139,7 +139,6 @@ show_plots(plots, page = 1, per_page = 4)
 show_plots(plots, page = 2, per_page = 4)
 show_plots(plots, page = 3, per_page = 4)
 
-
 posts <- cbind(edges$from, edges$text, edges$created_at)
 posts <- as.data.frame(posts)
 posts <- posts |>
@@ -191,7 +190,7 @@ posts_joined <- data_frame(document = word_rownames) %>%
 library(glmnet)
 library(doParallel)
 
-registerDoParallel(cores = 8)
+registerDoParallel(cores = 16)
 
 is_comm <- posts_joined$community == "1"
 model <- cv.glmnet(
@@ -223,8 +222,7 @@ coefs %>%
     title = "Coefficients that increase/decrease probability the most"
   )
 
-# Bayesian Sentiment Analysis 
-# https://codezup.com/sentiment-analysis-naive-bayes-r/
+# GLM Model building
 
 library(text2vec)
 library(glmnet)
@@ -247,6 +245,9 @@ sentimentdataset <- read_csv(
 ) |>
   rename(doc_id = 1, text = 2)
 
+sentimentdataset$text <- iconv(sentimentdataset$text, from = "", to = "UTF-8", sub = "byte")
+
+
 # Fix class labels for glmnet
 sentimentdataset$Sentiment <- factor(make.names(sentimentdataset$Sentiment))
 
@@ -260,14 +261,24 @@ it <- itoken(tokens, ids = sentimentdataset$doc_id, progressbar = FALSE)
 vocab <- create_vocabulary(it) |>
   prune_vocabulary(term_count_min = 5)
 
+vocab <- create_vocabulary(it, ngram = c(1L, 4L)) |>
+  prune_vocabulary(term_count_min = 5)
+
 vectorizer <- vocab_vectorizer(vocab)
+vectorizer_nb <- vocab_vectorizer(vocab)
 
 dtm <- create_dtm(it, vectorizer)
+dtm_nb <- create_dtm(it, vectorizer_nb)  # term counts
 
 tfidf <- TfIdf$new()
 dtm_tfidf <- tfidf$fit_transform(dtm)
 
 y <- sentimentdataset$Sentiment
+
+# convert to dense/data.frame for e1071
+x_nb <- as.matrix(dtm_nb)
+train_df <- as.data.frame(x_nb)
+train_df$Sentiment <- y
 
 cvfit <- cv.glmnet(
   x = dtm_tfidf,
@@ -275,5 +286,71 @@ cvfit <- cv.glmnet(
   family = "multinomial",
   type.measure = "class",
   nfolds = 5,
-  parallel = FALSE
+  parallel = TRUE
 )
+
+pred <- predict(cvfit, dtm_tfidf, s = "lambda.min", type = "class")
+y <- droplevels(y)
+ pred <- factor(pred, levels = levels(y))
+confusionMatrix(pred, y)
+
+# Bayesian Sentiment Analysis 
+# train Naive Bayes
+library(e1071)
+nb_model <- naiveBayes(Sentiment ~ ., data = train_df)
+stopImplicitCluster()
+scored_posts <- score_sentiment(posts, cvfit, vectorizer, tfidf)
+
+sentiment_props <- scored_posts |>
+  count(sentiment) |>
+  mutate(prop = n / sum(n))
+
+library(lattice)
+
+sentiment_props <- sentiment_props |>
+  arrange(desc(prop))
+
+library(latticeExtra)
+
+barchart(
+  prop ~ sentiment,
+  data = sentiment_props,
+  xlab = "Sentiment",
+  ylab = "Proportion of Posts",
+  main = "Sentiment Distribution in Posts",
+  scales = list(
+    y = list(
+      at = seq(0, 1, by = 0.1),
+      labels = paste0(seq(0, 100, by = 10), "%")
+    )
+  )
+)
+
+posts_nb <- score_sentiment_nb(posts, nb_model, vectorizer_nb)
+
+sentiment_nb_props <- posts_nb |>
+  count(sentiment_nb) |>
+  mutate(prop = n / sum(n))
+
+library(lattice)
+
+sentiment_props <- sentiment_nb_props |>
+  arrange(desc(prop))
+
+library(latticeExtra)
+
+barchart(
+  prop ~ sentiment_nb,
+  data = sentiment_nb_props,
+  xlab = "Sentiment",
+  ylab = "Proportion of Posts",
+  main = "Sentiment Distribution in Posts",
+  scales = list(
+    y = list(
+      at = seq(0, 1, by = 0.1),
+      labels = paste0(seq(0, 100, by = 10), "%")
+    )
+  )
+)
+
+
