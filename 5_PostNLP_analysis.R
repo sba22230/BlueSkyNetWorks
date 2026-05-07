@@ -73,7 +73,7 @@ posts_dt <- posts |>
 
 datatable(posts_dt)
 
-ViewPostsByDate(posts, 2, 22)
+ViewPostsByDate(posts, 2, 6)
 
 tidy_posts <- posts |>
   filter(!str_detect(text, "^RT")) |>
@@ -98,7 +98,7 @@ totals <- counts_long |>
 counts <- counts_long |>
   pivot_wider(names_from = community, values_from = n, values_fill = 0)
 
-ViewCommunityContrastedByWords(totals, counts, tidy_posts, 2, 22)
+ViewCommunityContrastedByWords(totals, counts, tidy_posts, 2, 6)
 
 community_graphs <- rxReadObject(ds_Graphs, "Community Graphs")
 n_comm <- length(community_graphs)
