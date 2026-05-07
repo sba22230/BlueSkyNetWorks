@@ -39,9 +39,11 @@ print(sentiment_summary_bing)
 # Create a bar chart of sentiment counts for Bing
 ggplot(sentiment_summary_bing, aes(x = sentiment, y = n, fill = sentiment)) +
   geom_bar(stat = "identity") +
-  labs(title = "Sentiment Analysis Using Bing Lexicon",
-       x = "Sentiment",
-       y = "Count") +
+  labs(
+    title = "Sentiment Analysis Using Bing Lexicon",
+    x = "Sentiment",
+    y = "Count"
+  ) +
   theme_minimal()
 
 # Load the NRC lexicon
@@ -59,12 +61,17 @@ sentiment_summary <- sentiment_analysis %>%
 print(sentiment_summary)
 
 # Create a bar chart of sentiment counts
-ggplot(sentiment_summary, aes(x = reorder(sentiment, n), y = n, fill = sentiment)) +
+ggplot(
+  sentiment_summary,
+  aes(x = reorder(sentiment, n), y = n, fill = sentiment)
+) +
   geom_bar(stat = "identity") +
   coord_flip() +
-  labs(title = "Sentiment Analysis Using NRC Lexicon",
-       x = "Sentiment",
-       y = "Count") +
+  labs(
+    title = "Sentiment Analysis Using NRC Lexicon",
+    x = "Sentiment",
+    y = "Count"
+  ) +
   theme_minimal()
 
 # Load the AFINN lexicon
@@ -84,10 +91,19 @@ sentiment_summary_afinn <- sentiment_analysis_afinn %>%
 print(sentiment_summary_afinn)
 
 # Create a bar chart of sentiment scores for AFINN
-ggplot(sentiment_summary_afinn, aes(x = reorder(as.factor(value), count), y = count, fill = as.factor(value))) +
+ggplot(
+  sentiment_summary_afinn,
+  aes(
+    x = factor(value, levels = sort(unique(value))),
+    y = count,
+    fill = factor(value)
+  )
+) +
   geom_bar(stat = "identity") +
   coord_flip() +
-  labs(title = "Sentiment Analysis Using AFINN Lexicon",
-       x = "Sentiment Score",
-       y = "Count") +
+  labs(
+    title = "Sentiment Analysis Using AFINN Lexicon",
+    x = "Sentiment Score",
+    y = "Count"
+  ) +
   theme_minimal()

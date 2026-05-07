@@ -53,6 +53,7 @@ ggplot(
 
 # Adding Community to the posts data frame
 nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
+edges <- read_parquet("graphs/speirgorm_edges.parquet")
 posts <- cbind(edges$from, edges$text, edges$created_at)
 posts <- as.data.frame(posts)
 posts <- posts |> mutate(V3 = lubridate::ymd(V3))
@@ -245,7 +246,12 @@ sentimentdataset <- read_csv(
 ) |>
   rename(doc_id = 1, text = 2)
 
-sentimentdataset$text <- iconv(sentimentdataset$text, from = "", to = "UTF-8", sub = "byte")
+sentimentdataset$text <- iconv(
+  sentimentdataset$text,
+  from = "",
+  to = "UTF-8",
+  sub = "byte"
+)
 
 
 # Fix class labels for glmnet
@@ -268,7 +274,7 @@ vectorizer <- vocab_vectorizer(vocab)
 vectorizer_nb <- vocab_vectorizer(vocab)
 
 dtm <- create_dtm(it, vectorizer)
-dtm_nb <- create_dtm(it, vectorizer_nb)  # term counts
+dtm_nb <- create_dtm(it, vectorizer_nb) # term counts
 
 tfidf <- TfIdf$new()
 dtm_tfidf <- tfidf$fit_transform(dtm)
@@ -291,10 +297,10 @@ cvfit <- cv.glmnet(
 
 pred <- predict(cvfit, dtm_tfidf, s = "lambda.min", type = "class")
 y <- droplevels(y)
- pred <- factor(pred, levels = levels(y))
+pred <- factor(pred, levels = levels(y))
 confusionMatrix(pred, y)
 
-# Bayesian Sentiment Analysis 
+# Bayesian Sentiment Analysis
 # train Naive Bayes
 library(e1071)
 nb_model <- naiveBayes(Sentiment ~ ., data = train_df)
@@ -352,5 +358,3 @@ barchart(
     )
   )
 )
-
-
