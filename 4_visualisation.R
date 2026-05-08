@@ -492,6 +492,9 @@ res_all <- rxExec(
   execObjects = c("connStr", "layout_exec")
 )
 
+# Load the res_all object to SQL
+rxWriteObject(ds_Graphs, "Res All", res_all, overwrite = TRUE)
+
 # assemble nested list: community_layouts[[i]] = list(id, graph, layouts = named list(layout -> coord_matrix))
 community_layouts <- vector("list", n_comm)
 names(community_layouts) <- paste0("Community_", top_10_ids)

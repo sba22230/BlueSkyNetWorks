@@ -51,7 +51,7 @@ nrc <- get_sentiments("nrc")
 
 # Join the text words with the NRC lexicon
 sentiment_analysis <- text_words %>%
-  inner_join(nrc, by = "word")
+  inner_join(nrc, by = "word" , relationship = "many-to-many")
 
 # Summarize sentiment counts
 sentiment_summary <- sentiment_analysis %>%
