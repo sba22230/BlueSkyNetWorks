@@ -104,7 +104,11 @@ ig_summary_df <- tibble(
   isolated_nodes = ig_cen$null,
   diameter = diameter(g, directed = TRUE, weights = NA),
   avg_path_length = mean_distance(g, directed = TRUE),
-  neighbours_average = mean(neighbors(g, diameter(g, directed = TRUE, weights = NA), mode = "all")),
+  neighbours_average = mean(neighbors(
+    g,
+    diameter(g, directed = TRUE, weights = NA),
+    mode = "all"
+  )),
   reciprocity_default = reciprocity(g, mode = "default"),
   reciprocity_ratio = reciprocity(g, mode = "ratio"),
   average_in_degree = mean(V(g)$in_degree),
@@ -303,6 +307,16 @@ datatable(comparison_table)
 # ============================================================================
 # SECTION 3: Ploting Network - Components
 # ============================================================================
+# Ensure a graphics device exists before calling par()
+opened_dev <- FALSE
+if (grDevices::dev.cur() == 1) {
+  if (!dir.exists("images")) {
+    dir.create("images", recursive = TRUE)
+  }
+  grDevices::svg(filename = "images/auto_device.svg", width = 16, height = 12)
+  opened_dev <- TRUE
+}
+
 old_par <- par(no.readonly = TRUE) # save current par settings
 cat("\n=== Step 3i: Plot the small components of the Graph ===\n")
 
