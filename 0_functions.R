@@ -1,5 +1,5 @@
 v <- R.Version()
-if (v$major == '4' && v$minor != '0.2') {
+if (v$major == '4') {
   library(bskyr)
   library(furrr)
   library(patchwork)
@@ -7,9 +7,7 @@ if (v$major == '4' && v$minor != '0.2') {
   library(statnet)
   library(tidytext)
   wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.7))
-} else {
-  wrkrs = 10
-}
+} 
 library(arrow)
 library(DT)
 library(DBI)

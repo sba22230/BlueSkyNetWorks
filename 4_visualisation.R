@@ -1,6 +1,6 @@
 # source("0_functions.R")
 
-# Step 6: Interactive visualization with visNetwork
+# Step 4a: Interactive visualization with visNetwork
 vis_nodes <- nodes %>%
   mutate(
     id = name,
@@ -432,7 +432,7 @@ rxWriteObject(
 # SECTION 5: COMMUNITY STRUCTURE ANALYSIS
 # ============================================================================
 
-cat("\n=== Step 3r: Computing community structure... ===\n")
+cat("\n=== Step 4b: Computing community structure... ===\n")
 # Re-compute if necessary
 comm_louvain <- igraph::cluster_louvain(as_undirected(g))
 comm_louvain <- igraph::cluster_leiden(
@@ -444,12 +444,12 @@ comm_louvain <- igraph::cluster_leiden(
 num_communities <- length(unique(comm_louvain$membership))
 modularity_louvain <- modularity(g, comm_louvain$membership)
 cat(sprintf(
-  "\n=== Step 3s: Leiden detection: %d communities, modularity = %.4f ===\n",
+  "\n=== Step 4c: Leiden detection: %d communities, modularity = %.4f ===\n",
   num_communities,
   modularity_louvain
 ))
 
-cat("\n=== Step 3t: Extracting Community Subgraphs ===\n")
+cat("\n=== Step 4c: Extracting Community Subgraphs ===\n")
 # Assuming you have your community detection results
 communities <- comm_louvain # or your preferred method
 membership <- membership(communities)
@@ -465,7 +465,7 @@ community_graphs <- lapply(top_10_ids, function(id) {
 
 
 
-cat("\n=== Step 3u: Computing layouts for each community in parallel ===\n")
+cat("\n=== Step 4d: Computing layouts for each community in parallel ===\n")
 # compute layouts in parallel for all community x layout combinations
 layout_types <- c(
   "drl",
@@ -514,7 +514,7 @@ for (k in seq_along(res_all)) {
   community_layouts[[comm_i]]$layouts[[lt]] <- coords_mat
 }
 cat(
-  "\n=== Step 3v: Layouts computed for each community and plotting the graphs ===\n"
+  "\n=== Step 4e: Layouts computed for each community and plotting the graphs ===\n"
 )
 # Plot all layouts for each community into a single SVG (one file per community)
 old_par <- par(no.readonly = TRUE)
@@ -584,12 +584,12 @@ names(community_graphs) <- paste0("Community_", top_10_ids)
 rxWriteObject(ds_Graphs, "Community Graphs", community_graphs, overwrite = TRUE)
 
 cat(
-  "\n=== Step 3w: Analyze Internal Structure, 
+  "\n=== Step 4f: Analyze Internal Structure, 
 For each community subgraph, examine: ===\n"
 )
 # Batch Analysis
 # Analyze all top 10 at once
-cat("\n=== Step 3x: Batch analysis of community metrics ===\n")
+cat("\n=== Step 4g: Batch analysis of community metrics ===\n")
 community_metrics <- data.frame(
   community = names(community_graphs),
   size = sapply(community_graphs, vcount),

@@ -518,7 +518,7 @@ rxDataStep(nodes_with_metrics, nodes_sql, overwrite = TRUE)
 
 ### These will be useful for a notebook === FINISH
 cat(
-  "\n=== Step 4a: igraph layouts: Computing different layouts for igraph ===\n"
+  "\n=== Step 3r: igraph layouts: Computing different layouts for igraph ===\n"
 )
 
 layout_types <- c(
@@ -675,7 +675,7 @@ rxWriteObject(
 # SECTION 1.5: Create Subgraphs by Year and Month
 # ============================================================================
 cat(
-  "\n=== Step 3c.5: Creating subgraphs filtered by year and month of edgeStarts ===\n"
+  "\n=== Step 3s: Creating subgraphs filtered by year and month of edgeStarts ===\n"
 )
 
 # Assuming edgeStarts is a Date or can be converted to Date

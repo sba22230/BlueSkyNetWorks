@@ -5,7 +5,7 @@ cat("\n=== STEP 1: Ingest from Bluesky API ===\n")
 source("1_BlueSky_Robust.R")
 
 cat("\n=== STEP 2: Load into SQL & build Person/Reposted ===\n")
-source("2_load network data into SQL.r")
+source("2_load_network_data_into_SQL.R")
 
 cat("\n=== STEP 3: Build graph + compute metrics (RevoScaleR) ===\n")
 source("3_build_graph_and_metrics.R")
