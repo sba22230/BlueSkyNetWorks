@@ -68,13 +68,6 @@ plan(orig_plan)
 # Community detection
 comm <- cluster_walktrap(vis_g) # works on directed graphs
 
-rxWriteObject(
-  ds_Graphs,
-  "vis_g_Graph - igraph - community detection",
-  vis_g,
-  overwrite = TRUE
-)
-
 # Add community membership to nodes
 vis_nodes$community <- comm$membership
 
@@ -82,6 +75,12 @@ vis_nodes$community <- comm$membership
 vis_nodes$group <- as.character(vis_nodes$community)
 vis_nodes$isolated <- vis_nodes$degree == 0
 
+rxWriteObject(
+  ds_Graphs,
+  "vis_g_Graph - igraph - community detection",
+  vis_g,
+  overwrite = TRUE
+)
 # ========================================================================
 # COMMUNITY CHARACTERIZATION & LABELING
 # ========================================================================
