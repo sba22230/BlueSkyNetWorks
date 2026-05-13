@@ -107,3 +107,17 @@ ggplot(
     y = "Count"
   ) +
   theme_minimal()
+
+library(topicmodels)
+dtm_by_community <- tidy_posts |>
+  filter(community == target_comm) |>
+  count(document, word) |>
+  cast_dtm(document, word, n)
+
+lda_model <- LDA(dtm_by_community, k = 5, control = list(seed = 7843))
+
+community_sentiment <- tidy_posts |>
+  inner_join(get_sentiments("bing"), by = "word") |>
+  count(community, sentiment) |>
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) |>
+  mutate(net_sentiment = positive - negative)

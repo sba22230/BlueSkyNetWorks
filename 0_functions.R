@@ -8,6 +8,7 @@ if (v$major == '4') {
   library(tidytext)
   wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.7))
 } 
+library(aricode)
 library(arrow)
 library(DT)
 library(DBI)
@@ -30,6 +31,7 @@ library(stringi)
 library(stringr)
 library(tibble)
 library(tidyr)
+library(topicmodels)
 library(visNetwork)
 
 orig_plan <- future::plan()

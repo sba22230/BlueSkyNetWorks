@@ -13,6 +13,15 @@ vis_nodes <- nodes %>%
   ) %>%
   distinct(id, .keep_all = TRUE)
 
+vis_nodes <- vis_nodes |>
+  mutate(title = paste0(
+    "<b>", name, "</b><br/>",
+    "Community: ", community_label, "<br/>",
+    "PageRank: ", round(pagerank, 4), "<br/>",
+    "Betweenness: ", round(betweenness_norm, 3), "<br/>",
+    "k-core: ", kcore
+  ))
+
 vis_edges <- edges %>%
   mutate(arrows = "from")
 # add arrow pointing to the reposter node
@@ -81,6 +90,41 @@ rxWriteObject(
   vis_g,
   overwrite = TRUE
 )
+
+edge_comm_df <- edges |>
+left_join(nodes |> select(name, community), by = c("from" = "name")) |>
+rename(comm_from = community) |>
+left_join(nodes |> select(name, community), by = c("to" = "name")) |>
+rename(comm_to = community)
+comm_matrix <- edge_comm_df |>
+count(comm_from, comm_to) |>
+pivot_wider(names_from = comm_to, values_from = n, values_fill = 0)
+comm_matrix
+
+library(lattice)
+# Focus on top 20 communities by total outgoing interactions
+top_comms <- comm_matrix |>
+mutate(total = rowSums(across(-comm_from))) |>
+slice_max(total, n = 20) |>
+pull(comm_from) |>
+as.character()
+# Subset rows and matching columns, then convert to matrix
+mat <- comm_matrix |>
+filter(comm_from %in% top_comms) |>
+select(comm_from, any_of(top_comms)) |>
+tibble::column_to_rownames("comm_from") |>
+as.matrix()
+# Log-transform (add 1 to handle zeros)
+mat_log <- log1p(mat)
+levelplot(
+mat_log,
+xlab = "Community (to)",
+ylab = "Community (from)",
+main = "Cross-community interactions (log scale)",
+col.regions = viridis::viridis(100),
+scales = list(x = list(rot = 45))
+)
+
 # ========================================================================
 # COMMUNITY CHARACTERIZATION & LABELING
 # ========================================================================
