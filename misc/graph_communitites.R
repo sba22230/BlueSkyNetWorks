@@ -2,78 +2,8 @@
 
 source("0_functions.R")
 
+#Functions
 
-
-# ============================================
-# 1. RUN COMMUNITY DETECTION ALGORITHMS
-# ============================================
-
-# Walktrap
-community_walktrap <- cluster_walktrap(g, steps = 4)
-membership_walktrap <- membership(community_walktrap)
-
-# Louvain
-community_louvain <- cluster_louvain(g)
-membership_louvain <- membership(community_louvain)
-
-# Leiden
-community_leiden <- leiden(g, resolution = 0.1)
-membership_leiden <- community_leiden
-
-# ============================================
-# 2. CALCULATE QUALITY METRICS
-# ============================================
-
-# Modularity (higher is better, range: -0.5 to 1)
-mod_walktrap <- modularity(g, membership_walktrap)
-mod_louvain <- modularity(g, membership_louvain)
-mod_leiden <- modularity(g, membership_leiden)
-
-# Conductance (lower is better, measures edge flow out of communities)
-conductance <- function(graph, membership) {
-  communities <- unique(membership)
-  cond_scores <- numeric(length(communities))
-  
-  for (i in seq_along(communities)) {
-    members <- which(membership == communities[i])
-    induced_subgraph <- induced_subgraph(graph, members)
-    internal_edges <- ecount(induced_subgraph)
-    total_degree <- sum(degree(graph, members))
-    
-    if (total_degree > 0) {
-      cond_scores[i] <- (total_degree - 2 * internal_edges) / total_degree
-    }
-  }
-  mean(cond_scores, na.rm = TRUE)
-}
-
-
-# ============================================
-# INTERNAL DENSITY
-# ============================================
-
-internal_density <- function(graph, membership) {
-  communities <- unique(membership)
-  density_scores <- numeric(length(communities))
-  
-  for (i in seq_along(communities)) {
-    members <- which(membership == communities[i])
-    
-    # Skip single-node communities
-    if (length(members) < 2) {
-      density_scores[i] <- NA
-      next
-    }
-    
-    induced_subgraph <- induced_subgraph(graph, members)
-    internal_edges <- ecount(induced_subgraph)
-    possible_edges <- (length(members) * (length(members) - 1)) / 2
-    
-    density_scores[i] <- internal_edges / possible_edges
-  }
-  
-  mean(density_scores, na.rm = TRUE)
-}
 
 # ============================================
 # SILHOUETTE COEFFICIENT
@@ -112,6 +42,86 @@ silhouette_coefficient <- function(graph, membership) {
   
   mean(silhouette_scores, na.rm = TRUE)
 }
+
+# ============================================
+# INTERNAL DENSITY
+# ============================================
+
+internal_density <- function(graph, membership) {
+  communities <- unique(membership)
+  density_scores <- numeric(length(communities))
+  
+  for (i in seq_along(communities)) {
+    members <- which(membership == communities[i])
+    
+    # Skip single-node communities
+    if (length(members) < 2) {
+      density_scores[i] <- NA
+      next
+    }
+    
+    induced_subgraph <- induced_subgraph(graph, members)
+    internal_edges <- ecount(induced_subgraph)
+    possible_edges <- (length(members) * (length(members) - 1)) / 2
+    
+    density_scores[i] <- internal_edges / possible_edges
+  }
+  
+  mean(density_scores, na.rm = TRUE)
+}
+
+# Conductance (lower is better, measures edge flow out of communities)
+conductance <- function(graph, membership) {
+  communities <- unique(membership)
+  cond_scores <- numeric(length(communities))
+  
+  for (i in seq_along(communities)) {
+    members <- which(membership == communities[i])
+    induced_subgraph <- induced_subgraph(graph, members)
+    internal_edges <- ecount(induced_subgraph)
+    total_degree <- sum(degree(graph, members))
+    
+    if (total_degree > 0) {
+      cond_scores[i] <- (total_degree - 2 * internal_edges) / total_degree
+    }
+  }
+  mean(cond_scores, na.rm = TRUE)
+}
+
+
+
+# ============================================
+# 1. RUN COMMUNITY DETECTION ALGORITHMS
+# ============================================
+
+# Walktrap
+community_walktrap <- cluster_walktrap(g, steps = 4)
+membership_walktrap <- membership(community_walktrap)
+
+# Louvain — requires undirected graph; collapse mutual edges into one
+g_undir <- as.undirected(g, mode = "collapse")
+community_louvain <- cluster_louvain(g_undir)
+membership_louvain <- membership(community_louvain)
+
+# Leiden — supports directed graphs natively
+community_leiden <- cluster_leiden(g_undir, resolution = 0.1)
+membership_leiden <- membership(community_leiden)
+
+# ============================================
+# 2. CALCULATE QUALITY METRICS
+# ============================================
+
+# Modularity (higher is better, range: -0.5 to 1)
+mod_walktrap <- modularity(g, membership_walktrap)
+mod_louvain  <- modularity(g_undir, membership_louvain)  # use undirected graph to match Louvain input
+mod_leiden   <- modularity(g, membership_leiden)
+
+# Conductance
+cond_walktrap <- conductance(g, membership_walktrap)
+cond_louvain  <- conductance(g_undir, membership_louvain)
+cond_leiden   <- conductance(g, membership_leiden)
+
+
 
 # ============================================
 # ADD TO RESULTS
