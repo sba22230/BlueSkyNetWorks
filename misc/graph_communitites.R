@@ -88,23 +88,28 @@ conductance <- function(graph, membership) {
   mean(cond_scores, na.rm = TRUE)
 }
 
-
-
 # ============================================
 # 1. RUN COMMUNITY DETECTION ALGORITHMS
 # ============================================
 
 # Walktrap
-community_walktrap <- cluster_walktrap(g, steps = 4)
+community_walktrap <- cluster_walktrap(g, weights = E(g)$weight, steps = 6, merges = TRUE, modularity = TRUE, membership = TRUE)
 membership_walktrap <- membership(community_walktrap)
 
 # Louvain — requires undirected graph; collapse mutual edges into one
-g_undir <- as.undirected(g, mode = "collapse")
+g_undir <- as_undirected(g, mode = "collapse")
 community_louvain <- cluster_louvain(g_undir)
 membership_louvain <- membership(community_louvain)
 
 # Leiden — supports directed graphs natively
-community_leiden <- cluster_leiden(g_undir, resolution = 0.1)
+
+community_leiden  <- cluster_leiden(
+  as_undirected(g),
+  objective_function = "modularity",
+  n_iterations = 45,
+  initial_membership = nodes$community , resolution = 0.1
+)
+
 membership_leiden <- membership(community_leiden)
 
 # ============================================
@@ -114,12 +119,12 @@ membership_leiden <- membership(community_leiden)
 # Modularity (higher is better, range: -0.5 to 1)
 mod_walktrap <- modularity(g, membership_walktrap)
 mod_louvain  <- modularity(g_undir, membership_louvain)  # use undirected graph to match Louvain input
-mod_leiden   <- modularity(g, membership_leiden)
+mod_leiden   <- modularity(as_undirected(g), membership_leiden)
 
 # Conductance
 cond_walktrap <- conductance(g, membership_walktrap)
 cond_louvain  <- conductance(g_undir, membership_louvain)
-cond_leiden   <- conductance(g, membership_leiden)
+cond_leiden   <- conductance(as_undirected(g), membership_leiden)
 
 
 
