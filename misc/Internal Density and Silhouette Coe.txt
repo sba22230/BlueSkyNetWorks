@@ -1,0 +1,97 @@
+Internal Density and Silhouette Coefficient Code
+Here's how to calculate both metrics and add them to your evaluation framework:# ============================================# INTERNAL DENSITY# ============================================internal_density <- function(graph, membership) {  communities <- unique(membership)  density_scores <- numeric(length(communities))  for (i in seq_along(communities)) {    members <- which(membership == communities[i])    # Skip single-node communities    if (length(members) < 2) {      density_scores[i] <- NA      next    }    induced_subgraph <- induced_subgraph(graph, members)    internal_edges <- ecount(induced_subgraph)    possible_edges <- (length(members) * (length(members) - 1)) / 2    density_scores[i] <- internal_edges / possible_edges  }  mean(density_scores, na.rm = TRUE)}# ============================================# SILHOUETTE COEFFICIENT# ============================================silhouette_coefficient <- function(graph, membership) {  # Calculate shortest path distances  distances <- shortest.paths(graph)  communities <- unique(membership)  silhouette_scores <- numeric(vcount(graph))  for (node in seq_len(vcount(graph))) {    current_community <- membership[node]    # Average distance to nodes in own community    same_community <- which(membership == current_community)    if (length(same_community) > 1) {      a <- mean(distances[node, same_community[-which(same_community == node)]])    } else {      a <- 0    }    # Minimum average distance to other communities    b <- Inf    for (comm in communities[communities != current_community]) {      other_community <- which(membership == comm)      avg_dist <- mean(distances[node, other_community])      b <- min(b, avg_dist)    }    if (b == Inf) b <- 0    # Calculate silhouette value    silhouette_scores[node] <- (b - a) / max(a, b)  }  mean(silhouette_scores, na.rm = TRUE)}# ============================================# ADD TO RESULTS# ============================================# Calculate new metricsdens_walktrap <- internal_density(g, membership_walktrap)dens_louvain <- internal_density(g, membership_louvain)dens_leiden <- internal_density(g, membership_leiden)sil_walktrap <- silhouette_coefficient(g, membership_walktrap)sil_louvain <- silhouette_coefficient(g, membership_louvain)sil_leiden <- silhouette_coefficient(g, membership_leiden)# Enhanced results tableresults <- data.frame(  Algorithm = c("Walktrap", "Louvain", "Leiden"),  Modularity = c(mod_walktrap, mod_louvain, mod_leiden),  Conductance = c(cond_walktrap, cond_louvain, cond_leiden),  Internal_Density = c(dens_walktrap, dens_louvain, dens_leiden),  Silhouette = c(sil_walktrap, sil_louvain, sil_leiden),  Num_Communities = c(    length(unique(membership_walktrap)),    length(unique(membership_louvain)),    length(unique(membership_leiden))  ))print(results)InterpretationInternal Density (0 to 1): Higher is better> 0.5 indicates tightly connected communities< 0.2 indicates sparse, loosely connected communitiesSilhouette Coefficient (-1 to 1): Higher is better> 0.5 indicates well-separated, coherent communitiesNear 0 indicates ambiguous cluster membership< 0 indicates poor community structureDecision FrameworkChoose the algorithm with:1. Highest modularity2. Lowest conductance3. Highest internal density4. Highest silhouette coefficientIf metrics conflict, prioritize modularity and silhouette coefficient as they most directly measure community quality.
+
+
+# ============================================
+# INTERNAL DENSITY
+# ============================================
+
+internal_density <- function(graph, membership) {
+  communities <- unique(membership)
+  density_scores <- numeric(length(communities))
+
+  for (i in seq_along(communities)) {
+    members <- which(membership == communities[i])
+
+    # Skip single-node communities
+    if (length(members) < 2) {
+      density_scores[i] <- NA
+      next
+    }
+
+    induced_subgraph <- induced_subgraph(graph, members)
+    internal_edges <- ecount(induced_subgraph)
+    possible_edges <- (length(members) * (length(members) - 1)) / 2
+
+    density_scores[i] <- internal_edges / possible_edges
+  }
+
+  mean(density_scores, na.rm = TRUE)
+}
+
+# ============================================
+# SILHOUETTE COEFFICIENT
+# ============================================
+
+silhouette_coefficient <- function(graph, membership) {
+  # Calculate shortest path distances
+  distances <- shortest.paths(graph)
+  communities <- unique(membership)
+  silhouette_scores <- numeric(vcount(graph))
+
+  for (node in seq_len(vcount(graph))) {
+    current_community <- membership[node]
+
+    # Average distance to nodes in own community
+    same_community <- which(membership == current_community)
+    if (length(same_community) > 1) {
+      a <- mean(distances[node, same_community[-which(same_community == node)]])
+    } else {
+      a <- 0
+    }
+
+    # Minimum average distance to other communities
+    b <- Inf
+    for (comm in communities[communities != current_community]) {
+      other_community <- which(membership == comm)
+      avg_dist <- mean(distances[node, other_community])
+      b <- min(b, avg_dist)
+    }
+
+    if (b == Inf) b <- 0
+
+    # Calculate silhouette value
+    silhouette_scores[node] <- (b - a) / max(a, b)
+  }
+
+  mean(silhouette_scores, na.rm = TRUE)
+}
+
+# ============================================
+# ADD TO RESULTS
+# ============================================
+
+# Calculate new metrics
+dens_walktrap <- internal_density(g, membership_walktrap)
+dens_louvain <- internal_density(g, membership_louvain)
+dens_leiden <- internal_density(g, membership_leiden)
+
+sil_walktrap <- silhouette_coefficient(g, membership_walktrap)
+sil_louvain <- silhouette_coefficient(g, membership_louvain)
+sil_leiden <- silhouette_coefficient(g, membership_leiden)
+
+# Enhanced results table
+results <- data.frame(
+  Algorithm = c("Walktrap", "Louvain", "Leiden"),
+  Modularity = c(mod_walktrap, mod_louvain, mod_leiden),
+  Conductance = c(cond_walktrap, cond_louvain, cond_leiden),
+  Internal_Density = c(dens_walktrap, dens_louvain, dens_leiden),
+  Silhouette = c(sil_walktrap, sil_louvain, sil_leiden),
+  Num_Communities = c(
+    length(unique(membership_walktrap)),
+    length(unique(membership_louvain)),
+    length(unique(membership_leiden))
+  )
+)
+
+print(results)

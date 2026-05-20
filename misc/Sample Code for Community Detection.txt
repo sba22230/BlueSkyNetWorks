@@ -1,0 +1,86 @@
+Sample Code for Community Detection Quality Evaluation
+
+library(igraph)library(leiden)  # For Leiden algorithm# Assume you have a graph object called 'g'# Example: g <- make_graph("Zachary")# ============================================# 1. RUN COMMUNITY DETECTION ALGORITHMS# ============================================# Walktrapcommunity_walktrap <- cluster_walktrap(g, steps = 4)membership_walktrap <- membership(community_walktrap)# Louvaincommunity_louvain <- cluster_louvain(g)membership_louvain <- membership(community_louvain)# Leidencommunity_leiden <- leiden(g, resolution = 0.1)membership_leiden <- community_leiden# ============================================# 2. CALCULATE QUALITY METRICS# ============================================# Modularity (higher is better, range: -0.5 to 1)mod_walktrap <- modularity(g, membership_walktrap)mod_louvain <- modularity(g, membership_louvain)mod_leiden <- modularity(g, membership_leiden)# Conductance (lower is better, measures edge flow out of communities)conductance <- function(graph, membership) {  communities <- unique(membership)  cond_scores <- numeric(length(communities))  for (i in seq_along(communities)) {    members <- which(membership == communities[i])    induced_subgraph <- induced_subgraph(graph, members)    internal_edges <- ecount(induced_subgraph)    total_degree <- sum(degree(graph, members))    if (total_degree > 0) {      cond_scores[i] <- (total_degree - 2 * internal_edges) / total_degree    }  }  mean(cond_scores, na.rm = TRUE)}cond_walktrap <- conductance(g, membership_walktrap)cond_louvain <- conductance(g, membership_louvain)cond_leiden <- conductance(g, membership_leiden)# ============================================# 3. COMPILE RESULTS# ============================================results <- data.frame(  Algorithm = c("Walktrap", "Louvain", "Leiden"),  Modularity = c(mod_walktrap, mod_louvain, mod_leiden),  Conductance = c(cond_walktrap, cond_louvain, cond_leiden),  Num_Communities = c(    length(unique(membership_walktrap)),    length(unique(membership_louvain)),    length(unique(membership_leiden))  ))print(results)# ============================================# 4. IDENTIFY BEST ALGORITHM# ============================================# Highest modularitybest_mod <- results[which.max(results$Modularity), ]print(paste("Best modularity:", best_mod$Algorithm))# Lowest conductancebest_cond <- results[which.min(results$Conductance), ]print(paste("Best conductance:", best_cond$Algorithm))Interpretation GuideModularity: Aim for values > 0.3 as a general benchmark; higher indicates better community separationConductance: Lower values are better; scores close to 0 indicate tight communitiesNum_Communities: Consider whether the number of communities makes sense for your domainThe algorithm with the highest modularity AND lowest conductance is typically your best choice.
+
+
+library(igraph)
+library(leiden)  # For Leiden algorithm
+
+# Assume you have a graph object called 'g'
+# Example: g <- make_graph("Zachary")
+
+# ============================================
+# 1. RUN COMMUNITY DETECTION ALGORITHMS
+# ============================================
+
+# Walktrap
+community_walktrap <- cluster_walktrap(g, steps = 4)
+membership_walktrap <- membership(community_walktrap)
+
+# Louvain
+community_louvain <- cluster_louvain(g)
+membership_louvain <- membership(community_louvain)
+
+# Leiden
+community_leiden <- leiden(g, resolution = 0.1)
+membership_leiden <- community_leiden
+
+# ============================================
+# 2. CALCULATE QUALITY METRICS
+# ============================================
+
+# Modularity (higher is better, range: -0.5 to 1)
+mod_walktrap <- modularity(g, membership_walktrap)
+mod_louvain <- modularity(g, membership_louvain)
+mod_leiden <- modularity(g, membership_leiden)
+
+# Conductance (lower is better, measures edge flow out of communities)
+conductance <- function(graph, membership) {
+  communities <- unique(membership)
+  cond_scores <- numeric(length(communities))
+
+  for (i in seq_along(communities)) {
+    members <- which(membership == communities[i])
+    induced_subgraph <- induced_subgraph(graph, members)
+    internal_edges <- ecount(induced_subgraph)
+    total_degree <- sum(degree(graph, members))
+
+    if (total_degree > 0) {
+      cond_scores[i] <- (total_degree - 2 * internal_edges) / total_degree
+    }
+  }
+  mean(cond_scores, na.rm = TRUE)
+}
+
+cond_walktrap <- conductance(g, membership_walktrap)
+cond_louvain <- conductance(g, membership_louvain)
+cond_leiden <- conductance(g, membership_leiden)
+
+# ============================================
+# 3. COMPILE RESULTS
+# ============================================
+
+results <- data.frame(
+  Algorithm = c("Walktrap", "Louvain", "Leiden"),
+  Modularity = c(mod_walktrap, mod_louvain, mod_leiden),
+  Conductance = c(cond_walktrap, cond_louvain, cond_leiden),
+  Num_Communities = c(
+    length(unique(membership_walktrap)),
+    length(unique(membership_louvain)),
+    length(unique(membership_leiden))
+  )
+)
+
+print(results)
+
+# ============================================
+# 4. IDENTIFY BEST ALGORITHM
+# ============================================
+
+# Highest modularity
+best_mod <- results[which.max(results$Modularity), ]
+print(paste("Best modularity:", best_mod$Algorithm))
+
+# Lowest conductance
+best_cond <- results[which.min(results$Conductance), ]
+print(paste("Best conductance:", best_cond$Algorithm))
