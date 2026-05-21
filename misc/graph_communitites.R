@@ -4,45 +4,130 @@ source("0_functions.R")
 
 #Functions
 
-
 # ============================================
 # SILHOUETTE COEFFICIENT
 # ============================================
 
-silhouette_coefficient <- function(graph, membership) {
-  # Calculate shortest path distances
-  distances <- shortest.paths(graph)
+silhouette_coefficient <- function(graph, membership, weights = NULL) {
+  d <- igraph::distances(graph, weights = weights)
   communities <- unique(membership)
-  silhouette_scores <- numeric(vcount(graph))
+  s <- numeric(igraph::vcount(graph))
   
-  for (node in seq_len(vcount(graph))) {
-    current_community <- membership[node]
+  for (node in seq_len(igraph::vcount(graph))) {
+    current <- membership[node]
     
-    # Average distance to nodes in own community
-    same_community <- which(membership == current_community)
-    if (length(same_community) > 1) {
-      a <- mean(distances[node, same_community[-which(same_community == node)]])
+    same <- which(membership == current)
+    if (length(same) > 1) {
+      a_vals <- d[node, same[same != node]]
+      a <- mean(a_vals[is.finite(a_vals)], na.rm = TRUE)
+      if (is.nan(a)) a <- 0
     } else {
       a <- 0
     }
     
-    # Minimum average distance to other communities
     b <- Inf
-    for (comm in communities[communities != current_community]) {
-      other_community <- which(membership == comm)
-      avg_dist <- mean(distances[node, other_community])
-      b <- min(b, avg_dist)
+    for (comm in communities[communities != current]) {
+      other <- which(membership == comm)
+      b_vals <- d[node, other]
+      b_mean <- mean(b_vals[is.finite(b_vals)], na.rm = TRUE)
+      if (!is.nan(b_mean)) b <- min(b, b_mean)
     }
     
-    if (b == Inf) b <- 0
-    
-    # Calculate silhouette value
-    silhouette_scores[node] <- (b - a) / max(a, b)
+    if (!is.finite(b)) b <- 0
+    den <- max(a, b)
+    s[node] <- if (den == 0) 0 else (b - a) / den
   }
   
-  mean(silhouette_scores, na.rm = TRUE)
+  mean(s, na.rm = TRUE)
 }
 
+silhouette_coefficient_batched <- function(
+    graph, membership, weights = NULL,
+    mode = c("out", "in", "all"),
+    batch_size = 256
+) {
+  mode <- match.arg(mode)
+  
+  n <- igraph::vcount(graph)
+  if (length(membership) != n) stop("membership must have length vcount(graph).")
+  
+  f <- as.factor(membership)
+  grp <- as.integer(f)
+  K <- nlevels(f)
+  
+  if (!requireNamespace("Matrix", quietly = TRUE)) {
+    stop("Please install the Matrix package.")
+  }
+  
+  # n x K sparse membership indicator
+  M <- Matrix::sparseMatrix(i = seq_len(n), j = grp, x = 1, dims = c(n, K))
+  sizes <- as.numeric(Matrix::colSums(M))
+  
+  # row-wise min ignoring NA (fast if matrixStats is installed)
+  row_mins <- if (requireNamespace("matrixStats", quietly = TRUE)) {
+    function(x) matrixStats::rowMins(x, na.rm = TRUE)
+  } else {
+    function(x) apply(x, 1, function(v) {
+      v <- v[is.finite(v)]
+      if (length(v) == 0) NA_real_ else min(v)
+    })
+  }
+  
+  s <- numeric(n)
+  
+  starts <- seq.int(1L, n, by = batch_size)
+  for (st in starts) {
+    en <- min.int(n, st + batch_size - 1L)
+    src <- st:en
+    b <- length(src)
+    
+    # Distances from this batch of sources to all vertices
+    D <- igraph::distances(
+      graph,
+      v = src,
+      to = igraph::V(graph),
+      weights = weights,
+      mode = mode,
+      algorithm = "dijkstra"
+    )
+    
+    finite <- is.finite(D)
+    D0 <- D
+    D0[!finite] <- 0
+    
+    # Aggregate sums and counts to clusters
+    sum_to <- D0 %*% M
+    cnt_to <- (finite * 1) %*% M
+    
+    grp_block <- grp[src]
+    
+    # Self distances are column == vertex id (since to = V(graph) is 1..n)
+    self_dist <- D[cbind(seq_len(b), src)]
+    self_ok <- is.finite(self_dist)
+    
+    own_sum <- sum_to[cbind(seq_len(b), grp_block)] - ifelse(self_ok, self_dist, 0)
+    own_cnt <- cnt_to[cbind(seq_len(b), grp_block)] - as.integer(self_ok)
+    
+    # a(i)
+    a <- numeric(b)
+    ok_a <- (sizes[grp_block] > 1) & (own_cnt > 0)
+    a[ok_a] <- own_sum[ok_a] / own_cnt[ok_a]
+    a[!is.finite(a)] <- 0
+    
+    # b(i): min mean distance to other clusters
+    means <- sum_to / pmax(cnt_to, 1)
+    means[cnt_to == 0] <- NA_real_
+    means[cbind(seq_len(b), grp_block)] <- NA_real_
+    
+    bval <- row_mins(means)
+    bval[!is.finite(bval)] <- 0
+    
+    den <- pmax(a, bval)
+    s[src] <- ifelse(den == 0, 0, (bval - a) / den)
+  }
+  
+  mean(s, na.rm = TRUE)
+}
 # ============================================
 # INTERNAL DENSITY
 # ============================================
@@ -54,15 +139,16 @@ internal_density <- function(graph, membership) {
   for (i in seq_along(communities)) {
     members <- which(membership == communities[i])
     
-    # Skip single-node communities
     if (length(members) < 2) {
       density_scores[i] <- NA
       next
     }
     
-    induced_subgraph <- induced_subgraph(graph, members)
-    internal_edges <- ecount(induced_subgraph)
-    possible_edges <- (length(members) * (length(members) - 1)) / 2
+    induced_subgraph <- igraph::induced_subgraph(graph, members)
+    internal_edges <- igraph::ecount(induced_subgraph)
+    n <- length(members)
+    
+    possible_edges <- if (igraph::is.directed(graph)) n * (n - 1) else (n * (n - 1)) / 2
     
     density_scores[i] <- internal_edges / possible_edges
   }
@@ -97,7 +183,7 @@ community_walktrap <- cluster_walktrap(g, weights = E(g)$weight, steps = 6, merg
 membership_walktrap <- membership(community_walktrap)
 
 # Louvain — requires undirected graph; collapse mutual edges into one
-g_undir <- as_undirected(g, mode = "collapse")
+g_undir <- as_undirected(g, mode = 'collapse')
 community_louvain <- cluster_louvain(g_undir)
 membership_louvain <- membership(community_louvain)
 
@@ -105,7 +191,7 @@ membership_louvain <- membership(community_louvain)
 
 community_leiden  <- cluster_leiden(
   as_undirected(g),
-  objective_function = "modularity",
+  objective_function = 'modularity',
   n_iterations = 45,
   initial_membership = nodes$community , resolution = 0.1
 )
@@ -143,7 +229,7 @@ sil_leiden <- silhouette_coefficient(g, membership_leiden)
 
 # Enhanced results table
 results <- data.frame(
-  Algorithm = c("Walktrap", "Louvain", "Leiden"),
+  Algorithm = c('Walktrap', 'Louvain', 'Leiden'),
   Modularity = c(mod_walktrap, mod_louvain, mod_leiden),
   Conductance = c(cond_walktrap, cond_louvain, cond_leiden),
   Internal_Density = c(dens_walktrap, dens_louvain, dens_leiden),
