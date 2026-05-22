@@ -15,7 +15,7 @@ source("4_visualisation.R")
 
 cat("\n=== STEP 5: Temporal / TSNA analysis ===\n")
 source("Model_functions.R")
-source("5_PostNLP_analysis.R")
+source("5_NLP_analysis.R")
 
 
 cat("\nPipeline complete.\n")

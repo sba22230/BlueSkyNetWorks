@@ -1,4 +1,36 @@
 v <- R.Version()
+list.of.packages <- c(
+  'aricode',
+  'arrow',
+  'DT',
+  'DBI',
+  'dplyr',
+  'future',
+  'ggraph',
+  'ggrepel',
+  'ggplot2',
+  'igraph',
+  'intergraph',
+  'lubridate',
+  'odbc',
+  'purrr',
+  'readr',
+  'retry',
+  'RevoScaleR',
+  'sna',
+  'stringi',
+  'stringr',
+  'tibble',
+  'tidyr',
+  'topicmodels',
+  'visNetwork'
+)
+new.packages <- list.of.packages[
+  !(list.of.packages %in% installed.packages()[, 'Package'])
+]
+if (length(new.packages)) {
+  install.packages(new.packages, dependencies = TRUE)
+}
 if (v$major == '4') {
   library(bskyr)
   library(furrr)
@@ -7,7 +39,7 @@ if (v$major == '4') {
   library(statnet)
   library(tidytext)
   wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.7))
-} 
+}
 library(aricode)
 library(arrow)
 library(DT)

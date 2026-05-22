@@ -77,7 +77,7 @@ silhouette_coefficient_batched <- function(
   
   starts <- seq.int(1L, n, by = batch_size)
   for (st in starts) {
-    en <- min.int(n, st + batch_size - 1L)
+    en <- min(n, st + batch_size - 1L)
     src <- st:en
     b <- length(src)
     
@@ -119,7 +119,7 @@ silhouette_coefficient_batched <- function(
     means[cnt_to == 0] <- NA_real_
     means[cbind(seq_len(b), grp_block)] <- NA_real_
     
-    bval <- row_mins(means)
+    bval <- row_mins(as.matrix(means))
     bval[!is.finite(bval)] <- 0
     
     den <- pmax(a, bval)
@@ -184,7 +184,7 @@ membership_walktrap <- membership(community_walktrap)
 
 # Louvain — requires undirected graph; collapse mutual edges into one
 g_undir <- as_undirected(g, mode = 'collapse')
-community_louvain <- cluster_louvain(g_undir)
+community_louvain <- cluster_louvain(g_undir, E(g_undir)$weight,resolution = 0.1)
 membership_louvain <- membership(community_louvain)
 
 # Leiden — supports directed graphs natively
@@ -193,7 +193,7 @@ community_leiden  <- cluster_leiden(
   as_undirected(g),
   objective_function = 'modularity',
   n_iterations = 45,
-  initial_membership = nodes$community , resolution = 0.1
+  initial_membership = nodes$community , resolution = 1
 )
 
 membership_leiden <- membership(community_leiden)
@@ -223,9 +223,9 @@ dens_walktrap <- internal_density(g, membership_walktrap)
 dens_louvain <- internal_density(g, membership_louvain)
 dens_leiden <- internal_density(g, membership_leiden)
 
-sil_walktrap <- silhouette_coefficient(g, membership_walktrap)
-sil_louvain <- silhouette_coefficient(g, membership_louvain)
-sil_leiden <- silhouette_coefficient(g, membership_leiden)
+sil_walktrap <- silhouette_coefficient_batched(g, membership_walktrap, mode = 'all', batch_size = 128)
+sil_louvain <- silhouette_coefficient_batched(g, membership_louvain, mode = 'all', batch_size = 128)
+sil_leiden <- silhouette_coefficient_batched(g, membership_leiden, mode = 'all', batch_size = 128)
 
 # Enhanced results table
 results <- data.frame(
@@ -242,4 +242,58 @@ results <- data.frame(
 )
 
 print(results)
+datatable(results)
+# --- Your results data frame should look like this:
+# results <- data.frame(
+#   Algorithm = c("Walktrap","Louvain","Leiden"),
+#   Modularity = c(0.3997713, 0.4537625, 0.1181706),
+#   Conductance = c(0.9806384, 0.2740777, 0.07993219),
+#   Internal_Density = c(0.3386445, 0.1689237, 0.5713206),
+#   Silhouette = c(-0.1482751, -0.5408794, -0.6103554),
+#   Num_Communities = c(5468, 44, 24)
+# )
 
+rank_results <- function(results,
+                         weights = c(Modularity = 0.25,
+                                     Conductance = 0.25,
+                                     Internal_Density = 0.25,
+                                     Silhouette = 0.25),
+                         ties.method = "average") {
+  
+  ranked <- results
+  
+  # Per-metric ranks (1 = best)
+  ranked$Rank_Modularity       <- rank(-ranked$Modularity, ties.method = ties.method)
+  ranked$Rank_Conductance      <- rank( ranked$Conductance, ties.method = ties.method) # lower is better
+  ranked$Rank_Internal_Density <- rank(-ranked$Internal_Density, ties.method = ties.method)
+  ranked$Rank_Silhouette       <- rank(-ranked$Silhouette, ties.method = ties.method) # higher (less negative) is better
+  
+  # Ensure weights are in the right order and sum to 1
+  weights <- weights[c("Modularity","Conductance","Internal_Density","Silhouette")]
+  weights <- weights / sum(weights)
+  
+  # Weighted total rank score (lower is better)
+  ranked$Total_Rank_Score <- weights["Modularity"]       * ranked$Rank_Modularity +
+    weights["Conductance"]      * ranked$Rank_Conductance +
+    weights["Internal_Density"] * ranked$Rank_Internal_Density +
+    weights["Silhouette"]       * ranked$Rank_Silhouette
+  
+  # Final rank based on total score
+  ranked$Final_Rank <- rank(ranked$Total_Rank_Score, ties.method = ties.method)
+  
+  # Sort best to worst
+  ranked <- ranked[order(ranked$Final_Rank, ranked$Total_Rank_Score), ]
+  
+  ranked
+}
+
+# --- Example usage (equal weights):
+ranked_table <- rank_results(results)
+datatable(ranked_table)
+
+# --- Example usage (if you want to emphasise separation & boundaries more):
+ranked_table_weighted <- rank_results(
+  results,
+  weights = c(Modularity = 0.20, Conductance = 0.35, Internal_Density = 0.15, Silhouette = 0.30)
+)
+datatable(ranked_table_weighted)
