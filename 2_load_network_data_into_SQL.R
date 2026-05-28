@@ -414,7 +414,7 @@ centrality_df <- rxExec(
     core_vals <- coreness(g)
     hits <- hits_scores(g, scale = FALSE)
     hits_norm <- hits_scores(g, scale = TRUE)
-    comm <- cluster_walktrap(g, weights = E(g)$weight, steps = 6, merges = TRUE, modularity = TRUE, membership = TRUE)
+    comm <- cluster_leiden(as_undirected(g), objective_function = 'modularity', n_iterations = 45, initial_membership = V(g)$community , resolution = 1)
     local_clustering <- transitivity(
       g,
       type = "local",

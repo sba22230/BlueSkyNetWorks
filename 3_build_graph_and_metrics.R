@@ -1,66 +1,12 @@
 # source("0_functions.R")
 
-# Step 1: Load data
-edges_df <- read_parquet("graphs/speirgorm_edges.parquet")
-nodes_df <- read_parquet("graphs/speirgorm_nodes.parquet")
-
-# plan(multisession, workers = wrkrs)  ## to be moved closer to its use
-# ============================================================================
-# SECTION 1: Create the Graph
-# ============================================================================
-cat("\n=== Step 3a: Build the initial graph... ===\n")
-# Step 1: Build edge list (who reposted whom)
 set.seed(22230)
-num_posts <- nrow(edges_df)
-#num_posts <- 7000
-# if tthe num_posts is set, then we sample that many posts
-# else we keep all reposts
-if (!is.null(num_posts) && nrow(edges_df) > num_posts) {
-  # 1. Sample edges from edges_df
-  sampled_edges <- edges_df %>% dplyr::sample_n(num_posts)
-  # 2. Identify nodes appearing in sampled edges
-  nodes_set <- union(sampled_edges$from, sampled_edges$to)
-  # 3. Filter nodes_df to keep only relevant nodes
-  sampled_nodes <- nodes_df %>% dplyr::filter(name %in% nodes_set)
-  # 4. Assign to your expected output variables
-  edges <- sampled_edges
-  nodes <- sampled_nodes
-  cat("Sampled", num_posts, "edges; resulting nodes:", nrow(nodes), "\n")
-} else {
-  edges <- edges_df
-  nodes <- nodes_df
-  cat("Keeping all reposts; total reposts count:", nrow(edges), "\n")
-}
+num_posts <- nrow(read_parquet("graphs/speirgorm_edges.parquet"))
 
-n_iter <- round(nrow(edges) / 100)
-
-cat("Edges count:", nrow(edges), "\n")
-
-# Debug: inspect edges
-print(head(edges))
-
-# remove NAs
-#edges[is.na(edges)] <- "no text here"
-
-na_per_column <- colSums(is.na(edges))
-print("Number of NAs per column:")
-print(na_per_column)
-
-cat("\n=== Step 3b: Build node list (unique actors and posts ===\n")
-
-# Step 2: Build node list (unique actors and posts)
-cat("Nodes count:", nrow(nodes), "\n")
-
-# Debug: inspect nodes
-print(head(nodes))
-
-na_per_column <- colSums(is.na(nodes))
-print("Number of NAs per column:")
-print(na_per_column)
 
 cat("\n=== Step 3c: Build igraph object and plot basic network ===\n")
 # Step 3: Build igraph object and plot basic network
-g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+g <- get_graph_data(num_posts)
 cat("Graph summary:\n")
 print(summary(g))
 
