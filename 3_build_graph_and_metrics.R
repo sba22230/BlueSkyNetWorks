@@ -405,6 +405,7 @@ cat("\n=== Step 3p: k-core decomposition computed ===\n")
 
 # align numeric vectors to node order
 node_keys <- as.character(V(g)$name)
+nodes <- igraph::as_data_frame(g, what = "vertices")
 
 nodes_with_metrics <- nodes %>%
   dplyr::mutate(
@@ -642,7 +643,7 @@ for (ym in unique_ym) {
   eids <- which(year_month == ym)
   if (length(eids) > 0) {
     # Create igraph subgraph
-    sub_g <- subgraph.edges(g, eids)
+    sub_g <- subgraph_from_edges(g, eids)
     subgraphs_igraph[[ym]] <- sub_g
 
     # Convert to statnet network
@@ -815,3 +816,4 @@ cat("  Use network_metrics for global statistics\n")
 cat("  Use community_stats to understand cluster structure\n\n")
 
 gc()
+
