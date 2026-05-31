@@ -9,7 +9,8 @@ cat("\n=== Step 3c: Build igraph object and plot basic network ===\n")
 g <- get_graph_data(num_posts)
 cat("Graph summary:\n")
 print(summary(g))
-
+nodes <- igraph::as_data_frame(g, what = "vertices")
+edges <- igraph::as_data_frame(g, what = "edges")
 # save the graph object for posterity
 rxWriteObject(
   ds_Graphs,
@@ -158,7 +159,7 @@ bsn_largest_component_size_pct <- (bsn_largest_component_size /
   100
 # Local Clustering Coefficient (for directed graphs, variants exist)
 bsn_local_clustering <- ig_avg_local_clustering # Placeholder: SNA's clustering is more complex for directed graphs
-bsn_Global_clustering <- gtrans(bluSkynet, mode = "digraph", measure = "weak")
+bsn_Global_clustering <- gtrans(bluSkynet, mode = "digraph", measure = "weak" , use.adjacency = FALSE)
 # Centralization (degree based)
 bsn_centralization_in <- (sum(max(bsn_ideg) - bsn_ideg)) /
   ((bsn_network_size - 1) * (bsn_network_size - 2))
@@ -405,7 +406,6 @@ cat("\n=== Step 3p: k-core decomposition computed ===\n")
 
 # align numeric vectors to node order
 node_keys <- as.character(V(g)$name)
-nodes <- igraph::as_data_frame(g, what = "vertices")
 
 nodes_with_metrics <- nodes %>%
   dplyr::mutate(

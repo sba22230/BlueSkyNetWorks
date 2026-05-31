@@ -16,7 +16,7 @@ vis_nodes <- nodes %>%
 vis_nodes <- vis_nodes |>
   mutate(title = paste0(
     "<b>", name, "</b><br/>",
-    "Community: ", community_label, "<br/>",
+    "Community: ", community, "<br/>",
     "PageRank: ", round(pagerank, 4), "<br/>",
     "Betweenness: ", round(betweenness_norm, 3), "<br/>",
     "k-core: ", kcore
@@ -74,11 +74,11 @@ vis_nodes$y <- coords3[, 2]
 top_nodes <- vis_nodes %>% arrange(desc(degree)) %>% slice(1:50) %>% pull(id)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 plan(orig_plan)
-# Community detection
-comm <- cluster_walktrap(vis_g) # works on directed graphs
+# Community detection -- now done in SQL code
+# comm <- cluster_walktrap(vis_g) # works on directed graphs
 
 # Add community membership to nodes
-vis_nodes$community <- comm$membership
+# vis_nodes$community <- comm$membership
 
 # ensure community is used as the visNetwork group and add colours
 vis_nodes$group <- as.character(vis_nodes$community)
@@ -96,6 +96,7 @@ left_join(nodes |> select(name, community), by = c("from" = "name")) |>
 rename(comm_from = community) |>
 left_join(nodes |> select(name, community), by = c("to" = "name")) |>
 rename(comm_to = community)
+
 comm_matrix <- edge_comm_df |>
 count(comm_from, comm_to) |>
 pivot_wider(names_from = comm_to, values_from = n, values_fill = 0)
@@ -477,15 +478,10 @@ rxWriteObject(
 
 cat("\n=== Step 4b: Computing community structure... ===\n")
 # Re-compute if necessary
-comm_louvain <- igraph::cluster_louvain(as_undirected(g))
-comm_louvain <- igraph::cluster_leiden(
-  as_undirected(g),
-  objective_function = "modularity",
-  n_iterations = 45,
-  initial_membership = nodes$community
-)
-num_communities <- length(unique(comm_louvain$membership))
-modularity_louvain <- modularity(g, comm_louvain$membership)
+#comm_louvain <- igraph::cluster_louvain(as_undirected(g)) -- computed in SQL
+#comm_louvain <- igraph::cluster_leiden(as_undirected(g), objective_function = 'modularity', n_iterations = 45, initial_membership = V(g)$community , resolution = 1)
+num_communities <- length(unique(V(g)$community))
+modularity_louvain <- modularity(g, V(g)$community)
 cat(sprintf(
   "\n=== Step 4c: Leiden detection: %d communities, modularity = %.4f ===\n",
   num_communities,
@@ -494,8 +490,8 @@ cat(sprintf(
 
 cat("\n=== Step 4c: Extracting Community Subgraphs ===\n")
 # Assuming you have your community detection results
-communities <- comm_louvain # or your preferred method
-membership <- membership(communities)
+#communities <- comm_louvain # or your preferred method
+membership <- setNames(as.numeric(V(g)$community), V(g)$name)
 
 # Get top communities and subgraphs (unchanged)
 comm_sizes <- sort(table(membership), decreasing = TRUE)
@@ -539,6 +535,7 @@ res_all <- rxExec(
 rxWriteObject(ds_Graphs, "Res All", res_all, overwrite = TRUE)
 
 # assemble nested list: community_layouts[[i]] = list(id, graph, layouts = named list(layout -> coord_matrix))
+
 community_layouts <- vector("list", n_comm)
 names(community_layouts) <- paste0("Community_", top_10_ids)
 for (i in seq_len(n_comm)) {
@@ -661,17 +658,17 @@ cat(sprintf(
 ))
 
 # Fast greedy (for directed, may treat as undirected)
-comm_fastgreedy <- cluster_fast_greedy(as_undirected(g))
-num_communities_fg <- length(unique(comm_fastgreedy$membership))
-modularity_fastgreedy <- modularity(
-  as_undirected(g),
-  comm_fastgreedy$membership
-)
-cat(sprintf(
-  "Fast greedy: %d communities, modularity = %.4f\n",
-  num_communities_fg,
-  modularity_fastgreedy
-))
+#comm_fastgreedy <- cluster_fast_greedy(as_undirected(g))
+#num_communities_fg <- length(unique(comm_fastgreedy$membership))
+#modularity_fastgreedy <- modularity(
+ # as_undirected(g),
+#  comm_fastgreedy$membership
+#)
+#cat(sprintf(
+#  "Fast greedy: %d communities, modularity = %.4f\n",
+#  num_communities_fg,
+#  modularity_fastgreedy
+#))
 
 # Add best community assignment to nodes
 best_comm <- comm_louvain$membership

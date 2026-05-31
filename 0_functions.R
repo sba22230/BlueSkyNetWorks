@@ -928,10 +928,18 @@ layout_exec <- function(
     df <- nodes_df[, intersect(numeric_cols, names(nodes_df)), drop = FALSE]
     df[is.na(df)] <- 0
 
-    # PCA → 2D
-    pca <- prcomp(df, scale. = TRUE)
-    coords <- pca$x[, 1:2, drop = FALSE]
-    colnames(coords) <- c("x_init", "y_init")
+    # Drop constant columns — prcomp(scale. = TRUE) fails if variance == 0
+    df <- df[, apply(df, 2, var) > 0, drop = FALSE]
+
+    # PCA → 2D; fall back to random coords if no variable columns remain
+    if (ncol(df) < 2) {
+      coords <- matrix(runif(nrow(nodes_df) * 2), ncol = 2)
+      colnames(coords) <- c("x_init", "y_init")
+    } else {
+      pca <- prcomp(df, scale. = TRUE)
+      coords <- pca$x[, 1:2, drop = FALSE]
+      colnames(coords) <- c("x_init", "y_init")
+    }
 
     # Optional: separate communities in space
     if ("community" %in% names(nodes_df)) {
