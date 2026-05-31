@@ -1,10 +1,15 @@
 # NLP of posts using TidyText
-edges <- read_parquet("graphs/speirgorm_edges.parquet")
 
-posts <- cbind(edges$from, edges$text, edges$created_at)
+edges <- igraph::as_data_frame(g, what = "edges")
+
+posts <- cbind(edges$to, edges$text, edges$created_at)
 posts <- as.data.frame(posts)
 posts <- posts |> mutate(V3 = lubridate::ymd(V3))
 
+#top_reposter <- nodes |> group_by(name) |> summarise(total_reposted = sum(reposts_made, na.rm = TRUE)) |> arrange(desc(total_reposted)) |> slice(1:1)
+top_author <- nodes |> group_by(name) |> summarise(total_authored = sum(posts_authored, na.rm = TRUE)) |> arrange(desc(total_authored)) |> slice(1:2)
+name1 <- top_author$name[1]
+name2 <- top_author$name[2]
 replace_reg <- "https?://t.co/[A-Za-z\\d]+|http://[A-Za-z\\d]+|&amp;|&lt;|&gt;|RT|https"
 unnest_reg <- "([^\\p{L}\\d#@']|'(?![\\p{L}\\d#@]))" # updated for all charahcters
 
@@ -32,14 +37,16 @@ frequency <- tidy_posts |>
 
 frequency <- frequency |>
   select(V1, word, freq) |>
-  filter(V1 %in% c("fionadoris.bsky.social", "stiofanoaodh.bsky.social")) |>
+  filter(V1 %in% c(name1, name2)) |>
   pivot_wider(names_from = V1, values_from = freq) |>
-  arrange(fionadoris.bsky.social, stiofanoaodh.bsky.social)
+  arrange(name1, name2)
+
+cols <- setdiff(names(frequency), "word")  
 
 library(scales)
 ggplot(
   frequency,
-  aes(x = fionadoris.bsky.social, y = stiofanoaodh.bsky.social)
+  aes(x =.data[[cols[1]]], y = .data[[cols[2]]])
 ) +
   geom_jitter(alpha = 0.1, size = 2.5, width = 0.25, height = ) +
   geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
@@ -47,14 +54,14 @@ ggplot(
   scale_y_log10(labels = percent_format()) +
   geom_abline(color = "red", linetype = "dashed") +
   labs(
-    x = "Frequency in Community fionadoris.bsky.social",
-    y = "Frequency in Community stiofanoaodh.bsky.social"
+    x = paste0("Frequency by ", name1),
+    y = paste0("Frequency by ", name2)
   ) +
   theme_minimal()
 
 # Adding Community to the posts data frame
-nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
-edges <- read_parquet("graphs/speirgorm_edges.parquet")
+nodes <- igraph::as_data_frame(g, what = "vertices")
+edges <- igraph::as_data_frame(g, what = "edges")
 posts <- cbind(edges$from, edges$text, edges$created_at)
 posts <- as.data.frame(posts)
 posts <- posts |> mutate(V3 = lubridate::ymd(V3))
@@ -75,7 +82,7 @@ posts_dt <- posts |>
 
 datatable(posts_dt)
 
-ViewPostsByDate(posts, 5, 17)
+ViewPostsByDate(posts, 2, 9)
 
 tidy_posts <- posts |>
   filter(!str_detect(text, "^RT")) |>
@@ -100,7 +107,7 @@ totals <- counts_long |>
 counts <- counts_long |>
   pivot_wider(names_from = community, values_from = n, values_fill = 0)
 
-ViewCommunityContrastedByWords(totals, counts, tidy_posts, 5, 17)
+ViewCommunityContrastedByWords(totals, counts, tidy_posts, 2, 9)
 
 community_graphs <- rxReadObject(ds_Graphs, "Community Graphs")
 community_graphs <- comm
