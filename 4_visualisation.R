@@ -124,7 +124,7 @@ ylab = "Community (from)",
 main = "Cross-community interactions (log scale)",
 col.regions = viridis::viridis(100),
 scales = list(x = list(rot = 45))
-)
+) # this is a good view of community interaction
 
 # ========================================================================
 # COMMUNITY CHARACTERIZATION & LABELING
@@ -143,7 +143,7 @@ community_analysis <- vis_nodes %>%
     isolated_count = sum(isolated, na.rm = TRUE),
     active_members = sum(!isolated, na.rm = TRUE),
 
-    # Connectivity metrics
+    # Connectivity metrics - degree measures the number of 
     avg_degree = mean(degree, na.rm = TRUE),
     max_degree = max(degree, na.rm = TRUE),
     median_degree = median(degree, na.rm = TRUE),
@@ -169,41 +169,39 @@ community_analysis <- vis_nodes %>%
 cat("Community Statistics:\n")
 datatable(slice(community_analysis, 1:10))
 
+# Pre-compute thresholds once to avoid repeated evaluation inside mutate()
+# and to avoid fragile self-referencing via community_analysis$ inside a pipe
+med_degree   <- median(community_analysis$avg_degree)
+q75_repost   <- quantile(community_analysis$avg_repost_count, 0.75)
+
 # Define community types based on characteristics
-community_labels <- community_analysis %>%
+community_labels <- community_analysis |>
   mutate(
-    # Label logic based on community characteristics
     community_type = case_when(
+      # Peripheral check first: a large-but-isolated community should not be
+      # misclassified as a Core Hub by an earlier size-based condition
+      isolated_count >= active_members * 0.5 ~ "Peripheral",
+
       # Large, highly connected communities (hubs)
-      size >= 50 &
-        avg_degree > median(community_analysis$avg_degree) * 1.5 ~ "Core Hub",
+      size >= 50 & avg_degree > med_degree * 1.5 ~ "Core Hub",
+
+      # Large but not highly connected — avoid falling to Discussion Group
+      size >= 50 ~ "Large Community",
 
       # Medium-sized, moderately connected
-      size >= 20 &
-        size < 50 &
-        avg_degree >= median(community_analysis$avg_degree) ~ "Active Circle",
+      size >= 20 & avg_degree >= med_degree ~ "Active Circle",
 
       # Smaller, tightly knit groups
-      size >= 10 &
-        size < 20 &
-        avg_degree > median(community_analysis$avg_degree) ~ "Tight Cluster",
+      size >= 10 & avg_degree > med_degree ~ "Tight Cluster",
 
       # Small but highly engaged (high repost count relative to size)
-      size < 10 &
-        avg_repost_count >
-          quantile(
-            community_analysis$avg_repost_count,
-            0.75
-          ) ~ "Engaged Micro-Group",
-
-      # Isolated or low-engagement nodes
-      isolated_count >= active_members * 0.5 ~ "Peripheral",
+      size < 10 & avg_repost_count > q75_repost ~ "Engaged Micro-Group",
 
       # Default: catchall
       TRUE ~ "Discussion Group"
     ),
 
-    # Create descriptive label with name and characteristics
+    # Note: \n renders in plot labels; use a flat string for table display
     label = sprintf(
       "Community %d: %s\n(%d members, avg degree: %.1f)",
       community,
@@ -211,7 +209,7 @@ community_labels <- community_analysis %>%
       size,
       avg_degree
     )
-  ) %>%
+  ) |>
   select(community, community_type, label, size, avg_degree, top_member)
 
 cat("\n=== COMMUNITY LABELS & TYPES ===\n")
