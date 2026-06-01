@@ -110,7 +110,7 @@ counts <- counts_long |>
 ViewCommunityContrastedByWords(totals, counts, tidy_posts, 2, 9)
 
 community_graphs <- rxReadObject(ds_Graphs, "Community Graphs")
-community_graphs <- comm
+#community_graphs <- comm
 n_comm <- length(community_graphs)
 # for each sub graph plot the post timeline
 all_posts <- lapply(seq_len(n_comm), function(i) {
@@ -191,7 +191,7 @@ dim(sparse_words)
 
 word_rownames <- as.integer(rownames(sparse_words))
 
-posts_joined <- data_frame(document = word_rownames) %>%
+posts_joined <- tibble(document = word_rownames) %>%
   left_join(
     posts %>%
       select(document, community)
@@ -367,3 +367,4 @@ barchart(
     )
   )
 )
+

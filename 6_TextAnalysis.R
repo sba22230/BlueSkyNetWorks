@@ -110,7 +110,7 @@ ggplot(
 
 library(topicmodels)
 dtm_by_community <- tidy_posts |>
-  filter(community == target_comm) |>
+  filter(community == community) |>
   count(document, word) |>
   cast_dtm(document, word, n)
 
@@ -121,3 +121,74 @@ community_sentiment <- tidy_posts |>
   count(community, sentiment) |>
   pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) |>
   mutate(net_sentiment = positive - negative)
+
+community_sentiment_nrc <- tidy_posts |>
+  inner_join(nrc, by = "word") |>
+  count(community, sentiment) |>
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) |>
+  mutate(
+    net_sentiment  = positive - negative,
+    # Dominant emotion: highest count among the 8 pure emotions (exclude pos/neg)
+    dominant_emotion = pmap_chr(
+      pick(anger, anticipation, disgust, fear, joy, sadness, surprise, trust),
+      \(...) names(which.max(c(...)))
+    )
+  )
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# 8 pure emotions only — exclude aggregate positive/negative
+emotions <- c("anger", "anticipation", "disgust", "fear",
+              "joy", "sadness", "surprise", "trust")
+
+emotion_palette <- c(
+  anger        = "#d62728",
+  anticipation = "#ff7f0e",
+  disgust      = "#8c564b",
+  fear         = "#9467bd",
+  joy          = "#2ca02c",
+  sadness      = "#1f77b4",
+  surprise     = "#17becf",
+  trust        = "#bcbd22"
+)
+
+# Build NRC community emotion profile
+community_sentiment_nrc <- tidy_posts |>
+  inner_join(nrc, by = "word") |>
+  filter(sentiment %in% emotions) |>
+  count(community, sentiment)
+
+# Top 15 communities by total matched word count
+top_communities <- community_sentiment_nrc |>
+  count(community, wt = n, sort = TRUE) |>
+  slice_head(n = 15) |>
+  pull(community)
+
+# Order communities by total size for the y-axis
+community_order <- community_sentiment_nrc |>
+  filter(community %in% top_communities) |>
+  count(community, wt = n) |>
+  arrange(n) |>
+  pull(community)
+
+community_sentiment_nrc |>
+  filter(community %in% top_communities) |>
+  mutate(
+    community = factor(community, levels = community_order),
+    sentiment = factor(sentiment, levels = emotions)
+  ) |>
+  ggplot(aes(x = n, y = community, fill = sentiment)) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_fill_manual(values = emotion_palette) +
+  scale_x_continuous(labels = scales::percent_format()) +
+  labs(
+    title = "Emotion profile by community (NRC lexicon)",
+    subtitle = "Top 15 communities by matched word count — proportional share",
+    x = "Share of emotion words",
+    y = "Community",
+    fill = "Emotion"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "right")
+
