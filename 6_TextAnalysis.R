@@ -192,3 +192,5 @@ community_sentiment_nrc |>
   theme_minimal() +
   theme(legend.position = "right")
 
+library(wordcloud2)
+wordcloud2(global_freq)
