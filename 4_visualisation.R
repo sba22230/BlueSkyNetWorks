@@ -14,13 +14,24 @@ vis_nodes <- nodes %>%
   distinct(id, .keep_all = TRUE)
 
 vis_nodes <- vis_nodes |>
-  mutate(title = paste0(
-    "<b>", name, "</b><br/>",
-    "Community: ", community, "<br/>",
-    "PageRank: ", round(pagerank, 4), "<br/>",
-    "Betweenness: ", round(betweenness_norm, 3), "<br/>",
-    "k-core: ", kcore
-  ))
+  mutate(
+    title = paste0(
+      "<b>",
+      name,
+      "</b><br/>",
+      "Community: ",
+      community,
+      "<br/>",
+      "PageRank: ",
+      round(pagerank, 4),
+      "<br/>",
+      "Betweenness: ",
+      round(betweenness_norm, 3),
+      "<br/>",
+      "k-core: ",
+      kcore
+    )
+  )
 
 vis_edges <- edges %>%
   mutate(arrows = "from")
@@ -92,38 +103,38 @@ rxWriteObject(
 )
 
 edge_comm_df <- edges |>
-left_join(nodes |> select(name, community), by = c("from" = "name")) |>
-rename(comm_from = community) |>
-left_join(nodes |> select(name, community), by = c("to" = "name")) |>
-rename(comm_to = community)
+  left_join(nodes |> select(name, community), by = c("from" = "name")) |>
+  rename(comm_from = community) |>
+  left_join(nodes |> select(name, community), by = c("to" = "name")) |>
+  rename(comm_to = community)
 
 comm_matrix <- edge_comm_df |>
-count(comm_from, comm_to) |>
-pivot_wider(names_from = comm_to, values_from = n, values_fill = 0)
+  count(comm_from, comm_to) |>
+  pivot_wider(names_from = comm_to, values_from = n, values_fill = 0)
 comm_matrix
 
 library(lattice)
 # Focus on top 20 communities by total outgoing interactions
 top_comms <- comm_matrix |>
-mutate(total = rowSums(across(-comm_from))) |>
-slice_max(total, n = 20) |>
-pull(comm_from) |>
-as.character()
+  mutate(total = rowSums(across(-comm_from))) |>
+  slice_max(total, n = 20) |>
+  pull(comm_from) |>
+  as.character()
 # Subset rows and matching columns, then convert to matrix
 mat <- comm_matrix |>
-filter(comm_from %in% top_comms) |>
-select(comm_from, any_of(top_comms)) |>
-tibble::column_to_rownames("comm_from") |>
-as.matrix()
+  filter(comm_from %in% top_comms) |>
+  select(comm_from, any_of(top_comms)) |>
+  tibble::column_to_rownames("comm_from") |>
+  as.matrix()
 # Log-transform (add 1 to handle zeros)
 mat_log <- log1p(mat)
 levelplot(
-mat_log,
-xlab = "Community (to)",
-ylab = "Community (from)",
-main = "Cross-community interactions (log scale)",
-col.regions = viridis::viridis(100),
-scales = list(x = list(rot = 45))
+  mat_log,
+  xlab = "Community (to)",
+  ylab = "Community (from)",
+  main = "Cross-community interactions (log scale)",
+  col.regions = viridis::viridis(100),
+  scales = list(x = list(rot = 45))
 ) # this is a good view of community interaction
 
 # ========================================================================
@@ -143,7 +154,7 @@ community_analysis <- vis_nodes %>%
     isolated_count = sum(isolated, na.rm = TRUE),
     active_members = sum(!isolated, na.rm = TRUE),
 
-    # Connectivity metrics - degree measures the number of 
+    # Connectivity metrics - degree measures the number of
     avg_degree = mean(degree, na.rm = TRUE),
     max_degree = max(degree, na.rm = TRUE),
     median_degree = median(degree, na.rm = TRUE),
@@ -171,8 +182,8 @@ datatable(slice(community_analysis, 1:10))
 
 # Pre-compute thresholds once to avoid repeated evaluation inside mutate()
 # and to avoid fragile self-referencing via community_analysis$ inside a pipe
-med_degree   <- median(community_analysis$avg_degree)
-q75_repost   <- quantile(community_analysis$avg_repost_count, 0.75)
+med_degree <- median(community_analysis$avg_degree)
+q75_repost <- quantile(community_analysis$avg_repost_count, 0.75)
 
 # Define community types based on characteristics
 community_labels <- community_analysis |>
@@ -476,7 +487,7 @@ rxWriteObject(
 
 cat("\n=== Step 4b: Computing community structure... ===\n")
 # Re-compute if necessary
-#comm_louvain <- igraph::cluster_louvain(as_undirected(g)) -- computed in SQL
+#comm_louvain <- igraph::cluster_louvain(as_undirected(g)) #-- computed in SQL
 #comm_louvain <- igraph::cluster_leiden(as_undirected(g), objective_function = 'modularity', n_iterations = 45, initial_membership = V(g)$community , resolution = 1)
 num_communities <- length(unique(V(g)$community))
 modularity_louvain <- modularity(g, V(g)$community)
@@ -499,7 +510,6 @@ community_graphs <- lapply(top_10_ids, function(id) {
   nodes <- which(membership == id)
   induced_subgraph(g, nodes)
 })
-
 
 
 cat("\n=== Step 4d: Computing layouts for each community in parallel ===\n")
@@ -613,8 +623,13 @@ for (i in seq_len(n_comm)) {
   )
 }
 
-# Write the Community Layouts to SQL 
-rxWriteObject(ds_Graphs, "Top 12 Sub Graphs", community_layouts, overwrite = TRUE)
+# Write the Community Layouts to SQL
+rxWriteObject(
+  ds_Graphs,
+  "Top 12 Sub Graphs",
+  community_layouts,
+  overwrite = TRUE
+)
 par(old_par)
 
 # Name them for easy reference
@@ -659,7 +674,7 @@ cat(sprintf(
 #comm_fastgreedy <- cluster_fast_greedy(as_undirected(g))
 #num_communities_fg <- length(unique(comm_fastgreedy$membership))
 #modularity_fastgreedy <- modularity(
- # as_undirected(g),
+# as_undirected(g),
 #  comm_fastgreedy$membership
 #)
 #cat(sprintf(
@@ -717,11 +732,24 @@ tobermvd <- c(
   'community_layouts',
   'desc_df',
   'desc_df_chr',
-  'edge_comm_df', 'edge_rgba_df',
-  'ge_edgeDynamic', 'ge_edges', 'ge_edgesAtt', 'ge_edgesVizColor',
-  'ge_nodes', 'ge_nodesAtt', 'ge_nodesVizAtt',
-  'graphs_arg', 'layouts', 'node_rgba_df',
-  'nodes_with_metrics','vis_edges', 'vis_g', 'vis_nodes', 'gtn', 'gto'
+  'edge_comm_df',
+  'edge_rgba_df',
+  'ge_edgeDynamic',
+  'ge_edges',
+  'ge_edgesAtt',
+  'ge_edgesVizColor',
+  'ge_nodes',
+  'ge_nodesAtt',
+  'ge_nodesVizAtt',
+  'graphs_arg',
+  'layouts',
+  'node_rgba_df',
+  'nodes_with_metrics',
+  'vis_edges',
+  'vis_g',
+  'vis_nodes',
+  'gtn',
+  'gto'
 )
 rm(list = tobermvd)
 gc()

@@ -7,7 +7,11 @@ posts <- as.data.frame(posts)
 posts <- posts |> mutate(V3 = lubridate::ymd(V3))
 
 #top_reposter <- nodes |> group_by(name) |> summarise(total_reposted = sum(reposts_made, na.rm = TRUE)) |> arrange(desc(total_reposted)) |> slice(1:1)
-top_author <- nodes |> group_by(name) |> summarise(total_authored = sum(posts_authored, na.rm = TRUE)) |> arrange(desc(total_authored)) |> slice(1:2)
+top_author <- nodes |>
+  group_by(name) |>
+  summarise(total_authored = sum(posts_authored, na.rm = TRUE)) |>
+  arrange(desc(total_authored)) |>
+  slice(1:2)
 name1 <- top_author$name[1]
 name2 <- top_author$name[2]
 replace_reg <- "https?://t.co/[A-Za-z\\d]+|http://[A-Za-z\\d]+|&amp;|&lt;|&gt;|RT|https"
@@ -41,12 +45,12 @@ frequency <- frequency |>
   pivot_wider(names_from = V1, values_from = freq) |>
   arrange(name1, name2)
 
-cols <- setdiff(names(frequency), "word")  
+cols <- setdiff(names(frequency), "word")
 
 library(scales)
 ggplot(
   frequency,
-  aes(x =.data[[cols[1]]], y = .data[[cols[2]]])
+  aes(x = .data[[cols[1]]], y = .data[[cols[2]]])
 ) +
   geom_jitter(alpha = 0.1, size = 2.5, width = 0.25, height = ) +
   geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
@@ -135,7 +139,10 @@ ggplot(all_posts, aes(x = created_at)) +
   theme_minimal(base_size = 12)
 
 plots <- lapply(seq_len(n_comm), function(i) {
-  plot_word_comparison_date(community_graphs[[i]], unique(V(community_graphs[[i]])$community))
+  plot_word_comparison_date(
+    community_graphs[[i]],
+    unique(V(community_graphs[[i]])$community)
+  )
 })
 
 show_plots <- function(plots, page = 1, per_page = 4) {
@@ -369,4 +376,3 @@ barchart(
     )
   )
 )
-

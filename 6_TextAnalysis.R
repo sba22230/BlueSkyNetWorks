@@ -68,7 +68,7 @@ nrc <- get_sentiments("nrc")
 
 # Join the text words with the NRC lexicon
 sentiment_analysis <- text_words %>%
-  inner_join(nrc, by = "word" , relationship = "many-to-many")
+  inner_join(nrc, by = "word", relationship = "many-to-many")
 
 # Summarize sentiment counts
 sentiment_summary <- sentiment_analysis %>%
@@ -129,13 +129,21 @@ library(topicmodels)
 library(purrr)
 
 # Custom stop words: speirgorm variants, URLs, domains, and malformed tokens
-custom_stops <- tibble::tibble(word = c(
-  "speirgorm", "spéirgorm", "speirghorm", "spéirghorm"
-))
+custom_stops <- tibble::tibble(
+  word = c(
+    "speirgorm",
+    "spéirgorm",
+    "speirghorm",
+    "spéirghorm"
+  )
+)
 
 # Helper to drop URL-like tokens (domains, www., .ie/.com/.org etc.)
 is_url_token <- function(x) {
-  stringr::str_detect(x, "www\\.|^http|\\.com|\\.ie|\\.net|\\.org|\\.eu|bsky\\.social")
+  stringr::str_detect(
+    x,
+    "www\\.|^http|\\.com|\\.ie|\\.net|\\.org|\\.eu|bsky\\.social"
+  )
 }
 
 tidy_posts <- posts |>
@@ -198,7 +206,7 @@ community_topics |>
   dplyr::ungroup() |>
   dplyr::mutate(
     community = factor(paste("Comm", community)),
-    topic     = paste("Topic", topic)
+    topic = paste("Topic", topic)
   ) |>
   ggplot(aes(x = topic, y = community, fill = beta)) +
   geom_tile(color = "white") +
@@ -207,7 +215,9 @@ community_topics |>
   labs(
     title = "Dominant term per LDA topic by community",
     subtitle = "Top 6 communities by document count",
-    x = NULL, y = NULL, fill = "Beta"
+    x = NULL,
+    y = NULL,
+    fill = "Beta"
   ) +
   theme_minimal()
 
@@ -227,36 +237,54 @@ comm_order <- community_gamma |>
   dplyr::arrange(topic, dplyr::desc(mean_gamma)) |>
   dplyr::pull(community)
 
-# Topic labels derived from top terms aggregated across all community models.
+# Derive topic labels from top-beta terms — aggregated across all community models.
 # Note: topics are fitted independently per community, so labels are approximate.
-topic_labels <- c(
-  "1" = "T1: Nature & Local",
-  "2" = "T2: Music & Community",
-  "3" = "T3: Home & Writing",
-  "4" = "T4: Irish Society",
-  "5" = "T5: Coast & Places"
-)
+make_topic_labels <- function(beta_df, n_terms = 2) {
+  beta_df |>
+    dplyr::group_by(topic, term) |>
+    dplyr::summarise(total_beta = sum(beta), .groups = "drop") |>
+    dplyr::slice_max(total_beta, n = n_terms, by = topic) |>
+    dplyr::arrange(topic, dplyr::desc(total_beta)) |>
+    dplyr::summarise(
+      label = paste0(
+        "T",
+        dplyr::first(topic),
+        ": ",
+        paste(term, collapse = " & ")
+      ),
+      .by = topic
+    ) |>
+    dplyr::arrange(topic) |>
+    (\(d) setNames(d$label, as.character(d$topic)))()
+}
+
+topic_labels <- make_topic_labels(community_topics)
 
 community_gamma |>
   dplyr::mutate(
-    community  = factor(community, levels = comm_order),
+    community = factor(community, levels = comm_order),
     topic_name = dplyr::recode(as.character(topic), !!!topic_labels),
     topic_name = factor(topic_name, levels = topic_labels)
   ) |>
   ggplot(aes(x = topic_name, y = community, fill = mean_gamma)) +
   geom_tile(color = "white", linewidth = 0.4) +
-  scale_fill_gradient(low = "white", high = "#2c6fad", labels = scales::percent_format()) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#2c6fad",
+    labels = scales::percent_format()
+  ) +
   labs(
-    title    = "Community-level topic concentration (gamma)",
+    title = "Community-level topic concentration (gamma)",
     subtitle = "Mean document-topic proportion — topics labelled by dominant terms\n(Note: topics are fitted independently per community; labels are approximate)",
-    x        = NULL, y = "Community",
-    fill     = "Mean γ"
+    x = NULL,
+    y = "Community",
+    fill = "Mean γ"
   ) +
   theme_minimal() +
   theme(
-    axis.text.y  = element_text(size = 8),
-    axis.text.x  = element_text(size = 8),
-    panel.grid   = element_blank()
+    axis.text.y = element_text(size = 8),
+    axis.text.x = element_text(size = 8),
+    panel.grid = element_blank()
   )
 
 # --- Global LDA: single corpus-wide model for comparable community profiles ---
@@ -289,17 +317,12 @@ comm_order_global <- global_gamma |>
   dplyr::arrange(topic, dplyr::desc(mean_gamma)) |>
   dplyr::pull(community)
 
-global_topic_labels <- c(
-  "1" = "T1: Election & Media",
-  "2" = "T2: Housing & Society",
-  "3" = "T3: Arts & Advocacy",
-  "4" = "T4: Photography & Local",
-  "5" = "T5: Irish Identity"
-)
+global_topic_labels <- tidytext::tidy(global_lda, matrix = "beta") |>
+  make_topic_labels(n_terms = 2)
 
 global_gamma |>
   dplyr::mutate(
-    community  = factor(community, levels = comm_order_global),
+    community = factor(community, levels = comm_order_global),
     topic_name = factor(
       dplyr::recode(as.character(topic), !!!global_topic_labels),
       levels = global_topic_labels
@@ -307,18 +330,23 @@ global_gamma |>
   ) |>
   ggplot(aes(x = topic_name, y = community, fill = mean_gamma)) +
   geom_tile(color = "white", linewidth = 0.4) +
-  scale_fill_gradient(low = "white", high = "#2c6fad", labels = scales::percent_format()) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#2c6fad",
+    labels = scales::percent_format()
+  ) +
   labs(
-    title    = "Community-level topic concentration — global LDA",
+    title = "Community-level topic concentration — global LDA",
     subtitle = "Mean document-topic proportion (gamma) from a single corpus-wide model",
-    x        = NULL, y = "Community",
-    fill     = "Mean γ"
+    x = NULL,
+    y = "Community",
+    fill = "Mean γ"
   ) +
   theme_minimal() +
   theme(
-    axis.text.y  = element_text(size = 8),
-    axis.text.x  = element_text(size = 8, angle = 20, hjust = 1),
-    panel.grid   = element_blank()
+    axis.text.y = element_text(size = 8),
+    axis.text.x = element_text(size = 8, angle = 20, hjust = 1),
+    panel.grid = element_blank()
   )
 
 community_sentiment <- tidy_posts |>
@@ -332,7 +360,7 @@ community_sentiment_nrc <- tidy_posts |>
   count(community, sentiment) |>
   pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) |>
   mutate(
-    net_sentiment  = positive - negative,
+    net_sentiment = positive - negative,
     # Dominant emotion: highest count among the 8 pure emotions (exclude pos/neg)
     dominant_emotion = pmap_chr(
       pick(anger, anticipation, disgust, fear, joy, sadness, surprise, trust),
@@ -344,18 +372,26 @@ library(tidyr)
 library(ggplot2)
 
 # 8 pure emotions only — exclude aggregate positive/negative
-emotions <- c("anger", "anticipation", "disgust", "fear",
-              "joy", "sadness", "surprise", "trust")
+emotions <- c(
+  "anger",
+  "anticipation",
+  "disgust",
+  "fear",
+  "joy",
+  "sadness",
+  "surprise",
+  "trust"
+)
 
 emotion_palette <- c(
-  anger        = "#d62728",
+  anger = "#d62728",
   anticipation = "#ff7f0e",
-  disgust      = "#8c564b",
-  fear         = "#9467bd",
-  joy          = "#2ca02c",
-  sadness      = "#1f77b4",
-  surprise     = "#17becf",
-  trust        = "#bcbd22"
+  disgust = "#8c564b",
+  fear = "#9467bd",
+  joy = "#2ca02c",
+  sadness = "#1f77b4",
+  surprise = "#17becf",
+  trust = "#bcbd22"
 )
 
 # Build NRC community emotion profile
@@ -407,13 +443,16 @@ wordcloud2(global_freq)
 
 # Build community-size lookup from Louvain membership
 mem_tbl <- tibble(
-  node      = V(g)$name,
+  node = V(g)$name,
   community = membership(comm_louvain)
 )
 comm_sizes_tbl <- mem_tbl |> dplyr::count(community, name = "size")
 
 # Restrict to top 30 communities (by node count) that also appear in global_gamma
-shared_comms    <- intersect(unique(global_gamma$community), comm_sizes_tbl$community)
+shared_comms <- intersect(
+  unique(global_gamma$community),
+  comm_sizes_tbl$community
+)
 top_comms_focal <- comm_sizes_tbl |>
   dplyr::filter(community %in% shared_comms) |>
   dplyr::slice_max(size, n = 30) |>
@@ -422,7 +461,11 @@ top_comms_focal <- comm_sizes_tbl |>
 # --- Topic cosine-similarity matrix ---
 gamma_mat <- global_gamma |>
   dplyr::filter(community %in% top_comms_focal) |>
-  tidyr::pivot_wider(names_from = topic, values_from = mean_gamma, values_fill = 0) |>
+  tidyr::pivot_wider(
+    names_from = topic,
+    values_from = mean_gamma,
+    values_fill = 0
+  ) |>
   tibble::column_to_rownames("community") |>
   as.matrix()
 
@@ -434,7 +477,7 @@ cosine_sim <- function(mat) {
 cos_mat <- cosine_sim(gamma_mat)
 
 # --- Cross-community edge density for each community pair ---
-el        <- igraph::as_edgelist(g, names = FALSE)
+el <- igraph::as_edgelist(g, names = FALSE)
 node_comm <- igraph::membership(comm_louvain)
 
 edge_comm_pairs <- tibble::tibble(
@@ -449,9 +492,9 @@ edge_comm_pairs <- tibble::tibble(
   dplyr::mutate(pair_a = pmin(c1, c2), pair_b = pmax(c1, c2)) |>
   dplyr::count(pair_a, pair_b, name = "cross_edges") |>
   dplyr::mutate(
-    size_a        = comm_sizes_tbl$size[match(pair_a, comm_sizes_tbl$community)],
-    size_b        = comm_sizes_tbl$size[match(pair_b, comm_sizes_tbl$community)],
-    possible      = size_a * size_b,
+    size_a = comm_sizes_tbl$size[match(pair_a, comm_sizes_tbl$community)],
+    size_b = comm_sizes_tbl$size[match(pair_b, comm_sizes_tbl$community)],
+    possible = size_a * size_b,
     inter_density = cross_edges / possible
   )
 
@@ -468,10 +511,10 @@ comparison <- cos_long |>
   ) |>
   dplyr::mutate(
     inter_density = tidyr::replace_na(inter_density, 0),
-    has_edge      = inter_density > 0
+    has_edge = inter_density > 0
   )
 
-cor_all  <- cor(comparison$cosine, comparison$inter_density, method = "spearman")
+cor_all <- cor(comparison$cosine, comparison$inter_density, method = "spearman")
 cor_edge <- cor(
   comparison$cosine[comparison$has_edge],
   comparison$inter_density[comparison$has_edge],
@@ -488,13 +531,14 @@ ggplot(comparison, aes(x = cosine, y = inter_density)) +
   ) +
   scale_y_continuous(labels = scales::label_scientific()) +
   labs(
-    title    = "Topic similarity vs. inter-community edge density",
+    title = "Topic similarity vs. inter-community edge density",
     subtitle = sprintf(
       "Top 30 communities by size · Spearman ρ = %.3f (all pairs), %.3f (edges only)",
-      cor_all, cor_edge
+      cor_all,
+      cor_edge
     ),
-    x     = "Cosine similarity of global γ profiles",
-    y     = "Inter-community edge density",
+    x = "Cosine similarity of global γ profiles",
+    y = "Inter-community edge density",
     color = NULL
   ) +
   theme_minimal(base_size = 12) +
@@ -518,31 +562,45 @@ cos_sym <- cos_long |>
     comm_a = factor(comm_a, levels = fac_levels),
     comm_b = factor(comm_b, levels = fac_levels)
   ) |>
-  (\(d) dplyr::bind_rows(d, dplyr::rename(d, comm_a = comm_b, comm_b = comm_a)))()
+  (\(d) {
+    dplyr::bind_rows(d, dplyr::rename(d, comm_a = comm_b, comm_b = comm_a))
+  })()
 
 edge_sym <- comparison |>
   dplyr::mutate(
     comm_a = factor(comm_a, levels = fac_levels),
     comm_b = factor(comm_b, levels = fac_levels)
   ) |>
-  (\(d) dplyr::bind_rows(d, dplyr::rename(d, comm_a = comm_b, comm_b = comm_a)))()
+  (\(d) {
+    dplyr::bind_rows(d, dplyr::rename(d, comm_a = comm_b, comm_b = comm_a))
+  })()
 
 p_cos <- ggplot(cos_sym, aes(x = comm_b, y = comm_a, fill = cosine)) +
   geom_tile() +
   scale_fill_gradient(low = "white", high = "#2c6fad") +
   labs(
     title = "Topic cosine similarity (global γ)",
-    x = NULL, y = "Community", fill = "Cosine"
+    x = NULL,
+    y = "Community",
+    fill = "Cosine"
   ) +
   theme_minimal(base_size = 9) +
   theme(axis.text = element_text(size = 6), panel.grid = element_blank())
 
-p_edge <- ggplot(edge_sym, aes(x = comm_b, y = comm_a, fill = log1p(inter_density * 1e5))) +
+p_edge <- ggplot(
+  edge_sym,
+  aes(x = comm_b, y = comm_a, fill = log1p(inter_density * 1e5))
+) +
   geom_tile() +
-  scale_fill_gradient(low = "white", high = "#b5201a", name = "log(density+1)") +
+  scale_fill_gradient(
+    low = "white",
+    high = "#b5201a",
+    name = "log(density+1)"
+  ) +
   labs(
     title = "Inter-community edge density",
-    x = "Community", y = NULL
+    x = "Community",
+    y = NULL
   ) +
   theme_minimal(base_size = 9) +
   theme(axis.text = element_text(size = 6), panel.grid = element_blank())
