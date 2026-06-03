@@ -11,9 +11,11 @@ nodes <- igraph::as_data_frame(g, what = "vertices")
 edges <- igraph::as_data_frame(g, what = "edges")
 posts <- cbind(edges$from, edges$text, edges$created_at)
 posts <- as.data.frame(posts)
-posts <- posts |> mutate(V3 = lubridate::ymd(V3))
+posts <- posts |>
+  mutate(V3 = lubridate::ymd(V3)) %>%
+  mutate(document = row_number())
 
-colnames <- c("name", "text", "created_at")
+colnames <- c("name", "text", "created_at", "document")
 colnames(posts) <- colnames
 
 posts <- merge(
@@ -22,6 +24,33 @@ posts <- merge(
   by = "name",
   all.x = TRUE
 )
+
+build_tidy_posts <- function(df) {
+  custom_stops <- tibble::tibble(
+    word = c("speirgorm", "spéirgorm", "speirghorm", "spéirghorm")
+  )
+
+  df |>
+    dplyr::filter(!stringr::str_detect(text, "^RT")) |>
+    dplyr::mutate(
+      text = stringr::str_to_lower(text),
+      text = stringr::str_replace_all(text, "https?://\\S+|www\\.\\S+", " "),
+      text = stringr::str_replace_all(text, "[#@]", " "),
+      text = stringr::str_replace_all(text, "&amp;|&lt;|&gt;", " ")
+    ) |>
+    tidytext::unnest_tokens(word, text, token = "words") |>
+    dplyr::filter(
+      !word %in% stop_words$word,
+      !word %in% stringr::str_remove_all(stop_words$word, "'"),
+      !word %in% custom_stops$word,
+      nchar(word) > 1
+    ) |>
+    dplyr::mutate(document = as.integer(document))
+}
+
+tidy_posts <- build_tidy_posts(posts)
+
+head(tidy_posts)
 
 text_column <- posts$text
 # Convert to lowercase
@@ -128,34 +157,8 @@ ggplot(
 library(topicmodels)
 library(purrr)
 
-# Custom stop words: speirgorm variants, URLs, domains, and malformed tokens
-custom_stops <- tibble::tibble(
-  word = c(
-    "speirgorm",
-    "spéirgorm",
-    "speirghorm",
-    "spéirghorm"
-  )
-)
-
-# Helper to drop URL-like tokens (domains, www., .ie/.com/.org etc.)
-is_url_token <- function(x) {
-  stringr::str_detect(
-    x,
-    "www\\.|^http|\\.com|\\.ie|\\.net|\\.org|\\.eu|bsky\\.social"
-  )
-}
-
-tidy_posts <- posts |>
-  filter(!str_detect(text, "^RT")) |>
-  mutate(text = str_replace_all(text, replace_reg, "")) |>
-  unnest_tokens(word, text, token = "regex", pattern = unnest_reg) |>
-  filter(
-    !word %in% stop_words$word,
-    !word %in% str_remove_all(stop_words$word, "'"),
-    str_detect(word, "[a-z]")
-  )
-
+tidy_posts <- build_tidy_posts(posts)
+head(tidy_posts)
 # Identify communities large enough to support LDA (at least 10 documents)
 valid_communities <- tidy_posts |>
   distinct(community, document) |>
@@ -169,9 +172,6 @@ lda_models <- valid_communities |>
   map(\(comm) {
     dtm <- tidy_posts |>
       filter(community == comm) |>
-      anti_join(stop_words, by = "word") |>
-      anti_join(custom_stops, by = "word") |>
-      dplyr::filter(!is_url_token(word)) |>
       count(document, word) |>
       cast_dtm(document, word, n)
     LDA(dtm, k = 5, control = list(seed = 7843))
@@ -239,7 +239,7 @@ comm_order <- community_gamma |>
 
 # Derive topic labels from top-beta terms — aggregated across all community models.
 # Note: topics are fitted independently per community, so labels are approximate.
-make_topic_labels <- function(beta_df, n_terms = 2) {
+make_topic_labels <- function(beta_df, n_terms = 1) {
   beta_df |>
     dplyr::group_by(topic, term) |>
     dplyr::summarise(total_beta = sum(beta), .groups = "drop") |>
@@ -250,10 +250,11 @@ make_topic_labels <- function(beta_df, n_terms = 2) {
         "T",
         dplyr::first(topic),
         ": ",
-        paste(term, collapse = " & ")
+        paste(unique(term), collapse = " / ")
       ),
       .by = topic
     ) |>
+    dplyr::mutate(label = stringr::str_wrap(label, width = 18)) |>
     dplyr::arrange(topic) |>
     (\(d) setNames(d$label, as.character(d$topic)))()
 }
@@ -283,16 +284,13 @@ community_gamma |>
   theme_minimal() +
   theme(
     axis.text.y = element_text(size = 8),
-    axis.text.x = element_text(size = 8),
+    axis.text.x = element_text(size = 8, angle = 20, hjust = 1),
     panel.grid = element_blank()
   )
 
 # --- Global LDA: single corpus-wide model for comparable community profiles ---
 
 global_dtm <- tidy_posts |>
-  dplyr::anti_join(stop_words, by = "word") |>
-  dplyr::anti_join(custom_stops, by = "word") |>
-  dplyr::filter(!is_url_token(word)) |>
   dplyr::count(document, word) |>
   cast_dtm(document, word, n)
 
@@ -318,7 +316,7 @@ comm_order_global <- global_gamma |>
   dplyr::pull(community)
 
 global_topic_labels <- tidytext::tidy(global_lda, matrix = "beta") |>
-  make_topic_labels(n_terms = 2)
+  make_topic_labels(n_terms = 1)
 
 global_gamma |>
   dplyr::mutate(
