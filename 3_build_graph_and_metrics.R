@@ -815,5 +815,16 @@ cat("  Use nodes_with_metrics for per-user analysis\n")
 cat("  Use network_metrics for global statistics\n")
 cat("  Use community_stats to understand cluster structure\n\n")
 
+tobermvd <- c(
+  'bsn_comp',
+  'bsn_dyadcensus',
+  'bsn_summary_df',
+  'bsn_summary_df_chr',
+  'community_layouts',
+  'coords', 'coords_df','coords_drl', 'coords_mat',
+  'dist_matrix', 'entry',
+  'ig_cen', 'ig_comp', 'ig_summary_df', 'ig_summary_df_chr'
+)
+rm(list = tobermvd)
 gc()
 
