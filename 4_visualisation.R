@@ -712,4 +712,18 @@ library(DT)
 datatable(top_authors_reposted, caption = "Top 10 Authors by Reposts Received")
 datatable(top_reposters, caption = "Top 10 Accounts by Reposts Made")
 
+tobermvd <- c(
+  'bluSkynet',
+  'community_layouts',
+  'desc_df',
+  'desc_df_chr',
+  'edge_comm_df', 'edge_rgba_df',
+  'ge_edgeDynamic', 'ge_edges', 'ge_edgesAtt', 'ge_edgesVizColor',
+  'ge_nodes', 'ge_nodesAtt', 'ge_nodesVizAtt',
+  'graphs_arg', 'layouts', 'node_rgba_df',
+  'nodes_with_metrics','vis_edges', 'vis_g', 'vis_nodes', 'gtn', 'gto'
+)
+rm(list = tobermvd)
+gc()
+
 # End of script

@@ -119,7 +119,7 @@ all_posts <- lapply(seq_len(n_comm), function(i) {
   posts <- as.data.frame(posts)
   posts <- posts |> mutate(V2 = lubridate::ymd(V2))
   colnames(posts) <- c("text", "created_at")
-  posts$community_id <- i
+  posts$community_id <- unique(V(graph)$community)
   posts
 }) |>
   dplyr::bind_rows()
@@ -135,7 +135,7 @@ ggplot(all_posts, aes(x = created_at)) +
   theme_minimal(base_size = 12)
 
 plots <- lapply(seq_len(n_comm), function(i) {
-  plot_word_comparison_date(community_graphs[[i]], i)
+  plot_word_comparison_date(community_graphs[[i]], unique(V(community_graphs[[i]])$community))
 })
 
 show_plots <- function(plots, page = 1, per_page = 4) {
@@ -148,6 +148,8 @@ show_plots <- function(plots, page = 1, per_page = 4) {
 show_plots(plots, page = 1, per_page = 4)
 show_plots(plots, page = 2, per_page = 4)
 show_plots(plots, page = 3, per_page = 4)
+
+### Model Building ###
 
 posts <- cbind(edges$from, edges$text, edges$created_at)
 posts <- as.data.frame(posts)
