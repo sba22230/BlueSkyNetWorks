@@ -252,7 +252,7 @@ comparison_table <- bind_rows(
 datatable(comparison_table)
 
 # ============================================================================
-# SECTION 3: Ploting Network - Components
+# SECTION 3: Ploting Network - Components, islands of nodes in the overall network
 # ============================================================================
 # Ensure a graphics device exists before calling par()
 opened_dev <- FALSE
