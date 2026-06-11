@@ -1,0 +1,29 @@
+---
+title: "Speirgorm Bluesky Network Analysis"
+---
+
+This is a Quarto web site showing an R-based social network analysis project that collects, processes, and analyses interaction data from the [Bluesky](https://bsky.app/) social media platform. The project downloads discussions around the **#Speirgorm** hashtag, constructing directed networks of reposts for graph-theoretic analysis, community detection, and NLP-based post analysis.
+
+A side project was getting RevoScaleR working with SQL 2025 and "R version 4.6.0 (2026-04-24 ucrt)", the instructions for installing RevoScaleR are to be found [here](https://learn.microsoft.com/en-us/sql/machine-learning/install/sql-machine-learning-services-windows-install-sql-2022?view=sql-server-ver17 "Install SQL ML services on SQL 2022")
+
+## **Overview**
+
+The pipeline:
+
+1.  Queries the Bluesky API for posts matching `#Speirgorm`
+
+2.  Hydrates each post with repost and reply thread data
+
+3.  Ingests raw data into a SQL Server graph database, using ODBC and RevoScaleR
+
+4.  Builds directed network graphs and computes centrality metrics
+
+5.  Exports interactive and static visualisations
+
+6.  Runs sentiment-based and topic NLP analysis
+
+To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
+
+```{r}
+1 + 1
+```
