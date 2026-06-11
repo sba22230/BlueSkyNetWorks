@@ -132,6 +132,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span class="menu-text">Home</span></a>
   </li>  
   <li class="nav-item">
+    <a class="nav-link" href="./graphs/visnetwork_tmp.html"> 
+<span class="menu-text">VisNetork Visualisation</span></a>
+  </li>  
+  <li class="nav-item">
     <a class="nav-link" href="./about.html"> 
 <span class="menu-text">About</span></a>
   </li>  
@@ -146,8 +150,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview"><strong>Overview</strong></a></li>
+  <li><a href="#project-structure" id="toc-project-structure" class="nav-link" data-scroll-target="#project-structure"><strong>Project Structure</strong></a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
@@ -171,16 +182,44 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>This is a Quarto web site showing an R-based social network analysis project that collects, processes, and analyses interaction data from the&nbsp;<a href="https://bsky.app/">Bluesky</a>&nbsp;social media platform. The project downloads discussions around the&nbsp;<strong>#Speirgorm</strong>&nbsp;hashtag, constructing directed networks of reposts for graph-theoretic analysis, community detection, and NLP-based post analysis</p>
+<p>This is a Quarto web site showing an R-based social network analysis project that collects, processes, and analyses interaction data from the&nbsp;<a href="https://bsky.app/">Bluesky</a>&nbsp;social media platform. The project downloads discussions around the&nbsp;<strong>#Speirgorm</strong>&nbsp;hashtag, constructing directed networks of reposts for graph-theoretic analysis, community detection, and NLP-based post analysis.</p>
+<p>A side project was getting RevoScaleR working with SQL 2025 and “R version 4.6.0 (2026-04-24 ucrt)”, the instructions for installing RevoScaleR are to be found <a href="https://learn.microsoft.com/en-us/sql/machine-learning/install/sql-machine-learning-services-windows-install-sql-2022?view=sql-server-ver17" title="Install SQL ML services on SQL 2022">here</a></p>
+<section id="overview" class="level2">
+<h2 class="anchored" data-anchor-id="overview"><strong>Overview</strong></h2>
+<p>The pipeline:</p>
+<ol type="1">
+<li><p>Queries the Bluesky API for posts matching <code>#Speirgorm</code></p></li>
+<li><p>Hydrates each post with repost and reply thread data</p></li>
+<li><p>Ingests raw data into a SQL Server graph database, using ODBC and RevoScaleR</p></li>
+<li><p>Builds directed network graphs and computes centrality metrics</p></li>
+<li><p>Exports interactive and static visualisations</p></li>
+<li><p>Runs sentiment-based and topic NLP analysis</p></li>
+</ol>
+</section>
+<section id="project-structure" class="level2">
+<h2 class="anchored" data-anchor-id="project-structure"><strong>Project Structure</strong></h2>
+<pre><code>BlueSkyNetWorks/ 
+├── master_pipeline.R               # Orchestrates all pipeline stages 
+├── 0_functions.R                   # Libraries, authentication, utility functions 
+├── 1_BlueSky_Robust.r              # API data collection and hydration 
+├── 2_load network data into SQL.r  # SQL Server ingestion and graph table setup 
+├── 3_build_graph_and_metrics.R     # igraph/statnet construction and metrics    
+├── 4_visualisation.R               # visNetwork, ggraph, GEXF export 
+├── 5_NLP_analysis.R                # TidyText NLP and post frequency analysis 
+├── 6_TextAnalysis.R                # Sentiment lexicon analysis (Bing, NRC, AFINN) 
+├── SQL/                            # T-SQL schema, stored procedures, views 
+├── data/                           # Parquet and CSV data artifacts 
+├── graphs/                         # Exported graph files (Parquet, GEXF, GraphML, SVG, HTML)</code></pre>
 <p>To learn more about Quarto websites visit <a href="https://quarto.org/docs/websites" class="uri">https://quarto.org/docs/websites</a>.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span> <span class="sc">+</span> <span class="dv">1</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span> <span class="sc">+</span> <span class="dv">1</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 2</code></pre>
 </div>
 </div>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

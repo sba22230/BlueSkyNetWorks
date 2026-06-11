@@ -7,6 +7,8 @@ website:
     left:
       - href: index.qmd
         text: Home
+      - href: graphs/visnetwork_tmp.html
+        text: VisNetork Visualisation
       - about.qmd
 
 format:
@@ -18,4 +20,3 @@ format:
     toc: true
 
 editor: visual
-
