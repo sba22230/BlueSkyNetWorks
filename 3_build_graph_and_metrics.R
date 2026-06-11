@@ -1,7 +1,7 @@
 # source("0_functions.R")
 
 set.seed(22230)
-num_posts <- nrow(read_parquet("graphs/speirgorm_edges.parquet"))
+num_posts <- nrow(read_parquet("Report/graphs/speirgorm_edges.parquet"))
 
 
 cat("\n=== Step 3c: Build igraph object and plot basic network ===\n")
@@ -159,7 +159,12 @@ bsn_largest_component_size_pct <- (bsn_largest_component_size /
   100
 # Local Clustering Coefficient (for directed graphs, variants exist)
 bsn_local_clustering <- ig_avg_local_clustering # Placeholder: SNA's clustering is more complex for directed graphs
-bsn_Global_clustering <- gtrans(bluSkynet, mode = "digraph", measure = "weak" , use.adjacency = FALSE)
+bsn_Global_clustering <- gtrans(
+  bluSkynet,
+  mode = "digraph",
+  measure = "weak",
+  use.adjacency = FALSE
+)
 # Centralization (degree based)
 bsn_centralization_in <- (sum(max(bsn_ideg) - bsn_ideg)) /
   ((bsn_network_size - 1) * (bsn_network_size - 2))
@@ -750,7 +755,7 @@ gto <- ggraph(
 
 write_graph(
   g,
-  "graphs/g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
+  "Report/graphs/g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
   format = "graphml"
 )
 rxWriteObject(
@@ -810,7 +815,7 @@ cat(sprintf(
 ))
 cat(strrep("=", 70), "\n")
 
-cat("\n=== Metrics computation complete. Results saved to graphs/ ===\n")
+cat("\n=== Metrics computation complete. Results saved to Report/graphs/ ===\n")
 cat("  Use nodes_with_metrics for per-user analysis\n")
 cat("  Use network_metrics for global statistics\n")
 cat("  Use community_stats to understand cluster structure\n\n")
@@ -821,10 +826,16 @@ tobermvd <- c(
   'bsn_summary_df',
   'bsn_summary_df_chr',
   'community_layouts',
-  'coords', 'coords_df','coords_drl', 'coords_mat',
-  'dist_matrix', 'entry',
-  'ig_cen', 'ig_comp', 'ig_summary_df', 'ig_summary_df_chr'
+  'coords',
+  'coords_df',
+  'coords_drl',
+  'coords_mat',
+  'dist_matrix',
+  'entry',
+  'ig_cen',
+  'ig_comp',
+  'ig_summary_df',
+  'ig_summary_df_chr'
 )
 rm(list = tobermvd)
 gc()
-

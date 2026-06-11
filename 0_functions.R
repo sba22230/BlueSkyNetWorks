@@ -580,9 +580,9 @@ if (v$os != "linux-gnu" && sql_server_available()) {
 #### Graph Function ####
 get_graph_data <- function(num_posts) {
   # Step 1: Load data
-  edges_df <- read_parquet("graphs/speirgorm_edges.parquet")
-  nodes_df <- read_parquet("graphs/speirgorm_nodes.parquet")
-  
+  edges_df <- read_parquet("Report/graphs/speirgorm_edges.parquet")
+  nodes_df <- read_parquet("Report/graphs/speirgorm_nodes.parquet")
+
   # plan(multisession, workers = wrkrs)  ## to be moved closer to its use
   # ============================================================================
   # SECTION 1: Create the Graph
@@ -607,34 +607,34 @@ get_graph_data <- function(num_posts) {
     nodes <- nodes_df
     cat("Keeping all reposts; total reposts count:", nrow(edges), "\n")
   }
-  
+
   n_iter <- round(nrow(edges) / 100)
-  
+
   cat("Edges count:", nrow(edges), "\n")
-  
+
   # Debug: inspect edges
   print(head(edges))
-  
+
   # remove NAs
   #edges[is.na(edges)] <- "no text here"
-  
+
   na_per_column <- colSums(is.na(edges))
   print("Number of NAs per column:")
   print(na_per_column)
-  
+
   cat("\n=== Step 3b: Build node list (unique actors and posts ===\n")
-  
+
   # Step 2: Build node list (unique actors and posts)
   cat("Nodes count:", nrow(nodes), "\n")
-  
+
   # Debug: inspect nodes
   print(head(nodes))
-  
+
   na_per_column <- colSums(is.na(nodes))
   print("Number of NAs per column:")
   print(na_per_column)
   g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-  return (g)
+  return(g)
 }
 
 save_graph_svg <- function(

@@ -414,7 +414,13 @@ centrality_df <- rxExec(
     core_vals <- coreness(g)
     hits <- hits_scores(g, scale = FALSE)
     hits_norm <- hits_scores(g, scale = TRUE)
-    comm <- cluster_leiden(as_undirected(g), objective_function = 'modularity', n_iterations = 45, initial_membership = V(g)$community , resolution = 1)
+    comm <- cluster_leiden(
+      as_undirected(g),
+      objective_function = 'modularity',
+      n_iterations = 45,
+      initial_membership = V(g)$community,
+      resolution = 1
+    )
     local_clustering <- transitivity(
       g,
       type = "local",
@@ -559,7 +565,7 @@ nodes <- nodes %>%
     ~ gsub("[[:cntrl:]]", "", .)
   ))
 
-write_parquet(nodes, "graphs/speirgorm_nodes.parquet")
+write_parquet(nodes, "Report/graphs/speirgorm_nodes.parquet")
 
 edges <- dbGetQuery(
   odbc_con,
@@ -594,7 +600,7 @@ edges <- edges %>%
   ))
 names(edges)
 
-write_parquet(edges, "graphs/speirgorm_edges.parquet")
+write_parquet(edges, "Report/graphs/speirgorm_edges.parquet")
 cat(
   "\n=== Step 2l: Created edges and nodes csv files for later ===\n"
 )

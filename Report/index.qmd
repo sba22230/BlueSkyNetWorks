@@ -36,8 +36,9 @@ BlueSkyNetWorks/
 ├── 6_TextAnalysis.R                # Sentiment lexicon analysis (Bing, NRC, AFINN) 
 ├── SQL/                            # T-SQL schema, stored procedures, views 
 ├── data/                           # Parquet and CSV data artifacts 
-├── graphs/                         # Exported graph files (Parquet, GEXF, GraphML, SVG, HTML)
+├── Report/graphs/                         # Exported graph files (Parquet, GEXF, GraphML, SVG, HTML)
 ```
+
 
 To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
 
