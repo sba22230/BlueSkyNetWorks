@@ -110,7 +110,7 @@ cat("\n[3/3] Comparing SQL vs. R metrics...\n")
 # Load the previously computed R metrics (from 4_ComputeMetrics.R)
 # Assuming nodes_with_metrics is already in memory
 # If not, load from parquet:
-# nodes_with_metrics <- arrow::read_parquet("Report/graphs/speirgorm_nodes_with_metrics.parquet")
+# nodes_with_metrics <- arrow::read_parquet("Report/_site/graphs/speirgorm_nodes_with_metrics.parquet")
 
 # Merge SQL metrics with R metrics for comparison
 comparison <- sql_metrics %>%
@@ -258,31 +258,31 @@ cat("\n[EXPORT] Saving metrics to disk...\n")
 # Save SQL metrics for future use
 arrow::write_parquet(
   sql_metrics,
-  "Report/graphs/speirgorm_metrics_from_sql.parquet"
+  "Report/_site/graphs/speirgorm_metrics_from_sql.parquet"
 )
 cat(
-  "  ✓ SQL metrics saved to Report/graphs/speirgorm_metrics_from_sql.parquet\n"
+  "  ✓ SQL metrics saved to Report/_site/graphs/speirgorm_metrics_from_sql.parquet\n"
 )
 
 # Save comparison for analysis
 arrow::write_parquet(
   comparison,
-  "Report/graphs/speirgorm_metrics_comparison.parquet"
+  "Report/_site/graphs/speirgorm_metrics_comparison.parquet"
 )
 cat(
-  "  ✓ Comparison saved to Report/graphs/speirgorm_metrics_comparison.parquet\n"
+  "  ✓ Comparison saved to Report/_site/graphs/speirgorm_metrics_comparison.parquet\n"
 )
 
 # Save subgraph edges and nodes
 arrow::write_parquet(
   subgraph_edges,
-  "Report/graphs/speirgorm_subgraph_edges.parquet"
+  "Report/_site/graphs/speirgorm_subgraph_edges.parquet"
 )
 arrow::write_parquet(
   subgraph_nodes,
-  "Report/graphs/speirgorm_subgraph_nodes.parquet"
+  "Report/_site/graphs/speirgorm_subgraph_nodes.parquet"
 )
-cat("  ✓ Subgraph saved to Report/graphs/speirgorm_subgraph_*.parquet\n")
+cat("  ✓ Subgraph saved to Report/_site/graphs/speirgorm_subgraph_*.parquet\n")
 
 # ============================================================================
 # CLEANUP

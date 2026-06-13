@@ -35,7 +35,7 @@ BlueSkyNetWorks/
 ├── BluseSkyNetworking.Rmd          # Interactive R Notebook for exploration
 ├── SQL/                            # T-SQL schema, stored procedures, views
 ├── data/                           # Parquet and CSV data artifacts
-└── Report/graphs/                         # Exported graph files (Parquet, GEXF, GraphML, SVG, HTML)
+└── Report/_site/graphs/                         # Exported graph files (Parquet, GEXF, GraphML, SVG, HTML)
 ```
 
 ---
@@ -140,10 +140,10 @@ For interactive exploration, open and knit `BluseSkyNetworking.Rmd`.
 | `data/speirgorm_posts.parquet` | 5.6 MB | Raw posts matching `#Speirgorm` |
 | `data/speirgorm_reposts.parquet` | 13.3 MB | Repost relationships |
 | `data/speirgorm_threads.parquet` | 1.6 MB | Reply thread data |
-| `Report/graphs/speirgorm_edges.parquet` | — | Network edges with metadata |
-| `Report/graphs/speirgorm_nodes.parquet` | — | Network nodes with computed metrics |
-| `Report/graphs/visnetwork_export.gexf` | — | Gephi-compatible graph export |
-| `Report/graphs/visnetwork_tmp.html` | — | Interactive network (browser) |
+| `Report/_site/graphs/speirgorm_edges.parquet` | — | Network edges with metadata |
+| `Report/_site/graphs/speirgorm_nodes.parquet` | — | Network nodes with computed metrics |
+| `Report/_site/graphs/visnetwork_export.gexf` | — | Gephi-compatible graph export |
+| `Report/_site/graphs/visnetwork_tmp.html` | — | Interactive network (browser) |
 
 ---
 

@@ -17,7 +17,7 @@ source("0_functions.R")
 
 # Load the most recent N posts to build the interaction graph.
 # Increasing num_posts gives a denser, more representative graph but is slower.
-num_posts <- 15000
+num_posts <- 19531
 g <- get_graph_data(num_posts)
 
 

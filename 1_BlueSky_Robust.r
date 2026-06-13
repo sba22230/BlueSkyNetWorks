@@ -1,5 +1,5 @@
 # 1_bluesky_ingest.R
-#source("0_functions.R")
+source("0_functions.R")
 
 # Connect to bluesky
 bs_user <- bs_get_user()

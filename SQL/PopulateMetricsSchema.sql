@@ -9,10 +9,10 @@
 STEPS TO POPULATE METRICS FROM 4_ComputeMetrics.R:
 
 1. Run 4_ComputeMetrics.R to generate:
-   - Report/graphs/nodes_with_metrics.csv
-   - Report/graphs/network_metrics.csv
-   - Report/graphs/community_stats.csv
-   - Report/graphs/triad_census.csv
+   - Report/_site/graphs/nodes_with_metrics.csv
+   - Report/_site/graphs/network_metrics.csv
+   - Report/_site/graphs/community_stats.csv
+   - Report/_site/graphs/triad_census.csv
 
 2. In SSMS, execute this script to create tables and procedures
 
@@ -24,7 +24,7 @@ STEPS TO POPULATE METRICS FROM 4_ComputeMetrics.R:
               pagerank, hub_score, authority_score, local_clustering, kcore,
               in_degree, out_degree, total_degree, community
        FROM OPENROWSET(
-           BULK 'Report/graphs/nodes_with_metrics.csv',
+           BULK 'Report/_site/graphs/nodes_with_metrics.csv',
            DATA_SOURCE = 'YOUR_DATA_SOURCE',
            FORMAT = 'CSV', FIRSTROW = 2
        ) AS source(...)

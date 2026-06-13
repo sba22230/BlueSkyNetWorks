@@ -7,7 +7,7 @@ website:
     left:
       - href: index.qmd
         text: Home
-      - href: Report/graphs/visnetwork_tmp.html
+      - href: Report/_site/graphs/visnetwork_tmp.html
         text: VisNetork Visualisation
       - about.qmd
 

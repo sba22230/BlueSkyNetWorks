@@ -116,8 +116,8 @@ DT::datatable(
 # ⭐ Step 5 — Save it for later
 
 ```r
-write_csv(comparison_df, "Report/graphs/metric_comparison_igraph_statnet.csv")
-write_parquet(comparison_df, "Report/graphs/metric_comparison_igraph_statnet.parquet")
+write_csv(comparison_df, "Report/_site/graphs/metric_comparison_igraph_statnet.csv")
+write_parquet(comparison_df, "Report/_site/graphs/metric_comparison_igraph_statnet.parquet")
 ```
 
 ---
