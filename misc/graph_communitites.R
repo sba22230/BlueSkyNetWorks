@@ -100,7 +100,7 @@ silhouette_coefficient <- function(graph, membership, weights = NULL) {
 silhouette_coefficient_batched <- function(
     graph, membership, weights = NULL,
     mode = c("out", "in", "all"),
-    batch_size = 256
+    batch_size = 512
 ) {
   mode <- match.arg(mode)
 
@@ -217,7 +217,7 @@ internal_density <- function(graph, membership) {
     n <- length(members)
 
     # Maximum possible edges differs for directed vs. undirected graphs
-    possible_edges <- if (igraph::is.directed(graph)) n * (n - 1) else (n * (n - 1)) / 2
+    possible_edges <- if (igraph::is_directed(graph)) n * (n - 1) else (n * (n - 1)) / 2
 
     density_scores[i] <- internal_edges / possible_edges
   }
@@ -356,9 +356,9 @@ dens_leiden   <- internal_density(g, membership_leiden)
 
 # Silhouette: node-level cohesion vs. separation, aggregated to algorithm level
 # (higher / less negative is better; batched version used for memory efficiency)
-sil_walktrap <- silhouette_coefficient_batched(g, membership_walktrap, mode = 'all', batch_size = 128)
-sil_louvain  <- silhouette_coefficient_batched(g, membership_louvain,  mode = 'all', batch_size = 128)
-sil_leiden   <- silhouette_coefficient_batched(g, membership_leiden,   mode = 'all', batch_size = 128)
+sil_walktrap <- silhouette_coefficient_batched(g, membership_walktrap, mode = 'all', batch_size = 512)
+sil_louvain  <- silhouette_coefficient_batched(g, membership_louvain,  mode = 'all', batch_size = 512)
+sil_leiden   <- silhouette_coefficient_batched(g, membership_leiden,   mode = 'all', batch_size = 512)
 
 
 # =============================================================================
@@ -470,3 +470,4 @@ write.table(
   row.names = FALSE,
   append    = TRUE
 )
+
