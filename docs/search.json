@@ -1,0 +1,30 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Speirgorm Bluesky Network Analysis",
+    "section": "",
+    "text": "This is a Quarto web site showing an R-based social network analysis project that collects, processes, and analyses interaction data from the Bluesky social media platform. The project downloads discussions around the #Speirgorm hashtag, constructing directed networks of reposts for graph-theoretic analysis, community detection, and NLP-based post analysis.\nA side project was getting RevoScaleR working with SQL 2025 and “R version 4.6.0 (2026-04-24 ucrt)”, the instructions for installing RevoScaleR are to be found here"
+  },
+  {
+    "objectID": "index.html#overview",
+    "href": "index.html#overview",
+    "title": "Speirgorm Bluesky Network Analysis",
+    "section": "Overview",
+    "text": "Overview\nThe pipeline:\n\nQueries the Bluesky API for posts matching #Speirgorm\nHydrates each post with repost and reply thread data\nIngests raw data into a SQL Server graph database, using ODBC and RevoScaleR\nBuilds directed network graphs and computes centrality metrics\nExports interactive and static visualisations\nRuns sentiment-based and topic NLP analysis"
+  },
+  {
+    "objectID": "index.html#project-structure",
+    "href": "index.html#project-structure",
+    "title": "Speirgorm Bluesky Network Analysis",
+    "section": "Project Structure",
+    "text": "Project Structure\nBlueSkyNetWorks/ \n├── master_pipeline.R               # Orchestrates all pipeline stages \n├── 0_functions.R                   # Libraries, authentication, utility functions \n├── 1_BlueSky_Robust.r              # API data collection and hydration \n├── 2_load network data into SQL.r  # SQL Server ingestion and graph table setup \n├── 3_build_graph_and_metrics.R     # igraph/statnet construction and metrics    \n├── 4_visualisation.R               # visNetwork, ggraph, GEXF export \n├── 5_NLP_analysis.R                # TidyText NLP and post frequency analysis \n├── 6_TextAnalysis.R                # Sentiment lexicon analysis (Bing, NRC, AFINN) \n├── SQL/                            # T-SQL schema, stored procedures, views \n├── data/                           # Parquet and CSV data artifacts \n├── Report/_site/graphs/                         # Exported graph files (Parquet, GEXF, GraphML, SVG, HTML)\nTo learn more about Quarto websites visit https://quarto.org/docs/websites.\n\n1 + 1\n\n[1] 2"
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "About this site\n\n1 + 1\n\n[1] 2"
+  }
+]
