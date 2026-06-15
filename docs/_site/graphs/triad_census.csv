@@ -1,0 +1,17 @@
+triad_type,count,description
+0,NA,003: no edges
+1,572689610,012: single directed edge
+2,130014726,102: single undirected edge
+3,467667,021D: two asymmetric edges
+4,11950631,021U: single undirected + one directed
+5,1145907,021C: path of length 2
+6,525413,111D: three asymmetric edges
+7,93264,111U: two undirected + one directed
+8,77288,030T: transitive triple
+9,1539,030C: cyclic triple
+10,12685,201: bidirectional edge + isolated
+11,23032,120D: one mutual + one asymmetric
+12,8711,120U: one mutual + two directed
+13,5905,120C: one mutual + path
+14,6464,210: mutual edge + two directed
+15,1117,300: all mutual edges
