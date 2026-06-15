@@ -521,75 +521,81 @@ pal <- viridis::viridis(max(V(g)$kcore, na.rm = TRUE) + 1)
 community_layouts <- vector("list", n_comm)
 names(community_layouts) <- paste0("Main Graph ", vcount(g), " nodes")
 
+# ── 1. Initialise entries ────────────────────────────────────────────────────
 for (i in seq_len(n_comm)) {
-  community_layouts[[i]] <- list(
-    id = g,
-    graph = g,
-    layouts = list()
-  )
+  community_layouts[[i]] <- list(id = g, graph = g, layouts = list())
+}
 
-  # Fill layout matrices
-  for (k in seq_along(res_g)) {
-    comm_i <- graph_idx_rep[k]
-    lt <- as.character(attr(res_g[[k]], "layout_type"))
-    coords_df <- res_g[[k]]
-    coords_mat <- as.matrix(coords_df[, c("x", "y")])
-    community_layouts[[comm_i]]$layouts[[lt]] <- coords_mat
-  }
+# ── 2. Fill layout matrices (hoisted out of the community loop) ───────────────
+for (k in seq_along(res_g)) {
+  comm_i     <- graph_idx_rep[k]
+  lt         <- as.character(attr(res_g[[k]], "layout_type"))
+  coords_mat <- as.matrix(res_g[[k]][, c("x", "y")])
+  community_layouts[[comm_i]]$layouts[[lt]] <- coords_mat
+}
 
-  entry <- community_layouts[[i]]
-  subg <- entry$graph
+# ── 3. Flatten to a list of independent render tasks ─────────────────────────
+render_tasks <- list()
+for (i in seq_len(n_comm)) {
+  entry        <- community_layouts[[i]]
+  subg         <- entry$graph
   layouts_list <- entry$layouts
-  m <- length(layouts_list)
-  if (m == 0) {
-    next
-  }
+  if (length(layouts_list) == 0L) next
 
-  # Precompute vertex aesthetics
-  vsize <- if (!is.null(V(subg)$pagerank)) {
-    V(subg)$pagerank + 1
-  } else {
-    rep(6, vcount(subg))
-  }
-  vcol <- if (!is.null(V(subg)$kcore)) {
-    pal[as.integer(V(subg)$kcore) + 1]
-  } else {
-    "steelblue"
-  }
+  vsize <- if (!is.null(V(subg)$pagerank)) V(subg)$pagerank + 1 else rep(6, vcount(subg))
+  vcol  <- if (!is.null(V(subg)$kcore)) pal[as.integer(V(subg)$kcore) + 1] else "steelblue"
 
-  # ---- NEW: Save one SVG per layout ----
-  for (k in seq_len(m)) {
-    layout_name <- names(layouts_list)[k]
-    coords <- layouts_list[[k]]
-
-    main_title <- paste0(
-      "Main Graph ",
-      vcount(subg),
-      " nodes\n(",
-      layout_name,
-      ")"
-    )
-
-    out_file <- paste0("MainGraph_", vcount(subg), "_", layout_name, ".svg")
-
-    save_graph_svg(
-      plot_or_expr = function() {
-        par(mar = c(1, 1, 2, 1))
-        plot.igraph(
-          subg,
-          layout = coords,
-          main = main_title,
-          vertex.size = vsize,
-          vertex.label.cex = 0.2,
-          edge.arrow.size = 0.3,
-          vertex.color = vcol
-        )
-      },
-      filename = out_file,
-      folder = "images"
+  for (k in seq_along(layouts_list)) {
+    render_tasks[[length(render_tasks) + 1L]] <- list(
+      subg        = subg,
+      coords      = layouts_list[[k]],
+      layout_name = names(layouts_list)[k],
+      vsize       = vsize,
+      vcol        = vcol
     )
   }
 }
+
+# ── 4. Worker: renders and saves one SVG ─────────────────────────────────────
+render_one_graph <- function(task) {
+  library(igraph)
+  subg        <- task$subg
+  coords      <- task$coords
+  layout_name <- task$layout_name
+  vsize       <- task$vsize
+  vcol        <- task$vcol
+
+  main_title <- paste0("Main Graph ", vcount(subg), " nodes\n(", layout_name, ")")
+  out_file   <- paste0("MainGraph_", vcount(subg), "_", layout_name, ".svg")
+
+  save_graph_svg(
+    plot_or_expr = function() {
+      par(mar = c(1, 1, 2, 1))
+      plot.igraph(
+        subg,
+        layout           = coords,
+        main             = main_title,
+        vertex.size      = vsize,
+        vertex.label.cex = 0.2,
+        edge.arrow.size  = 0.3,
+        vertex.color     = vcol
+      )
+    },
+    filename = out_file,
+    folder   = "images"
+  )
+  invisible(out_file)
+}
+
+# ── 5. Execute all renders in parallel ───────────────────────────────────────
+rxSetComputeContext(RxLocalParallel())
+rxExec(
+  render_one_graph,
+  task           = rxElemArg(render_tasks),
+  execObjects    = "save_graph_svg",
+  packagesToLoad = c("igraph", "viridis")
+)
+rxSetComputeContext(origComputeContext)
 
 par(old_par)
 # Select top N nodes to label (e.g., top 50 by degree)
