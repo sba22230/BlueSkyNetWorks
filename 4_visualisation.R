@@ -299,7 +299,7 @@ vis_obj <- visNetwork(
 # a headless Chrome/Chromium)
 htmlwidgets::saveWidget(
   vis_obj,
-  "Report/_site/graphs/visnetwork_tmp.html",
+  "graphs/visnetwork_tmp.html",
   selfcontained = FALSE
 )
 rxWriteObject(

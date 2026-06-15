@@ -1,7 +1,7 @@
 # source("0_functions.R")
 
 set.seed(22230)
-num_posts <- nrow(read_parquet("Report/_site/graphs/speirgorm_edges.parquet"))
+num_posts <- nrow(read_parquet("graphs/speirgorm_edges.parquet"))
 
 
 cat("\n=== Step 3c: Build igraph object and plot basic network ===\n")
@@ -755,7 +755,7 @@ gto <- ggraph(
 
 write_graph(
   g,
-  "Report/_site/graphs/g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
+  "graphs/g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
   format = "graphml"
 )
 rxWriteObject(
@@ -816,7 +816,7 @@ cat(sprintf(
 cat(strrep("=", 70), "\n")
 
 cat(
-  "\n=== Metrics computation complete. Results saved to Report/_site/graphs/ ===\n"
+  "\n=== Metrics computation complete. Results saved to graphs/ ===\n"
 )
 cat("  Use nodes_with_metrics for per-user analysis\n")
 cat("  Use network_metrics for global statistics\n")

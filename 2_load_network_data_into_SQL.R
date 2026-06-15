@@ -563,7 +563,7 @@ nodes <- nodes %>%
     ~ gsub("[[:cntrl:]]", "", .)
   ))
 
-write_parquet(nodes, "Report/_site/graphs/speirgorm_nodes.parquet")
+write_parquet(nodes, "graphs/speirgorm_nodes.parquet")
 
 edges <- dbGetQuery(
   odbc_con,
@@ -598,7 +598,7 @@ edges <- edges %>%
   ))
 names(edges)
 
-write_parquet(edges, "Report/_site/graphs/speirgorm_edges.parquet")
+write_parquet(edges, "graphs/speirgorm_edges.parquet")
 cat(
   "\n=== Step 2l: Created edges and nodes csv files for later ===\n"
 )

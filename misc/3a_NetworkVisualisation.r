@@ -77,7 +77,7 @@ cat("Final graph summary:\n")
 print(summary(g2))
 write_graph(
   g2,
-  "Report/_site/graphs/g2 bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
+  "graphs/g2 bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
   format = "graphml"
 )
 rxWriteObject(
@@ -134,7 +134,7 @@ vis_obj <- visNetwork(
 # a headless Chrome/Chromium)
 htmlwidgets::saveWidget(
   vis_obj,
-  "Report/_site/graphs/visnetwork_tmp.html",
+  "graphs/visnetwork_tmp.html",
   selfcontained = TRUE
 )
 rxWriteObject(

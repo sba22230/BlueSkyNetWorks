@@ -1,10 +1,10 @@
 # source("0_functions.R")
 
 # Step 1: Load data
-edges_df <- read_parquet("Report/_site/graphs/speirgorm_edges.parquet")
-nodes_df <- read_parquet("Report/_site/graphs/speirgorm_nodes.parquet")
-# edges <- read_parquet("Report/_site/graphs/speirgorm_edges.parquet")
-# nodes <- read_parquet("Report/_site/graphs/speirgorm_nodes.parquet")
+edges_df <- read_parquet("graphs/speirgorm_edges.parquet")
+nodes_df <- read_parquet("graphs/speirgorm_nodes.parquet")
+# edges <- read_parquet("graphs/speirgorm_edges.parquet")
+# nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
 # --- Optional: sample reposted posts and filter reposts_df -----------------
 # Filter posts that have been reposted, sample them reproducibly, then
 # keep only repost records for those sampled original posts. Adjust
@@ -29,8 +29,8 @@ if (!is.null(num_posts) && nrow(edges_df) > num_posts) {
   cat("Sampled", num_posts, "edges; resulting nodes:", nrow(nodes), "\n")
 } else {
   n_iter <- num_posts / 2
-  edges <- read_parquet("Report/_site/graphs/speirgorm_edges.parquet")
-  nodes <- read_parquet("Report/_site/graphs/speirgorm_nodes.parquet")
+  edges <- read_parquet("graphs/speirgorm_edges.parquet")
+  nodes <- read_parquet("graphs/speirgorm_nodes.parquet")
   cat("Keeping all reposts; total reposts count:", nrow(edges), "\n")
 }
 

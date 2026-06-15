@@ -72,7 +72,7 @@ Worker count: `wrkrs = max(1, floor(availableCores() * 0.3))` (conservative: 30%
   - `speirgorm_posts.parquet` → canonical post dataset
   - `speirgorm_hydrated_*.parquet` → checkpoint for reposts/threads
   - `reposts_batch_*.csv`, `threads_batch_*.csv` → per-batch hydration outputs
-- `Report/_site/graphs/`: Network objects and edge/node tables (parquet)
+- `graphs/`: Network objects and edge/node tables (parquet)
 - `.Rproj`: RStudio project config; ensures `UseNativePipeOperator: Yes` (use `|>` not `%>%`)
 
 ### Column Naming

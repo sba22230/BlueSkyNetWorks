@@ -580,8 +580,8 @@ if (v$os != "linux-gnu" && sql_server_available()) {
 #### Graph Function ####
 get_graph_data <- function(num_posts) {
   # Step 1: Load data
-  edges_df <- read_parquet("Report/_site/graphs/speirgorm_edges.parquet")
-  nodes_df <- read_parquet("Report/_site/graphs/speirgorm_nodes.parquet")
+  edges_df <- read_parquet("graphs/speirgorm_edges.parquet")
+  nodes_df <- read_parquet("graphs/speirgorm_nodes.parquet")
 
   # plan(multisession, workers = wrkrs)  ## to be moved closer to its use
   # ============================================================================
