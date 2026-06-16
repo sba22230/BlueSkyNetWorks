@@ -53,3 +53,6 @@ images/Community_13_layouts.svg
 graphs/g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml
 images/SubGraph_*.svg
 .positai
+
+/.quarto/
+**/*.quarto_ipynb

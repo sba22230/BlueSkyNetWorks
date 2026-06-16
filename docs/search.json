@@ -25,6 +25,69 @@
     "href": "about.html",
     "title": "About",
     "section": "",
-    "text": "About this site\n\n1 + 1\n\n[1] 2"
+    "text": "About this site"
+  },
+  {
+    "objectID": "about.html#overview",
+    "href": "about.html#overview",
+    "title": "About",
+    "section": "Overview",
+    "text": "Overview\nThe pipeline:\n\nQueries the Bluesky API for posts matching #Speirgorm\nHydrates each post with repost and reply thread data\nIngests raw data into a SQL Server graph database\nBuilds directed network graphs and computes centrality metrics\nExports interactive and static visualisations\nRuns temporal and sentiment-based NLP analysis"
+  },
+  {
+    "objectID": "about.html#project-structure",
+    "href": "about.html#project-structure",
+    "title": "About",
+    "section": "Project Structure",
+    "text": "Project Structure\nBlueSkyNetWorks/\n├── master_pipeline.R               # Orchestrates all pipeline stages\n├── 0_functions.R                   # Libraries, authentication, utility functions\n├── 1_BlueSky_Robust.r              # API data collection and hydration\n├── 2_load network data into SQL.r  # SQL Server ingestion and graph table setup\n├── 3_build_graph_and_metrics.R     # igraph/statnet construction and metrics\n├── 3a_NetworkVisualisation.r       # Layout computation and community colouring\n├── 3b_TSNA_Analysis.r              # Temporal network analysis\n├── 4_visualisation.R               # visNetwork, ggraph, GEXF export\n├── 5_PostNLP_analysis.R            # TidyText NLP and post frequency analysis\n├── 6_TextAnalysis.R                # Sentiment lexicon analysis (Bing, NRC, AFINN)\n├── Model_functions.R               # Sentiment scoring (logistic regression, Naive Bayes)\n├── BluseSkyNetworking.Rmd          # Interactive R Notebook for exploration\n├── SQL/                            # T-SQL schema, stored procedures, views\n├── data/                           # Parquet and CSV data artifacts\n└── graphs/                         # Exported graph files (Parquet, GEXF, GraphML, SVG, HTML)"
+  },
+  {
+    "objectID": "about.html#pipeline-stages",
+    "href": "about.html#pipeline-stages",
+    "title": "About",
+    "section": "Pipeline Stages",
+    "text": "Pipeline Stages\n\nStage 1 — Data Collection (1_BlueSky_Robust.r)\n\nSearches Bluesky API for #Speirgorm posts using cursor-based pagination\nCheckpoints every ~1,000 rows to data/speirgorm_posts.parquet\nHydrates posts in parallel batches to retrieve repost and thread data\nOutputs: speirgorm_posts.parquet, speirgorm_reposts.parquet, speirgorm_threads.parquet\n\n\n\nStage 2 — SQL Ingestion (2_load network data into SQL.r)\n\nLoads parquet data into a SQL Server database (BlueSkyNet)\nCreates SQL Server graph tables: Person (nodes) and Reposted (edges)\nUses RevoScaleR for parallel remote compute context\n\n\n\nStage 3 — Graph Analysis (3_build_graph_and_metrics.R)\n\nConstructs directed graphs using igraph and statnet\nComputes node-level metrics: in/out-degree, betweenness, closeness, eigenvector centrality, PageRank\nComputes network-level metrics: density, diameter, average path length, clustering coefficient, triad census\nDetects communities via the Walktrap algorithm\nOutputs: speirgorm_edges.parquet, speirgorm_nodes.parquet, network_metrics.parquet\n\n\n\nStage 4 — Visualisation (4_visualisation.R, 3a_NetworkVisualisation.r)\n\nGenerates interactive network visualisations with visNetwork\nGenerates static plots with ggraph (Fruchterman-Reingold, Kamada-Kawai layouts)\nExports to GEXF (Gephi), GraphML, SVG, and HTML formats\n\n\n\nStage 5 — NLP Analysis (5_PostNLP_analysis.R, 6_TextAnalysis.R)\n\nTokenises post text and computes word frequencies per community\nRuns sentiment analysis using Bing, NRC, and AFINN lexicons\nAnalyses posting frequency and temporal dynamics"
+  },
+  {
+    "objectID": "about.html#getting-started",
+    "href": "about.html#getting-started",
+    "title": "About",
+    "section": "Getting Started",
+    "text": "Getting Started\n\nPrerequisites\n\nR ≥ 4.1\nSQL Server (local instance; database BlueSkyNet)\nA Bluesky account for API authentication\n\n\n\nR Package Dependencies\ninstall.packages(c(\n  \"bskyr\",       # Bluesky API client\n  \"arrow\",       # Parquet I/O\n  \"igraph\",      # Network analysis\n  \"statnet\",     # Network analysis (statnet suite)\n  \"sna\",\n  \"intergraph\",  # igraph &lt;-&gt; statnet conversion\n  \"dplyr\", \"tidyr\", \"purrr\", \"furrr\",\n  \"ggraph\", \"visNetwork\", \"ggplot2\",\n  \"tidytext\", \"textdata\", \"tm\",\n  \"DBI\", \"odbc\",\n  \"RevoScaleR\"   # For SQL Server parallel compute (Microsoft R)\n))\n\nNote: RevoScaleR is part of Microsoft R Open / SQL Server Machine Learning Services and is not available on CRAN.\n\n\n\nAuthentication\nBluesky credentials are managed interactively via bskyr. On first run, 0_functions.R will prompt for your handle and app password. Credentials are stored securely and reused throughout the session — do not hardcode them.\nSQL Server uses Windows Authentication by default. Adjust the connection string in 0_functions.R if SQL authentication is required.\n\n\nRunning the Pipeline\n# Run all stages sequentially\nsource(\"master_pipeline.R\")\nOr run individual stages:\nsource(\"0_functions.R\")                      # Always source first\nsource(\"1_BlueSky_Robust.r\")                 # Collect data\nsource(\"2_load network data into SQL.r\")     # Ingest to SQL\nsource(\"3_build_graph_and_metrics.R\")        # Build graph & metrics\nsource(\"4_visualisation.R\")                  # Export visualisations\nsource(\"5_PostNLP_analysis.R\")               # NLP analysis\nFor interactive exploration, open and knit BluseSkyNetworking.Rmd."
+  },
+  {
+    "objectID": "about.html#data-artifacts",
+    "href": "about.html#data-artifacts",
+    "title": "About",
+    "section": "Data Artifacts",
+    "text": "Data Artifacts\n\n\n\n\n\n\n\n\nFile\nSize\nDescription\n\n\n\n\ndata/speirgorm_posts.parquet\n5.6 MB\nRaw posts matching #Speirgorm\n\n\ndata/speirgorm_reposts.parquet\n13.3 MB\nRepost relationships\n\n\ndata/speirgorm_threads.parquet\n1.6 MB\nReply thread data\n\n\ngraphs/speirgorm_edges.parquet\n—\nNetwork edges with metadata\n\n\ngraphs/speirgorm_nodes.parquet\n—\nNetwork nodes with computed metrics\n\n\ngraphs/visnetwork_export.gexf\n—\nGephi-compatible graph export\n\n\ngraphs/visnetwork_tmp.html\n—\nInteractive network (browser)"
+  },
+  {
+    "objectID": "about.html#sql-schema",
+    "href": "about.html#sql-schema",
+    "title": "About",
+    "section": "SQL Schema",
+    "text": "SQL Schema\nThe SQL/ directory contains T-SQL scripts for the BlueSkyNet database:\n\n\n\n\n\n\n\nFile\nPurpose\n\n\n\n\nTables.sql\nCreates posts_raw, reposts_raw, Person, Reposted graph tables\n\n\nStoredProcedures.sql\nProcedures for graph metric computation\n\n\nGraphMetrics.sql\nSQL-level centrality calculations\n\n\nNetworkLevelMetrics.sql\nNetwork-wide aggregations\n\n\nView.sql\nSummary views for posts and users\n\n\nBuild Network Table.sql\nGraph projection queries"
+  },
+  {
+    "objectID": "about.html#design-patterns",
+    "href": "about.html#design-patterns",
+    "title": "About",
+    "section": "Design Patterns",
+    "text": "Design Patterns\nResilient API collection — retry() with exponential backoff and jitter protects against rate limits. Bad URIs (HTTP 400) are skipped; transient errors (HTTP 502) are queued for retry.\nCheckpointing — Progress is saved at regular intervals so long-running jobs can resume from the last checkpoint without reprocessing.\nParallel hydration — furrr::future_map_dfr() with up to 70% of available cores batches repost and thread fetching efficiently.\nSafe extraction — safe_chr(), safe_int(), and similar helpers handle missing or inconsistently shaped API responses without crashing."
+  },
+  {
+    "objectID": "about.html#outputs",
+    "href": "about.html#outputs",
+    "title": "About",
+    "section": "Outputs",
+    "text": "Outputs\n\nInteractive HTML network visualisation (visNetwork)\nStatic SVG plots of full network and per-community subgraphs\nGEXF / GraphML exports for Gephi or Cytoscape\nAnimated GIF / MP4 of temporal network evolution\nSentiment and frequency plots per community"
+  },
+  {
+    "objectID": "about.html#naming-conventions",
+    "href": "about.html#naming-conventions",
+    "title": "About",
+    "section": "Naming Conventions",
+    "text": "Naming Conventions\n\n\n\n\n\n\n\n\nContext\nConvention\nExample\n\n\n\n\nDatabase / graph fields\nPascalCase\nPostedBy, RepostedOn\n\n\nBluesky API fields\ncamelCase\nuri, indexedAt\n\n\nComputed metrics\nsnake_case\nreposts_received, betweenness_centrality"
   }
 ]

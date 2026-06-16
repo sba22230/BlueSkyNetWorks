@@ -150,8 +150,38 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#blueskynetworks" id="toc-blueskynetworks" class="nav-link active" data-scroll-target="#blueskynetworks">BlueSkyNetWorks</a>
+  <ul class="collapse">
+  <li><a href="#overview" id="toc-overview" class="nav-link" data-scroll-target="#overview">Overview</a></li>
+  <li><a href="#project-structure" id="toc-project-structure" class="nav-link" data-scroll-target="#project-structure">Project Structure</a></li>
+  <li><a href="#pipeline-stages" id="toc-pipeline-stages" class="nav-link" data-scroll-target="#pipeline-stages">Pipeline Stages</a>
+  <ul class="collapse">
+  <li><a href="#stage-1-data-collection-1_bluesky_robust.r" id="toc-stage-1-data-collection-1_bluesky_robust.r" class="nav-link" data-scroll-target="#stage-1-data-collection-1_bluesky_robust.r">Stage 1 — Data Collection (<code>1_BlueSky_Robust.r</code>)</a></li>
+  <li><a href="#stage-2-sql-ingestion-2_load-network-data-into-sql.r" id="toc-stage-2-sql-ingestion-2_load-network-data-into-sql.r" class="nav-link" data-scroll-target="#stage-2-sql-ingestion-2_load-network-data-into-sql.r">Stage 2 — SQL Ingestion (<code>2_load network data into SQL.r</code>)</a></li>
+  <li><a href="#stage-3-graph-analysis-3_build_graph_and_metrics.r" id="toc-stage-3-graph-analysis-3_build_graph_and_metrics.r" class="nav-link" data-scroll-target="#stage-3-graph-analysis-3_build_graph_and_metrics.r">Stage 3 — Graph Analysis (<code>3_build_graph_and_metrics.R</code>)</a></li>
+  <li><a href="#stage-4-visualisation-4_visualisation.r-3a_networkvisualisation.r" id="toc-stage-4-visualisation-4_visualisation.r-3a_networkvisualisation.r" class="nav-link" data-scroll-target="#stage-4-visualisation-4_visualisation.r-3a_networkvisualisation.r">Stage 4 — Visualisation (<code>4_visualisation.R</code>, <code>3a_NetworkVisualisation.r</code>)</a></li>
+  <li><a href="#stage-5-nlp-analysis-5_postnlp_analysis.r-6_textanalysis.r" id="toc-stage-5-nlp-analysis-5_postnlp_analysis.r-6_textanalysis.r" class="nav-link" data-scroll-target="#stage-5-nlp-analysis-5_postnlp_analysis.r-6_textanalysis.r">Stage 5 — NLP Analysis (<code>5_PostNLP_analysis.R</code>, <code>6_TextAnalysis.R</code>)</a></li>
+  </ul></li>
+  <li><a href="#getting-started" id="toc-getting-started" class="nav-link" data-scroll-target="#getting-started">Getting Started</a>
+  <ul class="collapse">
+  <li><a href="#prerequisites" id="toc-prerequisites" class="nav-link" data-scroll-target="#prerequisites">Prerequisites</a></li>
+  <li><a href="#r-package-dependencies" id="toc-r-package-dependencies" class="nav-link" data-scroll-target="#r-package-dependencies">R Package Dependencies</a></li>
+  <li><a href="#authentication" id="toc-authentication" class="nav-link" data-scroll-target="#authentication">Authentication</a></li>
+  <li><a href="#running-the-pipeline" id="toc-running-the-pipeline" class="nav-link" data-scroll-target="#running-the-pipeline">Running the Pipeline</a></li>
+  </ul></li>
+  <li><a href="#data-artifacts" id="toc-data-artifacts" class="nav-link" data-scroll-target="#data-artifacts">Data Artifacts</a></li>
+  <li><a href="#sql-schema" id="toc-sql-schema" class="nav-link" data-scroll-target="#sql-schema">SQL Schema</a></li>
+  <li><a href="#design-patterns" id="toc-design-patterns" class="nav-link" data-scroll-target="#design-patterns">Design Patterns</a></li>
+  <li><a href="#outputs" id="toc-outputs" class="nav-link" data-scroll-target="#outputs">Outputs</a></li>
+  <li><a href="#naming-conventions" id="toc-naming-conventions" class="nav-link" data-scroll-target="#naming-conventions">Naming Conventions</a></li>
+  </ul></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
@@ -176,14 +206,293 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>About this site</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span> <span class="sc">+</span> <span class="dv">1</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 2</code></pre>
-</div>
-</div>
+<section id="blueskynetworks" class="level1">
+<h1>BlueSkyNetWorks</h1>
+<p>An R-based social network analysis platform for collecting, processing, and analysing interaction data from the <a href="https://bsky.app">Bluesky</a> social media platform. The project tracks discussions around the <strong>#Speirgorm</strong> hashtag, constructing directed networks of reposts and replies for graph-theoretic analysis, community detection, and NLP-based post analysis.</p>
+<hr>
+<section id="overview" class="level2">
+<h2 class="anchored" data-anchor-id="overview">Overview</h2>
+<p>The pipeline:</p>
+<ol type="1">
+<li>Queries the Bluesky API for posts matching <code>#Speirgorm</code></li>
+<li>Hydrates each post with repost and reply thread data</li>
+<li>Ingests raw data into a SQL Server graph database</li>
+<li>Builds directed network graphs and computes centrality metrics</li>
+<li>Exports interactive and static visualisations</li>
+<li>Runs temporal and sentiment-based NLP analysis</li>
+</ol>
+<hr>
+</section>
+<section id="project-structure" class="level2">
+<h2 class="anchored" data-anchor-id="project-structure">Project Structure</h2>
+<pre><code>BlueSkyNetWorks/
+├── master_pipeline.R               # Orchestrates all pipeline stages
+├── 0_functions.R                   # Libraries, authentication, utility functions
+├── 1_BlueSky_Robust.r              # API data collection and hydration
+├── 2_load network data into SQL.r  # SQL Server ingestion and graph table setup
+├── 3_build_graph_and_metrics.R     # igraph/statnet construction and metrics
+├── 3a_NetworkVisualisation.r       # Layout computation and community colouring
+├── 3b_TSNA_Analysis.r              # Temporal network analysis
+├── 4_visualisation.R               # visNetwork, ggraph, GEXF export
+├── 5_PostNLP_analysis.R            # TidyText NLP and post frequency analysis
+├── 6_TextAnalysis.R                # Sentiment lexicon analysis (Bing, NRC, AFINN)
+├── Model_functions.R               # Sentiment scoring (logistic regression, Naive Bayes)
+├── BluseSkyNetworking.Rmd          # Interactive R Notebook for exploration
+├── SQL/                            # T-SQL schema, stored procedures, views
+├── data/                           # Parquet and CSV data artifacts
+└── graphs/                         # Exported graph files (Parquet, GEXF, GraphML, SVG, HTML)</code></pre>
+<hr>
+</section>
+<section id="pipeline-stages" class="level2">
+<h2 class="anchored" data-anchor-id="pipeline-stages">Pipeline Stages</h2>
+<section id="stage-1-data-collection-1_bluesky_robust.r" class="level3">
+<h3 class="anchored" data-anchor-id="stage-1-data-collection-1_bluesky_robust.r">Stage 1 — Data Collection (<code>1_BlueSky_Robust.r</code>)</h3>
+<ul>
+<li>Searches Bluesky API for <code>#Speirgorm</code> posts using cursor-based pagination</li>
+<li>Checkpoints every ~1,000 rows to <code>data/speirgorm_posts.parquet</code></li>
+<li>Hydrates posts in parallel batches to retrieve repost and thread data</li>
+<li>Outputs: <code>speirgorm_posts.parquet</code>, <code>speirgorm_reposts.parquet</code>, <code>speirgorm_threads.parquet</code></li>
+</ul>
+</section>
+<section id="stage-2-sql-ingestion-2_load-network-data-into-sql.r" class="level3">
+<h3 class="anchored" data-anchor-id="stage-2-sql-ingestion-2_load-network-data-into-sql.r">Stage 2 — SQL Ingestion (<code>2_load network data into SQL.r</code>)</h3>
+<ul>
+<li>Loads parquet data into a SQL Server database (<code>BlueSkyNet</code>)</li>
+<li>Creates SQL Server graph tables: <code>Person</code> (nodes) and <code>Reposted</code> (edges)</li>
+<li>Uses RevoScaleR for parallel remote compute context</li>
+</ul>
+</section>
+<section id="stage-3-graph-analysis-3_build_graph_and_metrics.r" class="level3">
+<h3 class="anchored" data-anchor-id="stage-3-graph-analysis-3_build_graph_and_metrics.r">Stage 3 — Graph Analysis (<code>3_build_graph_and_metrics.R</code>)</h3>
+<ul>
+<li>Constructs directed graphs using <strong>igraph</strong> and <strong>statnet</strong></li>
+<li>Computes node-level metrics: in/out-degree, betweenness, closeness, eigenvector centrality, PageRank</li>
+<li>Computes network-level metrics: density, diameter, average path length, clustering coefficient, triad census</li>
+<li>Detects communities via the Walktrap algorithm</li>
+<li>Outputs: <code>speirgorm_edges.parquet</code>, <code>speirgorm_nodes.parquet</code>, <code>network_metrics.parquet</code></li>
+</ul>
+</section>
+<section id="stage-4-visualisation-4_visualisation.r-3a_networkvisualisation.r" class="level3">
+<h3 class="anchored" data-anchor-id="stage-4-visualisation-4_visualisation.r-3a_networkvisualisation.r">Stage 4 — Visualisation (<code>4_visualisation.R</code>, <code>3a_NetworkVisualisation.r</code>)</h3>
+<ul>
+<li>Generates interactive network visualisations with <strong>visNetwork</strong></li>
+<li>Generates static plots with <strong>ggraph</strong> (Fruchterman-Reingold, Kamada-Kawai layouts)</li>
+<li>Exports to GEXF (Gephi), GraphML, SVG, and HTML formats</li>
+</ul>
+</section>
+<section id="stage-5-nlp-analysis-5_postnlp_analysis.r-6_textanalysis.r" class="level3">
+<h3 class="anchored" data-anchor-id="stage-5-nlp-analysis-5_postnlp_analysis.r-6_textanalysis.r">Stage 5 — NLP Analysis (<code>5_PostNLP_analysis.R</code>, <code>6_TextAnalysis.R</code>)</h3>
+<ul>
+<li>Tokenises post text and computes word frequencies per community</li>
+<li>Runs sentiment analysis using Bing, NRC, and AFINN lexicons</li>
+<li>Analyses posting frequency and temporal dynamics</li>
+</ul>
+<hr>
+</section>
+</section>
+<section id="getting-started" class="level2">
+<h2 class="anchored" data-anchor-id="getting-started">Getting Started</h2>
+<section id="prerequisites" class="level3">
+<h3 class="anchored" data-anchor-id="prerequisites">Prerequisites</h3>
+<ul>
+<li><strong>R</strong> ≥ 4.1</li>
+<li><strong>SQL Server</strong> (local instance; database <code>BlueSkyNet</code>)</li>
+<li>A <strong>Bluesky</strong> account for API authentication</li>
+</ul>
+</section>
+<section id="r-package-dependencies" class="level3">
+<h3 class="anchored" data-anchor-id="r-package-dependencies">R Package Dependencies</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="fu">c</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"bskyr"</span>,       <span class="co"># Bluesky API client</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">"arrow"</span>,       <span class="co"># Parquet I/O</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">"igraph"</span>,      <span class="co"># Network analysis</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="st">"statnet"</span>,     <span class="co"># Network analysis (statnet suite)</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="st">"sna"</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="st">"intergraph"</span>,  <span class="co"># igraph &lt;-&gt; statnet conversion</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="st">"dplyr"</span>, <span class="st">"tidyr"</span>, <span class="st">"purrr"</span>, <span class="st">"furrr"</span>,</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="st">"ggraph"</span>, <span class="st">"visNetwork"</span>, <span class="st">"ggplot2"</span>,</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="st">"tidytext"</span>, <span class="st">"textdata"</span>, <span class="st">"tm"</span>,</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="st">"DBI"</span>, <span class="st">"odbc"</span>,</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="st">"RevoScaleR"</span>   <span class="co"># For SQL Server parallel compute (Microsoft R)</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<blockquote class="blockquote">
+<p><strong>Note:</strong> <code>RevoScaleR</code> is part of Microsoft R Open / SQL Server Machine Learning Services and is not available on CRAN.</p>
+</blockquote>
+</section>
+<section id="authentication" class="level3">
+<h3 class="anchored" data-anchor-id="authentication">Authentication</h3>
+<p>Bluesky credentials are managed interactively via <code>bskyr</code>. On first run, <code>0_functions.R</code> will prompt for your handle and app password. Credentials are stored securely and reused throughout the session — do not hardcode them.</p>
+<p>SQL Server uses Windows Authentication by default. Adjust the connection string in <code>0_functions.R</code> if SQL authentication is required.</p>
+</section>
+<section id="running-the-pipeline" class="level3">
+<h3 class="anchored" data-anchor-id="running-the-pipeline">Running the Pipeline</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all stages sequentially</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"master_pipeline.R"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Or run individual stages:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"0_functions.R"</span>)                      <span class="co"># Always source first</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"1_BlueSky_Robust.r"</span>)                 <span class="co"># Collect data</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"2_load network data into SQL.r"</span>)     <span class="co"># Ingest to SQL</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"3_build_graph_and_metrics.R"</span>)        <span class="co"># Build graph &amp; metrics</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"4_visualisation.R"</span>)                  <span class="co"># Export visualisations</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"5_PostNLP_analysis.R"</span>)               <span class="co"># NLP analysis</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>For interactive exploration, open and knit <code>BluseSkyNetworking.Rmd</code>.</p>
+<hr>
+</section>
+</section>
+<section id="data-artifacts" class="level2">
+<h2 class="anchored" data-anchor-id="data-artifacts">Data Artifacts</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 24%">
+<col style="width: 24%">
+<col style="width: 52%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>File</th>
+<th>Size</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>data/speirgorm_posts.parquet</code></td>
+<td>5.6 MB</td>
+<td>Raw posts matching <code>#Speirgorm</code></td>
+</tr>
+<tr class="even">
+<td><code>data/speirgorm_reposts.parquet</code></td>
+<td>13.3 MB</td>
+<td>Repost relationships</td>
+</tr>
+<tr class="odd">
+<td><code>data/speirgorm_threads.parquet</code></td>
+<td>1.6 MB</td>
+<td>Reply thread data</td>
+</tr>
+<tr class="even">
+<td><code>graphs/speirgorm_edges.parquet</code></td>
+<td>—</td>
+<td>Network edges with metadata</td>
+</tr>
+<tr class="odd">
+<td><code>graphs/speirgorm_nodes.parquet</code></td>
+<td>—</td>
+<td>Network nodes with computed metrics</td>
+</tr>
+<tr class="even">
+<td><code>graphs/visnetwork_export.gexf</code></td>
+<td>—</td>
+<td>Gephi-compatible graph export</td>
+</tr>
+<tr class="odd">
+<td><code>graphs/visnetwork_tmp.html</code></td>
+<td>—</td>
+<td>Interactive network (browser)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+<section id="sql-schema" class="level2">
+<h2 class="anchored" data-anchor-id="sql-schema">SQL Schema</h2>
+<p>The <code>SQL/</code> directory contains T-SQL scripts for the <code>BlueSkyNet</code> database:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 40%">
+<col style="width: 60%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Tables.sql</code></td>
+<td>Creates <code>posts_raw</code>, <code>reposts_raw</code>, <code>Person</code>, <code>Reposted</code> graph tables</td>
+</tr>
+<tr class="even">
+<td><code>StoredProcedures.sql</code></td>
+<td>Procedures for graph metric computation</td>
+</tr>
+<tr class="odd">
+<td><code>GraphMetrics.sql</code></td>
+<td>SQL-level centrality calculations</td>
+</tr>
+<tr class="even">
+<td><code>NetworkLevelMetrics.sql</code></td>
+<td>Network-wide aggregations</td>
+</tr>
+<tr class="odd">
+<td><code>View.sql</code></td>
+<td>Summary views for posts and users</td>
+</tr>
+<tr class="even">
+<td><code>Build Network Table.sql</code></td>
+<td>Graph projection queries</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+<section id="design-patterns" class="level2">
+<h2 class="anchored" data-anchor-id="design-patterns">Design Patterns</h2>
+<p><strong>Resilient API collection</strong> — <code>retry()</code> with exponential backoff and jitter protects against rate limits. Bad URIs (HTTP 400) are skipped; transient errors (HTTP 502) are queued for retry.</p>
+<p><strong>Checkpointing</strong> — Progress is saved at regular intervals so long-running jobs can resume from the last checkpoint without reprocessing.</p>
+<p><strong>Parallel hydration</strong> — <code>furrr::future_map_dfr()</code> with up to 70% of available cores batches repost and thread fetching efficiently.</p>
+<p><strong>Safe extraction</strong> — <code>safe_chr()</code>, <code>safe_int()</code>, and similar helpers handle missing or inconsistently shaped API responses without crashing.</p>
+<hr>
+</section>
+<section id="outputs" class="level2">
+<h2 class="anchored" data-anchor-id="outputs">Outputs</h2>
+<ul>
+<li><strong>Interactive HTML</strong> network visualisation (visNetwork)</li>
+<li><strong>Static SVG</strong> plots of full network and per-community subgraphs</li>
+<li><strong>GEXF / GraphML</strong> exports for Gephi or Cytoscape</li>
+<li><strong>Animated GIF / MP4</strong> of temporal network evolution</li>
+<li><strong>Sentiment and frequency plots</strong> per community</li>
+</ul>
+<hr>
+</section>
+<section id="naming-conventions" class="level2">
+<h2 class="anchored" data-anchor-id="naming-conventions">Naming Conventions</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 31%">
+<col style="width: 37%">
+<col style="width: 31%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Context</th>
+<th>Convention</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Database / graph fields</td>
+<td>PascalCase</td>
+<td><code>PostedBy</code>, <code>RepostedOn</code></td>
+</tr>
+<tr class="even">
+<td>Bluesky API fields</td>
+<td>camelCase</td>
+<td><code>uri</code>, <code>indexedAt</code></td>
+</tr>
+<tr class="odd">
+<td>Computed metrics</td>
+<td>snake_case</td>
+<td><code>reposts_received</code>, <code>betweenness_centrality</code></td>
+</tr>
+</tbody>
+</table>
 
 
+</section>
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
