@@ -1,10 +1,10 @@
-# source("0_functions.R")
+ source("0_functions.R")
 
 set.seed(22230)
 num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
 
 
-cat("\n=== Step 3c: Build igraph object and plot basic network ===\n")
+cat("\n=== Step 3a: Build igraph object and plot basic network ===\n")
 # Step 3: Build igraph object and plot basic network
 g <- get_graph_data(num_posts)
 cat("Graph summary:\n")
@@ -22,7 +22,7 @@ rxWriteObject(
 # ============================================================================
 # SECTION 2: Network-LEVEL METRICS
 # ============================================================================
-cat("\n=== Step 3d: Build out the metrics using igraph... ===\n")
+cat("\n=== Step 3b: Build out the metrics using igraph... ===\n")
 
 ig_network_size <- vcount(g)
 ig_comp <- igraph::components(g)
@@ -80,7 +80,7 @@ ig_sql <- RxSqlServerData(
 rxDataStep(ig_summary_df, ig_sql, append = "rows")
 
 cat(
-  "\n=== Step 3e: BlueSkyNetWorks: Computing Network Metrics using StatNet ===\n"
+  "\n=== Step 3c: BlueSkyNetWorks: Computing Network Metrics using StatNet ===\n"
 )
 
 # Convert igraph to statnet
@@ -98,7 +98,7 @@ bsn_degree <- sna::degree(bluSkynet)
 bsn_ideg <- sna::degree(bluSkynet, cmode = "indegree")
 bsn_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
 
-cat("\n=== Step 3f: Plotting degree distributions and scatter plot ===\n")
+cat("\n=== Step 3d: Plotting degree distributions and scatter plot ===\n")
 
 save_graph_svg(
   plot_or_expr = function() {
@@ -139,7 +139,7 @@ save_graph_svg(
   filename = "outdegree_dist.svg"
 )
 
-cat("\n=== Step 3g: Compute network metrics using StatNet ===\n")
+cat("\n=== Step 3e: Compute network metrics using StatNet ===\n")
 bsn_dyadcensus <- sna::dyad.census(bluSkynet)
 bsn_dyadcount <- sum(
   bsn_dyadcensus[[1]],
@@ -205,7 +205,7 @@ ig_sql <- RxSqlServerData(
 )
 rxDataStep(bsn_summary_df, ig_sql, append = "rows")
 
-cat("\n=== Step 3h: Show both Network Metrics in one table ===\n")
+cat("\n=== Step 3f: Show both Network Metrics in one table ===\n")
 
 desc_df <- tibble(
   analysis_timestamp = "Date that the metrics were generated",
@@ -270,7 +270,7 @@ if (grDevices::dev.cur() == 1) {
 }
 
 old_par <- par(no.readonly = TRUE) # save current par settings
-cat("\n=== Step 3i: Plot the small components of the Graph ===\n")
+cat("\n=== Step 3g: Plot the small components of the Graph ===\n")
 
 cat(sprintf(
   "Components: %d (largest: %d = %.1f%%)\n",
@@ -279,7 +279,7 @@ cat(sprintf(
   ig_giant_component_pct
 ))
 
-cat("\n=== Step 3j: Plot the small components using the igraph ===\n")
+cat("\n=== Step 3h: Plot the small components using the igraph ===\n")
 # Identify small components (all except the largest)
 small_ids <- which(ig_comp$csize < max(ig_comp$csize))
 small_ids <- sort(small_ids, decreasing = TRUE)
@@ -307,7 +307,7 @@ for (i in seq(1, n)) {
   )
 }
 par(old_par) # restore original par settings
-cat("\n=== Step 3k: Plot the small components using the sna ===\n")
+cat("\n=== Step 3i: Plot the small components using the sna ===\n")
 cat(sprintf(
   "Components: %d (largest: %d = %.1f%%)\n",
   bsn_num_components,
@@ -372,7 +372,7 @@ betweenness_vals <- sna::betweenness(
   diag = FALSE,
   ignore.eval = FALSE
 )
-cat("\n=== Step 3l: Betweenness centrality computed ===\n")
+cat("\n=== Step 3j: Betweenness centrality computed ===\n")
 
 # Closeness Centrality (suminvdir accounts for directed graphs)
 closeness_vals <- sna::closeness(
@@ -380,19 +380,19 @@ closeness_vals <- sna::closeness(
   cmode = "suminvdir",
   ignore.eval = FALSE
 )
-cat("\n=== Step 3m: Closeness centrality computed ===\n")
+cat("\n=== Step 3k: Closeness centrality computed ===\n")
 
 gc()
 
 # Eigenvector Centrality
 eigen_vals <- sna::evcent(bluSkynet, gmode = "digraph", ignore.eval = FALSE)
-cat("\n=== Step 3n: Eigenvector centrality computed ===\n")
+cat("\n=== 3l: Eigenvector centrality computed ===\n")
 
 # Degree metrics (already computed but ensuring consistency)
 bsn_ideg <- sna::degree(bluSkynet, cmode = "indegree")
 bsn_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
 total_degree <- bsn_ideg + bsn_odeg
-cat("\n=== Step 3o: Degree metrics (in/out/total) computed ===\n")
+cat("\n=== Step 3l: Degree metrics (in/out/total) computed ===\n")
 
 ### == these are already computed - no need to do it again == ###
 # PageRank (weighted by influence)
@@ -407,7 +407,7 @@ cat("\n=== Step 3o: Degree metrics (in/out/total) computed ===\n")
 
 # k-Core Decomposition
 kcore_vals <- sna::kcores(bluSkynet)
-cat("\n=== Step 3p: k-core decomposition computed ===\n")
+cat("\n=== Step 3m: k-core decomposition computed ===\n")
 
 # align numeric vectors to node order
 node_keys <- as.character(V(g)$name)
@@ -428,7 +428,7 @@ nodes_with_metrics <- nodes %>%
   )
 
 cat(
-  "\n=== Step 3q: Node-level metrics compiled into 'nodes_with_metrics' tibble ===\n"
+  "\n=== Step 3n: Node-level metrics compiled into 'nodes_with_metrics' tibble ===\n"
 )
 cat(sprintf(
   "  Rows: %d nodes | Cols: %d features\n",
@@ -471,7 +471,7 @@ rxDataStep(nodes_with_metrics, nodes_sql, overwrite = TRUE)
 ### These will be useful for a notebook === FINISH
 rxSetComputeContext(orgicc)
 cat(
-  "\n=== Step 3r: igraph layouts: Computing different layouts for igraph ===\n"
+  "\n=== Step 3o: igraph layouts: Computing different layouts for igraph ===\n"
 )
 
 layout_types <- c(
@@ -634,7 +634,7 @@ rxWriteObject(
 # SECTION 1.5: Create Subgraphs by Year and Month
 # ============================================================================
 cat(
-  "\n=== Step 3s: Creating subgraphs filtered by year and month of edgeStarts ===\n"
+  "\n=== Step 3p: Creating subgraphs filtered by year and month of edgeStarts ===\n"
 )
 
 # Assuming edgeStarts is a Date or can be converted to Date
