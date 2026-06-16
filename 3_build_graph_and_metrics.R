@@ -1,7 +1,7 @@
 # source("0_functions.R")
 
 set.seed(22230)
-num_posts <- nrow(read_parquet("graphs/speirgorm_edges.parquet"))
+num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
 
 
 cat("\n=== Step 3c: Build igraph object and plot basic network ===\n")
@@ -762,7 +762,7 @@ gto <- ggraph(
 
 write_graph(
   g,
-  "graphs/g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
+  "docs/graphs/g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
   format = "graphml"
 )
 rxWriteObject(
