@@ -137,7 +137,11 @@ plotobj <- levelplot(
   scales = list(x = list(rot = 45))
 ) # this is a good view of community interaction
 
-save_graph_svg(plotobj, filename = "Cross Community interaction.svg", folder = "docs/images")
+save_graph_svg(
+  plotobj,
+  filename = "Cross Community interaction.svg",
+  folder = "docs/images"
+)
 
 # ========================================================================
 # COMMUNITY CHARACTERIZATION & LABELING
@@ -273,8 +277,13 @@ vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 # --- Use precomputed layout in visNetwork ---
 # Filter edges to reduce file size: keep only edges above the median weight
 # (adjust the quantile threshold if the graph is still too large/small)
-edge_weight_col <- if ("weight" %in% names(vis_edges)) "weight" else
-                   if ("value"  %in% names(vis_edges)) "value"  else NULL
+edge_weight_col <- if ("weight" %in% names(vis_edges)) {
+  "weight"
+} else if ("value" %in% names(vis_edges)) {
+  "value"
+} else {
+  NULL
+}
 
 vis_edges_filtered <- if (!is.null(edge_weight_col)) {
   threshold <- quantile(vis_edges[[edge_weight_col]], 0.5, na.rm = TRUE)
@@ -286,7 +295,7 @@ vis_edges_filtered <- if (!is.null(edge_weight_col)) {
 vis_obj <- visNetwork(
   vis_nodes,
   vis_edges_filtered,
-  width  = "100%",
+  width = "100%",
   height = "900px"
 ) %>%
   # Coordinates are precomputed — physics is not needed and is the main
@@ -294,18 +303,18 @@ vis_obj <- visNetwork(
   visPhysics(enabled = FALSE) %>%
   visNodes(fixed = TRUE) %>%
   visOptions(
-    highlightNearest = list(enabled = TRUE, degree = 1),  # degree 2 is expensive
+    highlightNearest = list(enabled = TRUE, degree = 1), # degree 2 is expensive
     nodesIdSelection = list(values = sorted_ids),
     selectedBy = "community_label",
-    manipulation = FALSE   # disable edit toolbar unless needed
+    manipulation = FALSE # disable edit toolbar unless needed
   ) %>%
   visEdges(arrows = "to", smooth = FALSE) %>%
   visLegend(useGroups = TRUE, position = "right") %>%
   visInteraction(
     navigationButtons = TRUE,
-    dragNodes        = FALSE,  # fixed layout — dragging nodes is misleading
-    dragView         = TRUE,
-    zoomView         = TRUE
+    dragNodes = FALSE, # fixed layout — dragging nodes is misleading
+    dragView = TRUE,
+    zoomView = TRUE
   )
 # save HTML and capture as SVG (requires webshot2 and
 # a headless Chrome/Chromium)
@@ -527,14 +536,14 @@ community_graphs <- lapply(top_10_ids, function(id) {
 cat("\n=== Step 4d: Computing layouts for each community in parallel ===\n")
 # compute layouts in parallel for all community x layout combinations
 layout_types <- c(
-  "drl"
-  ,"drl_fast"
+  "drl",
+  "drl_fast",
   #,"fr"
-  ,"graphopt"
+  "graphopt",
   #,"lgl"
-  ,"kk"
+  "kk",
   #,"mds"
-  ,"nicely"
+  "nicely"
   #,"tree"
 )
 n_comm <- length(community_graphs)
@@ -555,7 +564,6 @@ res_all <- rxExec(
 rxWriteObject(ds_Graphs, "Res All", res_all, overwrite = TRUE)
 
 # assemble nested list: community_layouts[[i]] = list(id, graph, layouts = named list(layout -> coord_matrix))
-
 community_layouts <- vector("list", n_comm)
 names(community_layouts) <- paste0("Community_", top_10_ids)
 for (i in seq_len(n_comm)) {
@@ -573,20 +581,20 @@ for (k in seq_along(res_all)) {
   coords_mat <- as.matrix(coords_df[, c("x", "y")])
   community_layouts[[comm_i]]$layouts[[lt]] <- coords_mat
 }
+
 cat(
   "\n=== Step 4e: Layouts computed for each community and plotting the graphs ===\n"
 )
-# Plot all layouts for each community into a single SVG (one file per community)
-old_par <- par(no.readonly = TRUE)
+
 pal <- viridis::viridis(max(V(g)$kcore, na.rm = TRUE) + 1)
 
-for (i in seq_len(n_comm)) {
-  entry <- community_layouts[[i]]
+# Worker function: renders all layouts for one community into an SVG file
+plot_community_svg <- function(entry, pal, save_graph_svg) {
   subg <- entry$graph
   layouts_list <- entry$layouts
   m <- length(layouts_list)
   if (m == 0) {
-    next
+    return(invisible(NULL))
   }
 
   plot_nrow <- ceiling(sqrt(m))
@@ -595,31 +603,29 @@ for (i in seq_len(n_comm)) {
   save_graph_svg(
     plot_or_expr = function() {
       par(mfrow = c(plot_nrow, plot_ncol), mar = c(1, 1, 2, 1))
-
-      vsize <- if (!is.null(V(subg)$pagerank)) {
-        V(subg)$pagerank + 1
+      vsize <- if (!is.null(igraph::V(subg)$pagerank)) {
+        igraph::V(subg)$pagerank + 1
       } else {
-        rep(6, vcount(subg))
+        rep(6, igraph::vcount(subg))
       }
-      vcol <- if (!is.null(V(subg)$kcore)) {
-        pal[as.integer(V(subg)$kcore) + 1]
+      vcol <- if (!is.null(igraph::V(subg)$kcore)) {
+        pal[as.integer(igraph::V(subg)$kcore) + 1]
       } else {
         "steelblue"
       }
-
       for (k in seq_len(m)) {
         layout_name <- names(layouts_list)[k]
         coords <- layouts_list[[k]]
         main_title <- paste0(
           "Community ",
           entry$id,
-          " ” ",
-          vcount(subg),
+          " ",
+          igraph::vcount(subg),
           " nodes\n(",
           layout_name,
           ")"
         )
-        plot.igraph(
+        igraph::plot.igraph(
           subg,
           layout = coords,
           main = main_title,
@@ -633,9 +639,19 @@ for (i in seq_len(n_comm)) {
     filename = paste0("Community_", entry$id, "_layouts.svg"),
     folder = "docs/images"
   )
+  invisible(NULL)
 }
 
-# Write the Community Layouts to SQL
+# Plot all communities in parallel — one SVG per community
+rxExec(
+  FUN = plot_community_svg,
+  entry = rxElemArg(community_layouts),
+  pal = pal,
+  save_graph_svg = save_graph_svg,
+  packagesToLoad = c("igraph", "viridis")
+)
+
+# Write the Community Layouts to SQL (sequential — shared resource)
 rxWriteObject(
   ds_Graphs,
   "Top 12 Sub Graphs",
