@@ -1,7 +1,7 @@
 # Rewritten to load network data into SQL Server (BlueSkyNet) and run calculations on the server
 # Requires: RevoScaleR, DBI/odbc (optional for direct checks), igraph/ggraph for local plotting
 
-# source("0_functions.R")
+ source("0_functions.R")
 
 # ---------------------------
 # Step 0: Read raw data Parquet files locally
