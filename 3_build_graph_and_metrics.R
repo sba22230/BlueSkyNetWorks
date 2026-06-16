@@ -112,6 +112,7 @@ save_graph_svg(
       col = 2
     )
   },
+  folder = "docs/images",
   filename = "degree_scatter.svg"
 )
 
@@ -124,6 +125,7 @@ save_graph_svg(
       prob = TRUE
     )
   },
+  folder = "docs/images",
   filename = "indegree_dist.svg"
 )
 
@@ -136,6 +138,7 @@ save_graph_svg(
       prob = TRUE
     )
   },
+  folder = "docs/images",
   filename = "outdegree_dist.svg"
 )
 
