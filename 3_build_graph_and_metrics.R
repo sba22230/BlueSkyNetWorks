@@ -586,7 +586,7 @@ render_one_graph <- function(task) {
       )
     },
     filename = out_file,
-    folder   = "images"
+    folder   = "docs/images"
   )
   invisible(out_file)
 }
