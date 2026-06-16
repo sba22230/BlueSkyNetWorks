@@ -466,7 +466,7 @@ gexf_obj <- write.gexf(
 
 # Save to file
 home_dir <- here::here()
-file_path <- file.path(home_dir, "graphs")
+file_path <- file.path(home_dir, "docs/graphs")
 file_name <- file.path(file_path, "vis_g visnetwork_export.gexf")
 if (!dir.exists(file_path)) {
   dir.create(file_path, recursive = TRUE)
