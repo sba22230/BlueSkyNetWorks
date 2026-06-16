@@ -469,20 +469,21 @@ rxDataStep(nodes_with_metrics, nodes_sql, overwrite = TRUE)
 
 
 ### These will be useful for a notebook === FINISH
+rxSetComputeContext(orgicc)
 cat(
   "\n=== Step 3r: igraph layouts: Computing different layouts for igraph ===\n"
 )
 
 layout_types <- c(
-  "drl",
-  "drl_fast",
-  "fr",
-  "graphopt",
-  "lgl",
-  "kk",
-  "mds",
-  "nicely",
-  "tree"
+  "drl"
+  ,"drl_fast"
+  #,"fr"
+  ,"graphopt"
+  #,"lgl"
+  ,"kk"
+  #,"mds"
+  ,"nicely"
+  #,"tree"
 )
 
 n_comm <- 1
@@ -588,7 +589,7 @@ render_one_graph <- function(task) {
 }
 
 # ── 5. Execute all renders in parallel ───────────────────────────────────────
-rxSetComputeContext(RxLocalParallel())
+
 rxExec(
   render_one_graph,
   task           = rxElemArg(render_tasks),
