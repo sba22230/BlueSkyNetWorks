@@ -304,7 +304,7 @@ tryCatch(
     cat("  ⚠ Influence score computation warning:", e$message, "\n")
   }
 )
-cat("\n=== Step 4c: Ran Influence score computation SQL Server using SQL ===\n")
+cat("\n=== Step 2h: Ran Influence score computation SQL Server using SQL ===\n")
 # Execute the proc sp_ComputeEdgeweight
 tryCatch(
   {
@@ -314,7 +314,7 @@ tryCatch(
     cat("  ⚠ Edgeweight computation warning:", e$message, "\n")
   }
 )
-cat("\n=== Step 2h: Ran Edgeweight computation SQL Server using SQL ===\n")
+cat("\n=== Step 2i: Ran Edgeweight computation SQL Server using SQL ===\n")
 # Execute the proc sp_ComputeEdgeBetweenness
 tryCatch(
   {
@@ -325,7 +325,7 @@ tryCatch(
   }
 )
 cat(
-  "\n=== Step 2i: Ran Edge betweenness computation SQL Server using SQL ===\n"
+  "\n=== Step 2j: Ran Edge betweenness computation SQL Server using SQL ===\n"
 )
 
 # Read edges/nodes from SQL via RxSqlServerData
@@ -386,7 +386,7 @@ nodes_rx <- RxSqlServerData(
   connectionString = connStr
 )
 cat(
-  "\n=== Step 2j: Run igraph inside SQL compute context ===\n"
+  "\n=== Step 2k: Run igraph inside SQL compute context ===\n"
 )
 rxSetComputeContext(sql_cc)
 # Run igraph/statnet inside SQL compute context
@@ -517,7 +517,7 @@ dbExecute(
 "
 )
 cat(
-  "\n=== Step 2k: Created network metrics in SQL Server using igraph in R (via RevoScaleR) ===\n"
+  "\n=== Step 2l: Created network metrics in SQL Server using igraph in R (via RevoScaleR) ===\n"
 )
 # dbExecute(odbc_con, "DROP TABLE dbo.centrality_tmp;")
 
@@ -600,7 +600,7 @@ names(edges)
 
 write_parquet(edges, "graphs/speirgorm_edges.parquet")
 cat(
-  "\n=== Step 2l: Created edges and nodes csv files for later ===\n"
+  "\n=== Step 2m: Created edges and nodes csv files for later ===\n"
 )
 
 tobermvd <- c(
