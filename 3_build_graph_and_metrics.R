@@ -711,7 +711,7 @@ for (ym in unique_ym) {
         )
       },
       filename = out_file,
-      folder = "images"
+      folder = "docs/images"
     )
 
     # Optionally save each subgraph
