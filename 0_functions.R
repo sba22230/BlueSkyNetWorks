@@ -665,16 +665,28 @@ save_graph_svg <- function(
     return(invisible(filepath))
   }
 
-  # Case 2: Base R / igraph / sna / network plotting expression
+  # Case 2: lattice/trellis object
+  if (inherits(plot_or_expr, "trellis")) {
+    svg(filepath, width = width, height = height)
+    print(plot_or_expr)
+    dev.off()
+    message("Saved lattice/trellis SVG to: ", filepath)
+    return(invisible(filepath))
+  }
+
+  # Case 3: Base R / igraph / sna / network plotting expression or function
   svg(filepath, width = width, height = height)
 
-  # Evaluate the expression
   if (is.expression(plot_or_expr) || is.call(plot_or_expr)) {
     eval(plot_or_expr)
   } else if (is.function(plot_or_expr)) {
     plot_or_expr()
+  } else if (isS4(plot_or_expr) || is.object(plot_or_expr)) {
+    # Fallback: any other plottable object (e.g. recordedplot, gtable, etc.)
+    print(plot_or_expr)
   } else {
-    stop("Input must be a ggplot object or a plotting expression/function.")
+    dev.off()
+    stop("Input must be a ggplot, trellis, or a plotting expression/function.")
   }
 
   dev.off()

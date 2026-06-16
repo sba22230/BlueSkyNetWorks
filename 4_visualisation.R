@@ -1,6 +1,6 @@
 # source("0_functions.R")
 
-# Step 4a: Interactive visualization with visNetwork
+cat("\n===  Step 4a: Interactive visualization with visNetwork ===")
 vis_nodes <- nodes %>%
   mutate(
     id = name,
@@ -128,7 +128,7 @@ mat <- comm_matrix |>
   as.matrix()
 # Log-transform (add 1 to handle zeros)
 mat_log <- log1p(mat)
-levelplot(
+plotobj <- levelplot(
   mat_log,
   xlab = "Community (to)",
   ylab = "Community (from)",
@@ -136,6 +136,8 @@ levelplot(
   col.regions = viridis::viridis(100),
   scales = list(x = list(rot = 45))
 ) # this is a good view of community interaction
+
+save_graph_svg(plotobj, filename = "Cross Community interaction.svg", folder = "docs/images")
 
 # ========================================================================
 # COMMUNITY CHARACTERIZATION & LABELING
@@ -269,31 +271,41 @@ vis_nodes$color.border <- "black"
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 
 # --- Use precomputed layout in visNetwork ---
+# Filter edges to reduce file size: keep only edges above the median weight
+# (adjust the quantile threshold if the graph is still too large/small)
+edge_weight_col <- if ("weight" %in% names(vis_edges)) "weight" else
+                   if ("value"  %in% names(vis_edges)) "value"  else NULL
+
+vis_edges_filtered <- if (!is.null(edge_weight_col)) {
+  threshold <- quantile(vis_edges[[edge_weight_col]], 0.5, na.rm = TRUE)
+  vis_edges[vis_edges[[edge_weight_col]] >= threshold, ]
+} else {
+  vis_edges
+}
+
 vis_obj <- visNetwork(
   vis_nodes,
-  vis_edges,
-  width = "1600px",
-  height = "1200px"
+  vis_edges_filtered,
+  width  = "100%",
+  height = "900px"
 ) %>%
-  visNodes(fixed = FALSE) %>%
+  # Coordinates are precomputed — physics is not needed and is the main
+  # cause of browser sluggishness on large graphs
+  visPhysics(enabled = FALSE) %>%
+  visNodes(fixed = TRUE) %>%
   visOptions(
-    highlightNearest = list(enabled = TRUE, degree = 2),
+    highlightNearest = list(enabled = TRUE, degree = 1),  # degree 2 is expensive
     nodesIdSelection = list(values = sorted_ids),
     selectedBy = "community_label",
-    manipulation = TRUE
+    manipulation = FALSE   # disable edit toolbar unless needed
   ) %>%
   visEdges(arrows = "to", smooth = FALSE) %>%
   visLegend(useGroups = TRUE, position = "right") %>%
   visInteraction(
     navigationButtons = TRUE,
-    dragNodes = TRUE,
-    dragView = TRUE,
-    zoomView = TRUE
-  ) %>%
-  visPhysics(
-    enabled = TRUE,
-    solver = "forceAtlas2Based",
-    forceAtlas2Based = list(gravitationalConstant = -50)
+    dragNodes        = FALSE,  # fixed layout — dragging nodes is misleading
+    dragView         = TRUE,
+    zoomView         = TRUE
   )
 # save HTML and capture as SVG (requires webshot2 and
 # a headless Chrome/Chromium)
@@ -515,15 +527,15 @@ community_graphs <- lapply(top_10_ids, function(id) {
 cat("\n=== Step 4d: Computing layouts for each community in parallel ===\n")
 # compute layouts in parallel for all community x layout combinations
 layout_types <- c(
-  "drl",
-  "drl_fast",
-  "fr",
-  "graphopt",
-  "lgl",
-  "kk",
-  "mds",
-  "nicely",
-  "tree"
+  "drl"
+  ,"drl_fast"
+  #,"fr"
+  ,"graphopt"
+  #,"lgl"
+  ,"kk"
+  #,"mds"
+  ,"nicely"
+  #,"tree"
 )
 n_comm <- length(community_graphs)
 # replicate indices/layouts so rxExec runs every combo
@@ -619,7 +631,7 @@ for (i in seq_len(n_comm)) {
       }
     },
     filename = paste0("Community_", entry$id, "_layouts.svg"),
-    folder = "images"
+    folder = "docs/images"
   )
 }
 
