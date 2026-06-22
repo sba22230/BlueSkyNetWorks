@@ -10,6 +10,8 @@ website:
         text: Home
       - href: graphs/visnetwork_tmp.html
         text: VisNetork Visualisation
+      - href: graphs/index.html
+        text: Gephi Graph Visualisation
       - about.qmd
 
 format:
