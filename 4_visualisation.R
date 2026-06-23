@@ -52,35 +52,48 @@ sorted_ids <- vis_nodes %>%
   arrange((name)) %>%
   pull(id)
 
-# --- Precompute layout coordinates with igraph ---
-plan(multisession, workers = wrkrs)
-comps <- igraph::components(vis_g)
-layouts <- future_map(
-  unique(comps$membership),
-  function(comp_id) {
-    subg <- induced_subgraph(vis_g, which(comps$membership == comp_id))
-    if (vcount(subg) > 100) layout_with_lgl(subg) else layout_with_kk(subg)
-  },
-  .progress = TRUE,
-  .options = furrr_options(seed = 22230)
+# --- Load precomputed 'nicely' layout coordinates from SQL ---
+res_g <- tryCatch(
+  rxReadObject(ds_Graphs, "layout_exec_results"),
+  error = function(e) {
+    warning("Could not read layout_exec_results from SQL: ", e$message)
+    NULL
+  }
 )
 
-coords3 <- matrix(NA, nrow = vcount(vis_g), ncol = 2)
-offset <- 3
-
-comp_ids <- sort(unique(comps$membership))
-
-for (i in seq_along(comp_ids)) {
-  comp_id <- comp_ids[i]
-
-  sub_nodes <- which(comps$membership == comp_id)
-  sub_coords <- layouts[[i]]
-
-  coords3[sub_nodes, ] <- sub_coords + offset
-  offset <- offset + diff(range(sub_coords[, 1])) + 10
+if (is.null(res_g) || length(res_g) == 0) {
+  stop(
+    "No layout results found in SQL. Ensure layout_exec_results exists in ds_Graphs."
+  )
 }
-vis_nodes$x <- coords3[, 1]
-vis_nodes$y <- coords3[, 2]
+
+nicely_idx <- which(vapply(
+  res_g,
+  function(x) {
+    identical(as.character(attr(x, "layout_type")), "nicely")
+  },
+  logical(1)
+))
+
+if (length(nicely_idx) != 1L) {
+  stop(
+    "Expected exactly one 'nicely' layout result in layout_exec_results, found ",
+    length(nicely_idx),
+    "."
+  )
+}
+
+coords_df <- res_g[[nicely_idx]]
+coords_df <- coords_df[match(vis_nodes$id, coords_df$name), c("x", "y")]
+
+if (any(is.na(coords_df))) {
+  stop(
+    "Mismatch between vis_nodes IDs and layout coordinates; check node names in layout_exec_results."
+  )
+}
+
+vis_nodes$x <- coords_df[, 1]
+vis_nodes$y <- coords_df[, 2]
 
 top_nodes <- vis_nodes %>% arrange(desc(degree)) %>% slice(1:50) %>% pull(id)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
@@ -320,7 +333,7 @@ vis_obj <- visNetwork(
   # When a node is selected, temporarily enlarge and change its border color.
   # Stores original attributes on first select so we can restore them on deselect.
   visEvents(
-    selectNode = "function(params) {\n      if(!params.nodes || params.nodes.length === 0) return;\n      var nid = params.nodes[0];\n      if(!window.__vis_orig_attrs) {\n        window.__vis_orig_attrs = {};\n        this.body.data.nodes.get().forEach(function(n){\n          window.__vis_orig_attrs[n.id] = {size: n.size, color: n.color};\n        });\n      }\n      var orig = window.__vis_orig_attrs[nid] || {};\n      var newSize = (orig.size ? Math.max(orig.size * 1.6, 30) : 30);\n      this.body.data.nodes.update([{id: nid, size: newSize, color: {border: '#FF4444'}}]);\n      try { this.moveTo({position: this.body.data.nodes.get(nid)}); } catch(e) {}\n    }",
+    selectNode = "function(params) {\n      if(!params.nodes || params.nodes.length === 0) return;\n      var nid = params.nodes[0];\n      if(!window.__vis_orig_attrs) {\n        window.__vis_orig_attrs = {};\n        this.body.data.nodes.get().forEach(function(n){\n          window.__vis_orig_attrs[n.id] = {size: n.size, color: n.color};\n        });\n      }\n      var orig = window.__vis_orig_attrs[nid] || {};\n      var newSize = orig.size ? Math.min(orig.size * 1.2, orig.size + 8) : 18;\n      this.body.data.nodes.update([{id: nid, size: newSize, color: {border: '#FF4444'}}]);\n      try { this.moveTo({position: this.body.data.nodes.get(nid)}); } catch(e) {}\n    }",
     deselectNode = "function(params) {\n      if(!window.__vis_orig_attrs) return;\n      var updates = [];\n      this.body.data.nodes.get().forEach(function(n){\n        var o = window.__vis_orig_attrs[n.id] || {};\n        updates.push({id: n.id, size: (o.size || 10), color: (o.color || {border:'#000000'})});\n      });\n      this.body.data.nodes.update(updates);\n    }"
   ) %>%
   htmlwidgets::onRender(
