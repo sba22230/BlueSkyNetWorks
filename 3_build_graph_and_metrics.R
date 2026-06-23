@@ -1,4 +1,4 @@
- source("0_functions.R")
+source("0_functions.R")
 
 set.seed(22230)
 num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
@@ -478,14 +478,14 @@ cat(
 )
 
 layout_types <- c(
-  "drl"
-  ,"drl_fast"
+  "drl_fast",
+  #,"drl"
   #,"fr"
-  ,"graphopt"
+  "graphopt",
   #,"lgl"
-  ,"kk"
+  #,"kk"
   #,"mds"
-  ,"nicely"
+  "nicely"
   #,"tree"
 )
 
@@ -532,8 +532,8 @@ for (i in seq_len(n_comm)) {
 
 # ── 2. Fill layout matrices (hoisted out of the community loop) ───────────────
 for (k in seq_along(res_g)) {
-  comm_i     <- graph_idx_rep[k]
-  lt         <- as.character(attr(res_g[[k]], "layout_type"))
+  comm_i <- graph_idx_rep[k]
+  lt <- as.character(attr(res_g[[k]], "layout_type"))
   coords_mat <- as.matrix(res_g[[k]][, c("x", "y")])
   community_layouts[[comm_i]]$layouts[[lt]] <- coords_mat
 }
@@ -541,21 +541,31 @@ for (k in seq_along(res_g)) {
 # ── 3. Flatten to a list of independent render tasks ─────────────────────────
 render_tasks <- list()
 for (i in seq_len(n_comm)) {
-  entry        <- community_layouts[[i]]
-  subg         <- entry$graph
+  entry <- community_layouts[[i]]
+  subg <- entry$graph
   layouts_list <- entry$layouts
-  if (length(layouts_list) == 0L) next
+  if (length(layouts_list) == 0L) {
+    next
+  }
 
-  vsize <- if (!is.null(V(subg)$pagerank)) V(subg)$pagerank + 1 else rep(6, vcount(subg))
-  vcol  <- if (!is.null(V(subg)$kcore)) pal[as.integer(V(subg)$kcore) + 1] else "steelblue"
+  vsize <- if (!is.null(V(subg)$pagerank)) {
+    V(subg)$pagerank + 1
+  } else {
+    rep(6, vcount(subg))
+  }
+  vcol <- if (!is.null(V(subg)$kcore)) {
+    pal[as.integer(V(subg)$kcore) + 1]
+  } else {
+    "steelblue"
+  }
 
   for (k in seq_along(layouts_list)) {
     render_tasks[[length(render_tasks) + 1L]] <- list(
-      subg        = subg,
-      coords      = layouts_list[[k]],
+      subg = subg,
+      coords = layouts_list[[k]],
       layout_name = names(layouts_list)[k],
-      vsize       = vsize,
-      vcol        = vcol
+      vsize = vsize,
+      vcol = vcol
     )
   }
 }
@@ -563,30 +573,36 @@ for (i in seq_len(n_comm)) {
 # ── 4. Worker: renders and saves one SVG ─────────────────────────────────────
 render_one_graph <- function(task) {
   library(igraph)
-  subg        <- task$subg
-  coords      <- task$coords
+  subg <- task$subg
+  coords <- task$coords
   layout_name <- task$layout_name
-  vsize       <- task$vsize
-  vcol        <- task$vcol
+  vsize <- task$vsize
+  vcol <- task$vcol
 
-  main_title <- paste0("Main Graph ", vcount(subg), " nodes\n(", layout_name, ")")
-  out_file   <- paste0("MainGraph_", vcount(subg), "_", layout_name, ".svg")
+  main_title <- paste0(
+    "Main Graph ",
+    vcount(subg),
+    " nodes\n(",
+    layout_name,
+    ")"
+  )
+  out_file <- paste0("MainGraph_", vcount(subg), "_", layout_name, ".svg")
 
   save_graph_svg(
     plot_or_expr = function() {
       par(mar = c(1, 1, 2, 1))
       plot.igraph(
         subg,
-        layout           = coords,
-        main             = main_title,
-        vertex.size      = vsize,
+        layout = coords,
+        main = main_title,
+        vertex.size = vsize,
         vertex.label.cex = 0.2,
-        edge.arrow.size  = 0.3,
-        vertex.color     = vcol
+        edge.arrow.size = 0.3,
+        vertex.color = vcol
       )
     },
     filename = out_file,
-    folder   = "docs/images"
+    folder = "docs/images"
   )
   invisible(out_file)
 }
@@ -595,8 +611,8 @@ render_one_graph <- function(task) {
 
 rxExec(
   render_one_graph,
-  task           = rxElemArg(render_tasks),
-  execObjects    = "save_graph_svg",
+  task = rxElemArg(render_tasks),
+  execObjects = "save_graph_svg",
   packagesToLoad = c("igraph", "viridis")
 )
 rxSetComputeContext(origComputeContext)
