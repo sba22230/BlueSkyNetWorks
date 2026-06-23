@@ -764,7 +764,11 @@ cat("Subgraphs created and saved.\n")
 
 # Step 5: Plot enriched network with ggraph
 library(gganimate)
-coords_graphopt <- res_g[[4]]
+coords_graphopt <- res_g[[which(vapply(res_g, function(x) as.character(attr(x, "layout_type")), character(1)) == "graphopt"))]
+if (length(coords_graphopt) != 1L) {
+  stop("Unable to find a single 'graphopt' layout result in res_g")
+}
+coords_graphopt <- as.matrix(coords_graphopt[, c("x", "y")])
 gto <- ggraph(
   g,
   layout = "manual",
@@ -854,8 +858,6 @@ tobermvd <- c(
   'bsn_summary_df',
   'bsn_summary_df_chr',
   'community_layouts',
-  'coords',
-  'coords_df',
   'coords_drl',
   'coords_mat',
   'dist_matrix',

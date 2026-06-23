@@ -1034,14 +1034,28 @@ layout_exec <- function(
           coords = rand_coords
         ),
 
-        "graphopt" = layout_with_graphopt(
-          graph_obj,
-          start = pre_coords,
-          charge = 0.05,
-          mass = 30,
-          niter = 222,
-          tol = 1e-3
-        ),
+        "graphopt" = {
+          gwf <- igraph::layout_with_graphopt
+          gwf_formals <- names(formals(gwf))
+          if ("tol" %in% gwf_formals) {
+            layout_with_graphopt(
+              graph_obj,
+              start = pre_coords,
+              charge = 0.05,
+              mass = 30,
+              niter = 222,
+              tol = 1e-3
+            )
+          } else {
+            layout_with_graphopt(
+              graph_obj,
+              start = pre_coords,
+              charge = 0.05,
+              mass = 30,
+              niter = 222
+            )
+          }
+        },
 
         "lgl" = layout_with_lgl(
           graph_obj,
