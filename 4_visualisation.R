@@ -536,12 +536,12 @@ community_graphs <- lapply(top_10_ids, function(id) {
 cat("\n=== Step 4d: Computing layouts for each community in parallel ===\n")
 # compute layouts in parallel for all community x layout combinations
 layout_types <- c(
-  "drl",
   "drl_fast",
+  #"drl",
   #,"fr"
   "graphopt",
   #,"lgl"
-  "kk",
+  #"kk",
   #,"mds"
   "nicely"
   #,"tree"
