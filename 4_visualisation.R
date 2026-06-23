@@ -49,7 +49,7 @@ vis_nodes <- vis_nodes %>%
 
 # Sort IDs by degree (descending)
 sorted_ids <- vis_nodes %>%
-  arrange(desc(name)) %>%
+  arrange((name)) %>%
   pull(id)
 
 # --- Precompute layout coordinates with igraph ---
@@ -91,8 +91,7 @@ plan(orig_plan)
 # Add community membership to nodes
 # vis_nodes$community <- comm$membership
 
-# ensure community is used as the visNetwork group and add colours
-vis_nodes$group <- as.character(vis_nodes$community)
+# ensure community is used as the visNetwork group and add colours (group will be set later with labels)
 vis_nodes$isolated <- vis_nodes$degree == 0
 
 rxWriteObject(
@@ -246,7 +245,9 @@ community_type_map <- setNames(
 vis_nodes <- vis_nodes %>%
   mutate(
     community_label = community_label_map[as.character(community)],
-    community_type = community_type_map[as.character(community)]
+    community_type = community_type_map[as.character(community)],
+    # Use community_label as the group so legend displays full community descriptions
+    group = community_label
   )
 
 # Print community members for inspection
@@ -296,7 +297,7 @@ vis_obj <- visNetwork(
   vis_nodes,
   vis_edges_filtered,
   width = "100%",
-  height = "1024px"
+  height = "100vh"
 ) %>%
   # Coordinates are precomputed — physics is not needed and is the main
   # cause of browser sluggishness on large graphs
@@ -315,6 +316,78 @@ vis_obj <- visNetwork(
     dragNodes = FALSE, # fixed layout — dragging nodes is misleading
     dragView = TRUE,
     zoomView = TRUE
+  ) %>%
+  # When a node is selected, temporarily enlarge and change its border color.
+  # Stores original attributes on first select so we can restore them on deselect.
+  visEvents(
+    selectNode = "function(params) {\n      if(!params.nodes || params.nodes.length === 0) return;\n      var nid = params.nodes[0];\n      if(!window.__vis_orig_attrs) {\n        window.__vis_orig_attrs = {};\n        this.body.data.nodes.get().forEach(function(n){\n          window.__vis_orig_attrs[n.id] = {size: n.size, color: n.color};\n        });\n      }\n      var orig = window.__vis_orig_attrs[nid] || {};\n      var newSize = (orig.size ? Math.max(orig.size * 1.6, 30) : 30);\n      this.body.data.nodes.update([{id: nid, size: newSize, color: {border: '#FF4444'}}]);\n      try { this.moveTo({position: this.body.data.nodes.get(nid)}); } catch(e) {}\n    }",
+    deselectNode = "function(params) {\n      if(!window.__vis_orig_attrs) return;\n      var updates = [];\n      this.body.data.nodes.get().forEach(function(n){\n        var o = window.__vis_orig_attrs[n.id] || {};\n        updates.push({id: n.id, size: (o.size || 10), color: (o.color || {border:'#000000'})});\n      });\n      this.body.data.nodes.update(updates);\n    }"
+  ) %>%
+  htmlwidgets::onRender(
+    "function(el, x) {
+    // Store node data indexed by community for fast lookup
+    var nodesByCommunity = {};
+    var allNodeIds = [];
+    x.nodes.forEach(function(n) {
+      allNodeIds.push(n.id);
+      var comm = String(n.community || 'unknown');
+      if(!nodesByCommunity[comm]) nodesByCommunity[comm] = [];
+      nodesByCommunity[comm].push(n.id);
+    });
+    
+    // Find the community and node ID dropdowns in the DOM
+    var communitySelect = el.querySelector('select[id$=\"_selectVar\"]');
+    var nodeIdSelect = el.querySelector('select[id$=\"nodesIdSelection\"]');
+    
+    if(!communitySelect || !nodeIdSelect) return;
+    
+    var commLabelMap = {};
+    x.nodes.forEach(function(n) {
+      commLabelMap[n.community_label || ''] = n.community;
+    });
+    
+    // Helper to update node ID dropdown based on selected community
+    function updateNodeIdOptions() {
+      var selectedLabel = communitySelect.value;
+      var selectedComm = commLabelMap[selectedLabel];
+      var nodesForComm = selectedComm !== undefined ? (nodesByCommunity[String(selectedComm)] || []) : allNodeIds;
+      
+      // Update dropdown options
+      nodeIdSelect.innerHTML = '';
+      nodesForComm.forEach(function(nid) {
+        var opt = document.createElement('option');
+        opt.value = nid;
+        opt.textContent = nid;
+        nodeIdSelect.appendChild(opt);
+      });
+      
+      // Auto-select and highlight the first node in the community
+      if(nodesForComm.length > 0) {
+        var firstNodeId = nodesForComm[0];
+        nodeIdSelect.value = firstNodeId;
+        
+        // Trigger visNetwork selection and focus on that node
+        setTimeout(function() {
+          try {
+            var network = el.vislibrary;
+            if(network) {
+              network.selectNodes([firstNodeId], false);
+              var node = network.body.data.nodes.get(firstNodeId);
+              if(node && node.x !== undefined && node.y !== undefined) {
+                network.focus(firstNodeId, {scale: 1.0, animation: {duration: 500, easingFunction: 'easeInOutQuad'}});
+              }
+            }
+          } catch(e) { console.log('Focus error:', e); }
+        }, 100);
+      }
+    }
+    
+    // Attach event listener to community selector
+    communitySelect.addEventListener('change', updateNodeIdOptions);
+    
+    // Initialize on load
+    updateNodeIdOptions();
+  }"
   )
 # save HTML and capture as SVG (requires webshot2 and
 # a headless Chrome/Chromium)

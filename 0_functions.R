@@ -1040,7 +1040,7 @@ layout_exec <- function(
           if ("tol" %in% gwf_formals) {
             layout_with_graphopt(
               graph_obj,
-              start = pre_coords,
+              start = rand_coords,
               charge = 0.05,
               mass = 30,
               niter = 222,
@@ -1049,7 +1049,7 @@ layout_exec <- function(
           } else {
             layout_with_graphopt(
               graph_obj,
-              start = pre_coords,
+              start = rand_coords,
               charge = 0.05,
               mass = 30,
               niter = 222
