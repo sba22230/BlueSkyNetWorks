@@ -40,7 +40,7 @@ vis_edges <- edges %>%
 # Build igraph object from edges
 vis_g <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
 
-# Compute degree for each node
+# Compute degree for each node # TBD: use the precomputed degree from SQL if available
 deg <- igraph::degree(vis_g, mode = "all")
 
 # Add degree to vis_nodes
@@ -49,7 +49,7 @@ vis_nodes <- vis_nodes %>%
 
 # Sort IDs by degree (descending)
 sorted_ids <- vis_nodes %>%
-  arrange(desc(degree)) %>%
+  arrange(desc(name)) %>%
   pull(id)
 
 # --- Precompute layout coordinates with igraph ---
@@ -296,7 +296,7 @@ vis_obj <- visNetwork(
   vis_nodes,
   vis_edges_filtered,
   width = "100%",
-  height = "900px"
+  height = "1024px"
 ) %>%
   # Coordinates are precomputed — physics is not needed and is the main
   # cause of browser sluggishness on large graphs
@@ -308,7 +308,7 @@ vis_obj <- visNetwork(
     selectedBy = "community_label",
     manipulation = FALSE # disable edit toolbar unless needed
   ) %>%
-  visEdges(arrows = "to", smooth = FALSE) %>%
+  visEdges(arrows = "to", smooth = TRUE) %>%
   visLegend(useGroups = TRUE, position = "right") %>%
   visInteraction(
     navigationButtons = TRUE,
