@@ -1,7 +1,7 @@
-# source("0_functions.R")
+ source("0_functions.R")
 
 cat("\n===  Step 4a: Interactive visualization with visNetwork ===")
-vis_nodes <- nodes %>%
+vis_nodes <- nodes |>
   mutate(
     id = name,
     label = name,
@@ -10,7 +10,7 @@ vis_nodes <- nodes %>%
     value = ifelse(is.na(reposts_received), 0, reposts_received),
     # size by repost_count # nolint: line_length_linter.
     group = name
-  ) %>%
+  ) |>
   distinct(id, .keep_all = TRUE)
 
 vis_nodes <- vis_nodes |>
@@ -33,7 +33,7 @@ vis_nodes <- vis_nodes |>
     )
   )
 
-vis_edges <- edges %>%
+vis_edges <- edges |>
   mutate(arrows = "from")
 # add arrow pointing to the reposter node
 
@@ -44,12 +44,12 @@ vis_g <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
 deg <- igraph::degree(vis_g, mode = "all")
 
 # Add degree to vis_nodes
-vis_nodes <- vis_nodes %>%
+vis_nodes <- vis_nodes |>
   mutate(degree = deg[id])
 
 # Sort IDs by degree (descending)
-sorted_ids <- vis_nodes %>%
-  arrange((name)) %>%
+sorted_ids <- vis_nodes |>
+  arrange((name)) |>
   pull(id)
 
 # --- Load precomputed 'nicely' layout coordinates from SQL ---
@@ -95,7 +95,7 @@ if (any(is.na(coords_df))) {
 vis_nodes$x <- coords_df[, 1]
 vis_nodes$y <- coords_df[, 2]
 
-top_nodes <- vis_nodes %>% arrange(desc(degree)) %>% slice(1:50) %>% pull(id)
+top_nodes <- vis_nodes |> arrange(desc(degree)) |> slice(1:50) |> pull(id)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 plan(orig_plan)
 # Community detection -- now done in SQL code
@@ -164,8 +164,8 @@ save_graph_svg(
 cat("\n=== ANALYZING COMMUNITIES ===\n")
 
 # Get community member data
-community_analysis <- vis_nodes %>%
-  group_by(community) %>%
+community_analysis <- vis_nodes |>
+  group_by(community) |>
   summarise(
     # Size and structure
     size = n(),
@@ -192,7 +192,7 @@ community_analysis <- vis_nodes %>%
     ),
 
     .groups = "drop"
-  ) %>%
+  ) |>
   arrange(desc(size))
 
 cat("Community Statistics:\n")
@@ -255,7 +255,7 @@ community_type_map <- setNames(
   community_labels$community
 )
 
-vis_nodes <- vis_nodes %>%
+vis_nodes <- vis_nodes |>
   mutate(
     community_label = community_label_map[as.character(community)],
     community_type = community_type_map[as.character(community)],
@@ -266,10 +266,10 @@ vis_nodes <- vis_nodes %>%
 # Print community members for inspection
 cat("\n=== COMMUNITY MEMBERSHIP BREAKDOWN ===\n")
 for (comm_id in sort(unique(vis_nodes$community))) {
-  members <- vis_nodes %>%
-    filter(community == comm_id) %>%
-    arrange(desc(degree)) %>%
-    slice(1:10) %>%
+  members <- vis_nodes |>
+    filter(community == comm_id) |>
+    arrange(desc(degree)) |>
+    slice(1:10) |>
     pull(id)
 
   comm_type <- unique(vis_nodes$community_type[vis_nodes$community == comm_id])
@@ -306,102 +306,136 @@ vis_edges_filtered <- if (!is.null(edge_weight_col)) {
   vis_edges
 }
 
+# --- Node selection highlight handlers ---
+# Original attributes are pre-cached in onRender and stored on the container
+# element (el._visOrigAttrs) so state is scoped per widget, not global.
+
+js_select_node <- htmlwidgets::JS("
+  function(params) {
+    if (!params.nodes || params.nodes.length === 0) return;
+    var nid      = params.nodes[0];
+    var origAttrs = this.body.container._visOrigAttrs || {};
+    var orig     = origAttrs[nid] || {};
+    var newSize  = orig.size ? Math.min(orig.size * 1.2, orig.size + 8) : 18;
+    this.body.data.nodes.update([{ id: nid, size: newSize, color: { border: '#FF4444' } }]);
+    try {
+      this.focus(nid, { scale: 1.0, animation: { duration: 300, easingFunction: 'easeInOutQuad' } });
+    } catch(e) { console.warn('visNetwork focus error:', e); }
+  }
+")
+
+# Only restores the nodes that were previously selected (O(k), not O(n)).
+js_deselect_node <- htmlwidgets::JS("
+  function(params) {
+    var prev = params.previousSelection && params.previousSelection.nodes;
+    if (!prev || prev.length === 0) return;
+    var origAttrs = this.body.container._visOrigAttrs || {};
+    var updates = prev.map(function(nid) {
+      var o = origAttrs[nid] || {};
+      return { id: nid, size: o.size || 10, color: o.color || { border: '#000000' } };
+    });
+    this.body.data.nodes.update(updates);
+  }
+")
+
 vis_obj <- visNetwork(
   vis_nodes,
   vis_edges_filtered,
   width = "100%",
   height = "100vh"
-) %>%
+) |>
   # Coordinates are precomputed — physics is not needed and is the main
   # cause of browser sluggishness on large graphs
-  visPhysics(enabled = FALSE) %>%
-  visNodes(fixed = TRUE) %>%
+  visPhysics(enabled = FALSE) |>
+  visNodes(fixed = TRUE) |>
   visOptions(
     highlightNearest = list(enabled = TRUE, degree = 1), # degree 2 is expensive
     nodesIdSelection = list(values = sorted_ids),
     selectedBy = "community_label",
     manipulation = FALSE # disable edit toolbar unless needed
-  ) %>%
-  visEdges(arrows = "to", smooth = TRUE) %>%
-  visLegend(useGroups = TRUE, position = "right") %>%
+  ) |>
+  visEdges(arrows = "to", smooth = TRUE) |>
+  visLegend(useGroups = TRUE, position = "right") |>
   visInteraction(
     navigationButtons = TRUE,
     dragNodes = FALSE, # fixed layout — dragging nodes is misleading
     dragView = TRUE,
     zoomView = TRUE
-  ) %>%
-  # When a node is selected, temporarily enlarge and change its border color.
-  # Stores original attributes on first select so we can restore them on deselect.
-  visEvents(
-    selectNode = "function(params) {\n      if(!params.nodes || params.nodes.length === 0) return;\n      var nid = params.nodes[0];\n      if(!window.__vis_orig_attrs) {\n        window.__vis_orig_attrs = {};\n        this.body.data.nodes.get().forEach(function(n){\n          window.__vis_orig_attrs[n.id] = {size: n.size, color: n.color};\n        });\n      }\n      var orig = window.__vis_orig_attrs[nid] || {};\n      var newSize = orig.size ? Math.min(orig.size * 1.2, orig.size + 8) : 18;\n      this.body.data.nodes.update([{id: nid, size: newSize, color: {border: '#FF4444'}}]);\n      try { this.moveTo({position: this.body.data.nodes.get(nid)}); } catch(e) {}\n    }",
-    deselectNode = "function(params) {\n      if(!window.__vis_orig_attrs) return;\n      var updates = [];\n      this.body.data.nodes.get().forEach(function(n){\n        var o = window.__vis_orig_attrs[n.id] || {};\n        updates.push({id: n.id, size: (o.size || 10), color: (o.color || {border:'#000000'})});\n      });\n      this.body.data.nodes.update(updates);\n    }"
-  ) %>%
-  htmlwidgets::onRender(
-    "function(el, x) {
-    // Store node data indexed by community for fast lookup
-    var nodesByCommunity = {};
-    var allNodeIds = [];
-    x.nodes.forEach(function(n) {
-      allNodeIds.push(n.id);
-      var comm = String(n.community || 'unknown');
-      if(!nodesByCommunity[comm]) nodesByCommunity[comm] = [];
-      nodesByCommunity[comm].push(n.id);
-    });
-    
-    // Find the community and node ID dropdowns in the DOM
-    var communitySelect = el.querySelector('select[id$=\"_selectVar\"]');
-    var nodeIdSelect = el.querySelector('select[id$=\"nodesIdSelection\"]');
-    
-    if(!communitySelect || !nodeIdSelect) return;
-    
-    var commLabelMap = {};
-    x.nodes.forEach(function(n) {
-      commLabelMap[n.community_label || ''] = n.community;
-    });
-    
-    // Helper to update node ID dropdown based on selected community
-    function updateNodeIdOptions() {
-      var selectedLabel = communitySelect.value;
-      var selectedComm = commLabelMap[selectedLabel];
-      var nodesForComm = selectedComm !== undefined ? (nodesByCommunity[String(selectedComm)] || []) : allNodeIds;
-      
-      // Update dropdown options
-      nodeIdSelect.innerHTML = '';
-      nodesForComm.forEach(function(nid) {
-        var opt = document.createElement('option');
-        opt.value = nid;
-        opt.textContent = nid;
-        nodeIdSelect.appendChild(opt);
+  ) |>
+  # Enlarge and re-border the selected node; restore on deselect.
+  visEvents(selectNode = js_select_node, deselectNode = js_deselect_node) |>
+  htmlwidgets::onRender(htmlwidgets::JS("
+    function(el, x) {
+
+      // Pre-cache original node attributes on the container element so the
+      // selectNode / deselectNode handlers can read and restore them cheaply.
+      // Scoped to el (not window) to support multiple widgets on the same page.
+      el._visOrigAttrs = {};
+      x.nodes.forEach(function(n) {
+        el._visOrigAttrs[n.id] = { size: n.size, color: n.color };
       });
-      
-      // Auto-select and highlight the first node in the community
-      if(nodesForComm.length > 0) {
-        var firstNodeId = nodesForComm[0];
-        nodeIdSelect.value = firstNodeId;
-        
-        // Trigger visNetwork selection and focus on that node
-        setTimeout(function() {
-          try {
-            var network = el.vislibrary;
-            if(network) {
-              network.selectNodes([firstNodeId], false);
-              var node = network.body.data.nodes.get(firstNodeId);
-              if(node && node.x !== undefined && node.y !== undefined) {
-                network.focus(firstNodeId, {scale: 1.0, animation: {duration: 500, easingFunction: 'easeInOutQuad'}});
+
+      // Index nodes by community for fast dropdown filtering
+      var nodesByCommunity = {};
+      var allNodeIds = [];
+      x.nodes.forEach(function(n) {
+        allNodeIds.push(n.id);
+        var comm = String(n.community || 'unknown');
+        if (!nodesByCommunity[comm]) nodesByCommunity[comm] = [];
+        nodesByCommunity[comm].push(n.id);
+      });
+
+      // Find the community and node ID dropdowns in the DOM.
+      // NOTE: these selectors rely on visNetwork's internal DOM naming and may
+      // need updating if the package changes its generated HTML structure.
+      var communitySelect = el.querySelector('select[id$=\"_selectVar\"]');
+      var nodeIdSelect    = el.querySelector('select[id$=\"nodesIdSelection\"]');
+      if (!communitySelect || !nodeIdSelect) return;
+
+      var commLabelMap = {};
+      x.nodes.forEach(function(n) {
+        commLabelMap[n.community_label || ''] = n.community;
+      });
+
+      // Rebuild the node ID dropdown to show only nodes in the selected community
+      function updateNodeIdOptions() {
+        var selectedLabel = communitySelect.value;
+        var selectedComm  = commLabelMap[selectedLabel];
+        var nodesForComm  = selectedComm !== undefined
+          ? (nodesByCommunity[String(selectedComm)] || [])
+          : allNodeIds;
+
+        nodeIdSelect.innerHTML = '';
+        nodesForComm.forEach(function(nid) {
+          var opt = document.createElement('option');
+          opt.value       = nid;
+          opt.textContent = nid;
+          nodeIdSelect.appendChild(opt);
+        });
+
+        // Auto-select and focus the first node in the community
+        if (nodesForComm.length > 0) {
+          var firstNodeId = nodesForComm[0];
+          nodeIdSelect.value = firstNodeId;
+          setTimeout(function() {
+            try {
+              var network = el.vislibrary;
+              if (network) {
+                network.selectNodes([firstNodeId], false);
+                var node = network.body.data.nodes.get(firstNodeId);
+                if (node && node.x !== undefined && node.y !== undefined) {
+                  network.focus(firstNodeId, { scale: 1.0, animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
+                }
               }
-            }
-          } catch(e) { console.log('Focus error:', e); }
-        }, 100);
+            } catch(e) { console.warn('visNetwork focus error:', e); }
+          }, 100);
+        }
       }
+
+      communitySelect.addEventListener('change', updateNodeIdOptions);
+      updateNodeIdOptions();
     }
-    
-    // Attach event listener to community selector
-    communitySelect.addEventListener('change', updateNodeIdOptions);
-    
-    // Initialize on load
-    updateNodeIdOptions();
-  }"
-  )
+  "))
 # save HTML and capture as SVG (requires webshot2 and
 # a headless Chrome/Chromium)
 htmlwidgets::saveWidget(
@@ -426,7 +460,7 @@ ge_nodes <- data.frame(
 )
 
 # Node attributes (metrics + flags) — preserve your existing metrics
-ge_nodesAtt <- vis_nodes %>%
+ge_nodesAtt <- vis_nodes |>
   transmute(
     degree = ifelse(is.na(degree), 0L, as.integer(degree)),
     repost_count = ifelse(
@@ -485,16 +519,16 @@ ge_edges <- data.frame(
 )
 # Safe edge attributes (handles missing width/weight/color)
 if (any(c("width", "weight", "color") %in% names(vis_edges))) {
-  ge_edgesAtt <- vis_edges %>%
+  ge_edgesAtt <- vis_edges |>
     mutate(
-      weight = if ("width" %in% names(.)) {
+      weight = if ("width" %in% names(vis_edges)) {
         ifelse(is.na(width), 1, as.numeric(width))
-      } else if ("weight" %in% names(.)) {
+      } else if ("weight" %in% names(vis_edges)) {
         ifelse(is.na(weight), 1, as.numeric(weight))
       } else {
         1
       },
-      color_raw = if ("color" %in% names(.)) {
+      color_raw = if ("color" %in% names(vis_edges)) {
         ifelse(is.na(color) | color == "", "#AAAAAA", color)
       } else {
         "#AAAAAA"
@@ -502,16 +536,16 @@ if (any(c("width", "weight", "color") %in% names(vis_edges))) {
       # NEW: keep dynamic info as attributes
       edge_start = as.character(edgeStarts),
       edge_end = as.character(edgeEnds)
-    ) %>%
+    ) |>
     select(-from, -to, -any_of(c("width", "color")))
 } else {
-  ge_edgesAtt <- vis_edges %>%
+  ge_edgesAtt <- vis_edges |>
     mutate(
       weight = 1,
       color_raw = "#AAAAAA",
       edge_start = as.character(edgeStarts),
       edge_end = as.character(edgeEnds)
-    ) %>%
+    ) |>
     select(-from, -to)
 }
 
@@ -557,7 +591,7 @@ gexf_obj <- write.gexf(
   nodes = ge_nodes[, c("id", "label")],
   edges = ge_edges,
   nodesAtt = ge_nodesAtt,
-  edgesAtt = ge_edgesAtt %>% select(-color_raw),
+  edgesAtt = ge_edgesAtt |> select(-color_raw),
   nodesVizAtt = ge_nodesVizAtt,
   edgeDynamic = ge_edgeDynamic,
   edgesVizAtt = list(
@@ -799,15 +833,15 @@ cat(sprintf(
 
 # Add best community assignment to nodes
 best_comm <- comm_louvain$membership
-nodes_with_metrics <- nodes_with_metrics %>%
+nodes_with_metrics <- nodes_with_metrics |>
   dplyr::mutate(
     community = best_comm[name],
     modularity = modularity_louvain
   )
 
 # Community statistics (size, internal density, external connections)
-community_stats <- nodes %>%
-  group_by(community) %>%
+community_stats <- nodes |>
+  group_by(community) |>
   summarise(
     community_size = n(),
     # rough estimate
@@ -816,7 +850,7 @@ community_stats <- nodes %>%
     avg_pagerank = mean(pagerank, na.rm = TRUE),
     avg_authority = mean(authority_score, na.rm = TRUE),
     .groups = "drop"
-  ) %>%
+  ) |>
   arrange(desc(community_size))
 
 cat(sprintf(" Community analysis complete:\n"))
@@ -825,15 +859,15 @@ datatable(community_stats)
 cat("Interactive visualization ready with precomputed layout.\n")
 
 posts_df <- read_parquet("data/speirgorm_network.parquet")
-top_authors_reposted <- posts_df %>%
-  group_by(PostedBy) %>%
-  summarise(total_reposts = sum(repost_count, na.rm = TRUE)) %>%
-  arrange(desc(total_reposts)) %>%
+top_authors_reposted <- posts_df |>
+  group_by(PostedBy) |>
+  summarise(total_reposts = sum(repost_count, na.rm = TRUE)) |>
+  arrange(desc(total_reposts)) |>
   slice(1:10)
-top_reposters <- posts_df %>%
-  group_by(RepostedBy) %>% # group by both
-  summarise(total_reposts_made = n(), .groups = "drop") %>% # count reposts
-  arrange(desc(total_reposts_made)) %>% # sort descending
+top_reposters <- posts_df |>
+  group_by(RepostedBy) |> # group by both
+  summarise(total_reposts_made = n(), .groups = "drop") |> # count reposts
+  arrange(desc(total_reposts_made)) |> # sort descending
   slice(1:10) # top 10
 
 library(DT)
