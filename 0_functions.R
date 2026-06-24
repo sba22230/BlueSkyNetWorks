@@ -25,7 +25,12 @@ list.of.packages <- c(
   'tibble',
   'tidyr',
   'topicmodels',
-  'visNetwork'
+  'visNetwork',
+  'wordcloud2',
+  'scales',
+  'tm',
+  'tidytext',
+  'textdata'
 )
 new.packages <- list.of.packages[
   !(list.of.packages %in% installed.packages()[, 'Package'])
@@ -67,6 +72,11 @@ library(tibble)
 library(tidyr)
 library(topicmodels)
 library(visNetwork)
+library(tm)
+library(tidytext)
+library(textdata)
+library(wordcloud2)
+
 
 #### Ble Sky Functions ####
 orig_plan <- future::plan()
