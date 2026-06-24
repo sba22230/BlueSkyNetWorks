@@ -1,4 +1,4 @@
- source("0_functions.R")
+source("0_functions.R")
 
 cat("\n===  Step 4a: Interactive visualization with visNetwork ===")
 vis_nodes <- nodes |>
@@ -310,7 +310,8 @@ vis_edges_filtered <- if (!is.null(edge_weight_col)) {
 # Original attributes are pre-cached in onRender and stored on the container
 # element (el._visOrigAttrs) so state is scoped per widget, not global.
 
-js_select_node <- htmlwidgets::JS("
+js_select_node <- htmlwidgets::JS(
+  "
   function(params) {
     if (!params.nodes || params.nodes.length === 0) return;
     var nid      = params.nodes[0];
@@ -322,10 +323,12 @@ js_select_node <- htmlwidgets::JS("
       this.focus(nid, { scale: 1.0, animation: { duration: 300, easingFunction: 'easeInOutQuad' } });
     } catch(e) { console.warn('visNetwork focus error:', e); }
   }
-")
+"
+)
 
 # Only restores the nodes that were previously selected (O(k), not O(n)).
-js_deselect_node <- htmlwidgets::JS("
+js_deselect_node <- htmlwidgets::JS(
+  "
   function(params) {
     var prev = params.previousSelection && params.previousSelection.nodes;
     if (!prev || prev.length === 0) return;
@@ -336,7 +339,8 @@ js_deselect_node <- htmlwidgets::JS("
     });
     this.body.data.nodes.update(updates);
   }
-")
+"
+)
 
 vis_obj <- visNetwork(
   vis_nodes,
@@ -364,7 +368,8 @@ vis_obj <- visNetwork(
   ) |>
   # Enlarge and re-border the selected node; restore on deselect.
   visEvents(selectNode = js_select_node, deselectNode = js_deselect_node) |>
-  htmlwidgets::onRender(htmlwidgets::JS("
+  htmlwidgets::onRender(htmlwidgets::JS(
+    "
     function(el, x) {
 
       // Pre-cache original node attributes on the container element so the
@@ -435,7 +440,8 @@ vis_obj <- visNetwork(
       communitySelect.addEventListener('change', updateNodeIdOptions);
       updateNodeIdOptions();
     }
-  "))
+  "
+  ))
 # save HTML and capture as SVG (requires webshot2 and
 # a headless Chrome/Chromium)
 htmlwidgets::saveWidget(
@@ -659,7 +665,7 @@ layout_types <- c(
   "drl_fast",
   #"drl",
   #,"fr"
-  "graphopt",
+  #"graphopt",
   #,"lgl"
   #"kk",
   #,"mds"

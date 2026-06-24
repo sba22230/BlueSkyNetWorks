@@ -481,7 +481,7 @@ layout_types <- c(
   "drl_fast",
   #,"drl"
   #,"fr"
-  "graphopt",
+  #"graphopt",
   #,"lgl"
   #,"kk"
   #,"mds"
@@ -770,7 +770,7 @@ coords_graphopt <- res_g[[which(
     function(x) as.character(attr(x, "layout_type")),
     character(1)
   ) ==
-    "graphopt"
+    "nicely"
 )]]
 if (length(coords_graphopt) != 3) {
   stop("Unable to find a single 'graphopt' layout result in res_g")
