@@ -39,7 +39,6 @@ BlueSkyNetWorks/
 ├── graphs/                         # Exported graph files (Parquet, GEXF, GraphML, SVG, HTML)
 ```
 
-
 To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
 
 ```{r}
