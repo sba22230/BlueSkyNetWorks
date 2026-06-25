@@ -8,8 +8,6 @@ website:
     left:
       - href: index.qmd
         text: Home
-      - href: graphs/visnetwork_tmp.html
-        text: VisNetork Visualisation
       - href: network/index.html
         text: Gephi Graph Visualisation
       - about.qmd
