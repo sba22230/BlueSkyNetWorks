@@ -224,6 +224,8 @@ community_topics |>
   ) +
   theme_minimal()
 
+rxDataStep(community_topics, community_sql, overwrite = TRUE)
+community_sql <- RxSqlServerData(table = "communityTopics", connectionString = connStr )
 # --- Gamma: mean document-topic proportion per community ---------------------
 
 community_gamma <- lda_models |>
