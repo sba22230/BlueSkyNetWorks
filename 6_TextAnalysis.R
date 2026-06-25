@@ -2,7 +2,6 @@
 # 6_TextAnalysis.R — Text, sentiment, and topic modelling for BlueSkyNetWorks
 # =============================================================================
 
-
 # =============================================================================
 # 1. DATA PREPARATION
 # =============================================================================
@@ -12,10 +11,10 @@ nodes <- igraph::as_data_frame(g, what = "vertices")
 edges <- igraph::as_data_frame(g, what = "edges")
 
 posts <- data.frame(
-  name       = edges$from,
-  text       = edges$text,
+  name = edges$from,
+  text = edges$text,
   created_at = lubridate::ymd(edges$created_at),
-  document   = seq_len(nrow(edges))
+  document = seq_len(nrow(edges))
 ) |>
   merge(nodes[, c("name", "community")], by = "name", all.x = TRUE)
 
@@ -51,8 +50,8 @@ tidy_posts <- build_tidy_posts(posts)
 # =============================================================================
 
 # Load sentiment lexicons once; reused across sections
-bing  <- get_sentiments("bing")
-nrc   <- get_sentiments("nrc")
+bing <- get_sentiments("bing")
+nrc <- get_sentiments("nrc")
 afinn <- get_sentiments("afinn")
 
 # --- Bing: binary positive / negative ----------------------------------------
@@ -63,7 +62,10 @@ sentiment_analysis_bing <- tidy_posts |>
 sentiment_summary_bing <- sentiment_analysis_bing |>
   count(sentiment, sort = TRUE)
 
-bingsentiment <- ggplot(sentiment_summary_bing, aes(x = sentiment, y = n, fill = sentiment)) +
+bingsentiment <- ggplot(
+  sentiment_summary_bing,
+  aes(x = sentiment, y = n, fill = sentiment)
+) +
   geom_bar(stat = "identity") +
   labs(
     title = "Sentiment Analysis Using Bing Lexicon",
@@ -94,7 +96,11 @@ nrcsentiment <- ggplot(
   ) +
   theme_minimal()
 
-save_graph_svg(nrcsentiment, filename = "nrcsentiment.svg", folder = "docs/images")
+save_graph_svg(
+  nrcsentiment,
+  filename = "nrcsentiment.svg",
+  folder = "docs/images"
+)
 
 # --- AFINN: numeric sentiment score ------------------------------------------
 
@@ -117,7 +123,11 @@ afinnsentiment <- ggplot(
   ) +
   theme_minimal()
 
-save_graph_svg(afinnsentiment, filename = "afinnsentiment.svg", folder = "docs/images")
+save_graph_svg(
+  afinnsentiment,
+  filename = "afinnsentiment.svg",
+  folder = "docs/images"
+)
 
 # =============================================================================
 # 3. WORD CLOUD (full corpus)
@@ -126,9 +136,20 @@ save_graph_svg(afinnsentiment, filename = "afinnsentiment.svg", folder = "docs/i
 # word / n format is accepted directly by wordcloud2
 global_freq <- tidy_posts |>
   count(word, sort = TRUE)
-#speirgormWordcloud <- 
-  wordcloud2(global_freq, size = 2, minRotation = -pi/6, maxRotation = pi/6, rotateRatio = 0.9, gridSize = 3, shuffle = TRUE)
-# save_graph_svg(speirgormWordcloud, filename = "Speirgorm_wordcloud.svg", folder = "docs/images")
+speirgormWordcloud <- wordcloud2(
+  global_freq,
+  size = 2,
+  minRotation = -pi / 6,
+  maxRotation = pi / 6,
+  rotateRatio = 0.9,
+  gridSize = 3,
+  shuffle = TRUE
+)
+saveWidget(
+  speirgormWordcloud,
+  "docs/SpeirGormWordcloud.html",
+  selfcontained = FALSE
+)
 # =============================================================================
 # 4. PER-COMMUNITY LDA TOPIC MODELLING
 # =============================================================================
@@ -193,7 +214,7 @@ top6_comms <- tidy_posts |>
 # every topic, making the heatmap uninformative.
 pick_unique_terms <- function(df) {
   topics <- sort(unique(df$topic))
-  used   <- character(0)
+  used <- character(0)
 
   purrr::map(topics, \(t) {
     best <- dplyr::filter(df, topic == t, !term %in% used) |>
@@ -211,7 +232,7 @@ community_topics |>
   ungroup() |>
   mutate(
     community = factor(paste("Comm", community)),
-    topic     = paste("Topic", topic)
+    topic = paste("Topic", topic)
   ) |>
   ggplot(aes(x = topic, y = community, fill = beta)) +
   geom_tile(color = "white") +
@@ -220,12 +241,17 @@ community_topics |>
   labs(
     title = "Dominant term per LDA topic by community",
     subtitle = "Top 6 communities by document count — one unique term per topic",
-    x = NULL, y = NULL, fill = "Beta"
+    x = NULL,
+    y = NULL,
+    fill = "Beta"
   ) +
   theme_minimal()
 
 rxDataStep(community_topics, community_sql, overwrite = TRUE)
-community_sql <- RxSqlServerData(table = "communityTopics", connectionString = connStr )
+community_sql <- RxSqlServerData(
+  table = "communityTopics",
+  connectionString = connStr
+)
 # --- Gamma: mean document-topic proportion per community ---------------------
 
 community_gamma <- lda_models |>
@@ -254,7 +280,12 @@ make_topic_labels <- function(beta_df, n_terms = 1) {
     slice_max(total_beta, n = n_terms, by = topic) |>
     arrange(topic, desc(total_beta)) |>
     summarise(
-      label = paste0("T", first(topic), ": ", paste(unique(term), collapse = " / ")),
+      label = paste0(
+        "T",
+        first(topic),
+        ": ",
+        paste(unique(term), collapse = " / ")
+      ),
       .by = topic
     ) |>
     mutate(label = stringr::str_wrap(label, width = 18)) |>
@@ -266,26 +297,29 @@ topic_labels <- make_topic_labels(community_topics)
 
 community_gamma |>
   mutate(
-    community  = factor(community, levels = comm_order),
+    community = factor(community, levels = comm_order),
     topic_name = recode(as.character(topic), !!!topic_labels),
     topic_name = factor(topic_name, levels = topic_labels)
   ) |>
   ggplot(aes(x = topic_name, y = community, fill = mean_gamma)) +
   geom_tile(color = "white", linewidth = 0.4) +
   scale_fill_gradient(
-    low = "white", high = "#2c6fad",
+    low = "white",
+    high = "#2c6fad",
     labels = scales::percent_format()
   ) +
   labs(
-    title    = "Community-level topic concentration (gamma)",
+    title = "Community-level topic concentration (gamma)",
     subtitle = "Mean document-topic proportion — topics labelled by dominant terms\n(Note: topics fitted independently per community; labels are approximate)",
-    x = NULL, y = "Community", fill = "Mean γ"
+    x = NULL,
+    y = "Community",
+    fill = "Mean γ"
   ) +
   theme_minimal() +
   theme(
     axis.text.y = element_text(size = 8),
     axis.text.x = element_text(size = 8, angle = 20, hjust = 1),
-    panel.grid  = element_blank()
+    panel.grid = element_blank()
   )
 
 # =============================================================================
@@ -323,7 +357,7 @@ global_topic_labels <- tidy(global_lda, matrix = "beta") |>
 
 global_gamma |>
   mutate(
-    community  = factor(community, levels = comm_order_global),
+    community = factor(community, levels = comm_order_global),
     topic_name = factor(
       recode(as.character(topic), !!!global_topic_labels),
       levels = global_topic_labels
@@ -332,19 +366,22 @@ global_gamma |>
   ggplot(aes(x = topic_name, y = community, fill = mean_gamma)) +
   geom_tile(color = "white", linewidth = 0.4) +
   scale_fill_gradient(
-    low = "white", high = "#2c6fad",
+    low = "white",
+    high = "#2c6fad",
     labels = scales::percent_format()
   ) +
   labs(
-    title    = "Community-level topic concentration — global LDA",
+    title = "Community-level topic concentration — global LDA",
     subtitle = "Mean document-topic proportion (gamma) from a single corpus-wide model",
-    x = NULL, y = "Community", fill = "Mean γ"
+    x = NULL,
+    y = "Community",
+    fill = "Mean γ"
   ) +
   theme_minimal() +
   theme(
     axis.text.y = element_text(size = 8),
     axis.text.x = element_text(size = 8, angle = 20, hjust = 1),
-    panel.grid  = element_blank()
+    panel.grid = element_blank()
   )
 
 # =============================================================================
@@ -375,18 +412,26 @@ community_sentiment_nrc_wide <- tidy_posts |>
 
 # --- NRC long: emotion profile plot (8 pure emotions, proportional) ----------
 
-emotions <- c("anger", "anticipation", "disgust", "fear",
-              "joy", "sadness", "surprise", "trust")
+emotions <- c(
+  "anger",
+  "anticipation",
+  "disgust",
+  "fear",
+  "joy",
+  "sadness",
+  "surprise",
+  "trust"
+)
 
 emotion_palette <- c(
-  anger        = "#d62728",
+  anger = "#d62728",
   anticipation = "#ff7f0e",
-  disgust      = "#8c564b",
-  fear         = "#9467bd",
-  joy          = "#2ca02c",
-  sadness      = "#1f77b4",
-  surprise     = "#17becf",
-  trust        = "#bcbd22"
+  disgust = "#8c564b",
+  fear = "#9467bd",
+  joy = "#2ca02c",
+  sadness = "#1f77b4",
+  surprise = "#17becf",
+  trust = "#bcbd22"
 )
 
 # Long-form table restricted to the 8 pure emotions (exclude aggregate pos/neg)
@@ -419,7 +464,7 @@ community_sentiment_nrc |>
   scale_fill_manual(values = emotion_palette) +
   scale_x_continuous(labels = scales::percent_format()) +
   labs(
-    title    = "Emotion profile by community (NRC lexicon)",
+    title = "Emotion profile by community (NRC lexicon)",
     subtitle = "Top 15 communities by matched word count — proportional share",
     x = "Share of emotion words",
     y = "Community",
@@ -436,13 +481,16 @@ community_sentiment_nrc |>
 
 # Community-size lookup derived from Louvain membership vector
 mem_tbl <- tibble::tibble(
-  node      = igraph::V(g)$name,
+  node = igraph::V(g)$name,
   community = igraph::membership(comm_louvain)
 )
 comm_sizes_tbl <- mem_tbl |> count(community, name = "size")
 
 # Restrict to top 30 communities (by node count) that also appear in global_gamma
-shared_comms   <- intersect(unique(global_gamma$community), comm_sizes_tbl$community)
+shared_comms <- intersect(
+  unique(global_gamma$community),
+  comm_sizes_tbl$community
+)
 top_comms_focal <- comm_sizes_tbl |>
   filter(community %in% shared_comms) |>
   slice_max(size, n = 30) |>
@@ -466,7 +514,7 @@ cos_mat <- cosine_sim(gamma_mat)
 
 # --- Cross-community edge density for each community pair --------------------
 
-el        <- igraph::as_edgelist(g, names = FALSE)
+el <- igraph::as_edgelist(g, names = FALSE)
 node_comm <- igraph::membership(comm_louvain)
 
 edge_comm_pairs <- tibble::tibble(
@@ -477,9 +525,9 @@ edge_comm_pairs <- tibble::tibble(
   mutate(pair_a = pmin(c1, c2), pair_b = pmax(c1, c2)) |>
   count(pair_a, pair_b, name = "cross_edges") |>
   mutate(
-    size_a        = comm_sizes_tbl$size[match(pair_a, comm_sizes_tbl$community)],
-    size_b        = comm_sizes_tbl$size[match(pair_b, comm_sizes_tbl$community)],
-    possible      = size_a * size_b,
+    size_a = comm_sizes_tbl$size[match(pair_a, comm_sizes_tbl$community)],
+    size_b = comm_sizes_tbl$size[match(pair_b, comm_sizes_tbl$community)],
+    possible = size_a * size_b,
     inter_density = cross_edges / possible
   )
 
@@ -497,11 +545,11 @@ comparison <- cos_long |>
   ) |>
   mutate(
     inter_density = tidyr::replace_na(inter_density, 0),
-    has_edge      = inter_density > 0
+    has_edge = inter_density > 0
   )
 
 # Spearman correlation: all pairs, and pairs that share at least one edge
-cor_all  <- cor(comparison$cosine, comparison$inter_density, method = "spearman")
+cor_all <- cor(comparison$cosine, comparison$inter_density, method = "spearman")
 cor_edge <- cor(
   comparison$cosine[comparison$has_edge],
   comparison$inter_density[comparison$has_edge],
@@ -518,13 +566,14 @@ ggplot(comparison, aes(x = cosine, y = inter_density)) +
   ) +
   scale_y_continuous(labels = scales::label_scientific()) +
   labs(
-    title    = "Topic similarity vs. inter-community edge density",
+    title = "Topic similarity vs. inter-community edge density",
     subtitle = sprintf(
       "Top 30 communities by size · Spearman ρ = %.3f (all pairs), %.3f (edges only)",
-      cor_all, cor_edge
+      cor_all,
+      cor_edge
     ),
-    x     = "Cosine similarity of global γ profiles",
-    y     = "Inter-community edge density",
+    x = "Cosine similarity of global γ profiles",
+    y = "Inter-community edge density",
     color = NULL
   ) +
   theme_minimal(base_size = 12) +
@@ -566,7 +615,9 @@ p_cos <- ggplot(cos_sym, aes(x = comm_b, y = comm_a, fill = cosine)) +
   scale_fill_gradient(low = "white", high = "#2c6fad") +
   labs(
     title = "Topic cosine similarity (global γ)",
-    x = NULL, y = "Community", fill = "Cosine"
+    x = NULL,
+    y = "Community",
+    fill = "Cosine"
   ) +
   theme_minimal(base_size = 9) +
   theme(axis.text = element_text(size = 6), panel.grid = element_blank())
@@ -576,10 +627,15 @@ p_edge <- ggplot(
   aes(x = comm_b, y = comm_a, fill = log1p(inter_density * 1e5))
 ) +
   geom_tile() +
-  scale_fill_gradient(low = "white", high = "#b5201a", name = "log(density+1)") +
+  scale_fill_gradient(
+    low = "white",
+    high = "#b5201a",
+    name = "log(density+1)"
+  ) +
   labs(
     title = "Inter-community edge density",
-    x = "Community", y = NULL
+    x = "Community",
+    y = NULL
   ) +
   theme_minimal(base_size = 9) +
   theme(axis.text = element_text(size = 6), panel.grid = element_blank())
