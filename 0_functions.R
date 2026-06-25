@@ -7,6 +7,7 @@ list.of.packages <- c(
   'DT',
   'DBI',
   'dplyr',
+  'fastNaiveBayes',
   'future',
   'ggraph',
   'ggrepel',
@@ -52,6 +53,7 @@ library(arrow)
 library(DT)
 library(DBI)
 library(dplyr)
+library(fastNaiveBayes)
 library(future)
 library(ggraph)
 library(ggrepel)

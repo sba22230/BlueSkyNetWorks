@@ -21,8 +21,17 @@ posts <- data.frame(
 # Tokenise, clean, and remove stop words.
 # Returns one row per (document, word) with community membership preserved.
 build_tidy_posts <- function(df) {
+  # "ireland" / "irish" are corpus-wide ubiquitous (this is an Irish Bluesky
+  # community) and are not discriminative for LDA; treat them like stop words.
   custom_stops <- tibble::tibble(
-    word = c("speirgorm", "spéirgorm", "speirghorm", "spéirghorm")
+    word = c(
+      "speirgorm",
+      "spéirgorm",
+      "speirghorm",
+      "spéirghorm",
+      "ireland",
+      "irish"
+    )
   )
 
   df |>
@@ -57,7 +66,7 @@ afinn <- get_sentiments("afinn")
 # --- Bing: binary positive / negative ----------------------------------------
 
 sentiment_analysis_bing <- tidy_posts |>
-  inner_join(bing, by = "word")
+  inner_join(bing, by = "word", relationship = "many-to-many")
 
 sentiment_summary_bing <- sentiment_analysis_bing |>
   count(sentiment, sort = TRUE)
@@ -105,7 +114,7 @@ save_graph_svg(
 # --- AFINN: numeric sentiment score ------------------------------------------
 
 sentiment_analysis_afinn <- tidy_posts |>
-  inner_join(afinn, by = "word")
+  inner_join(afinn, by = "word", relationship = "many-to-many")
 
 sentiment_summary_afinn <- sentiment_analysis_afinn |>
   count(value, name = "count") |>
@@ -247,11 +256,12 @@ community_topics |>
   ) +
   theme_minimal()
 
-rxDataStep(community_topics, community_sql, overwrite = TRUE)
 community_sql <- RxSqlServerData(
   table = "communityTopics",
   connectionString = connStr
 )
+rxDataStep(community_topics, community_sql, overwrite = TRUE)
+
 # --- Gamma: mean document-topic proportion per community ---------------------
 
 community_gamma <- lda_models |>
@@ -274,22 +284,43 @@ comm_order <- community_gamma |>
 # Topics are fitted independently per community so cross-community
 # comparisons of these labels are approximate.
 make_topic_labels <- function(beta_df, n_terms = 1) {
-  beta_df |>
-    group_by(topic, term) |>
-    summarise(total_beta = sum(beta), .groups = "drop") |>
-    slice_max(total_beta, n = n_terms, by = topic) |>
-    arrange(topic, desc(total_beta)) |>
-    summarise(
-      label = paste0(
-        "T",
-        first(topic),
-        ": ",
-        paste(unique(term), collapse = " / ")
-      ),
-      .by = topic
-    ) |>
-    mutate(label = stringr::str_wrap(label, width = 18)) |>
-    arrange(topic) |>
+  # Sum beta across all communities so terms are ranked by corpus-wide
+  # importance rather than by a single community's model.
+  agg <- beta_df |>
+    dplyr::group_by(topic, term) |>
+    dplyr::summarise(total_beta = sum(beta), .groups = "drop")
+
+  # Accumulates claimed terms across iterations so no label word is reused.
+  used <- character(0)
+
+  # Rank topics by the strength of their single best term, so the topic
+  # with the clearest dominant signal claims its word before others can.
+  topic_peak <- agg |>
+    dplyr::group_by(topic) |>
+    dplyr::slice_max(total_beta, n = 1) |>
+    dplyr::arrange(dplyr::desc(total_beta)) |>
+    dplyr::pull(topic)
+
+  purrr::map(topic_peak, \(t) {
+    # Exclude any term already claimed by a higher-priority topic
+    best <- dplyr::filter(agg, topic == t, !term %in% used) |>
+      dplyr::slice_max(total_beta, n = n_terms)
+
+    # <<- writes back to the enclosing scope so each map() iteration
+    # sees the cumulative set of already-claimed terms.
+    used <<- c(used, best$term)
+
+    tibble::tibble(
+      topic = t,
+      label = stringr::str_wrap(
+        paste0("T", t, ": ", paste(unique(best$term), collapse = " / ")),
+        width = 18
+      )
+    )
+  }) |>
+    purrr::list_rbind() |>
+    # Restore numeric topic order for consistent axis ordering in the heatmap
+    dplyr::arrange(topic) |>
     (\(d) setNames(d$label, as.character(d$topic)))()
 }
 
@@ -390,7 +421,7 @@ global_gamma |>
 
 # --- Bing: net positive / negative per community -----------------------------
 community_sentiment <- tidy_posts |>
-  inner_join(bing, by = "word") |>
+  inner_join(bing, by = "word", relationship = "many-to-many") |>
   count(community, sentiment) |>
   pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) |>
   mutate(net_sentiment = positive - negative)
@@ -398,7 +429,7 @@ community_sentiment <- tidy_posts |>
 # --- NRC wide: all emotions + net sentiment + dominant emotion per community -
 # Kept as a separate wide-format table for downstream tabular analysis
 community_sentiment_nrc_wide <- tidy_posts |>
-  inner_join(nrc, by = "word") |>
+  inner_join(nrc, by = "word", relationship = "many-to-many") |>
   count(community, sentiment) |>
   pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) |>
   mutate(
@@ -436,7 +467,7 @@ emotion_palette <- c(
 
 # Long-form table restricted to the 8 pure emotions (exclude aggregate pos/neg)
 community_sentiment_nrc <- tidy_posts |>
-  inner_join(nrc, by = "word") |>
+  inner_join(nrc, by = "word", relationship = "many-to-many") |>
   filter(sentiment %in% emotions) |>
   count(community, sentiment)
 

@@ -52,7 +52,7 @@ ggplot(
   frequency,
   aes(x = .data[[cols[1]]], y = .data[[cols[2]]])
 ) +
-  geom_jitter(alpha = 0.1, size = 2.5, width = 0.25, height = ) +
+  geom_jitter(alpha = 0.1, size = 2.5, width = 0.25, height = 0.25) +
   geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
   scale_x_log10(labels = percent_format()) +
   scale_y_log10(labels = percent_format()) +
@@ -70,8 +70,8 @@ posts <- cbind(edges$from, edges$text, edges$created_at)
 posts <- as.data.frame(posts)
 posts <- posts |> mutate(V3 = lubridate::ymd(V3))
 
-colnames <- c("name", "text", "created_at")
-colnames(posts) <- colnames
+post_col_names <- c("name", "text", "created_at")
+colnames(posts) <- post_col_names
 
 posts <- merge(
   posts,
@@ -86,7 +86,7 @@ posts_dt <- posts |>
 
 datatable(posts_dt)
 
-ViewPostsByDate(posts, 2, 9)
+ViewPostsByDate(posts, 6, 9)
 
 tidy_posts <- posts |>
   filter(!str_detect(text, "^RT")) |>
@@ -111,7 +111,7 @@ totals <- counts_long |>
 counts <- counts_long |>
   pivot_wider(names_from = community, values_from = n, values_fill = 0)
 
-ViewCommunityContrastedByWords(totals, counts, tidy_posts, 2, 9)
+ViewCommunityContrastedByWords(totals, counts, tidy_posts, 6, 9)
 
 community_graphs <- rxReadObject(ds_Graphs, "Community Graphs")
 #community_graphs <- comm
@@ -164,8 +164,8 @@ posts <- posts |>
   mutate(V3 = lubridate::ymd(V3)) %>%
   mutate(document = row_number())
 
-colnames <- c("name", "text", "created_at", "document")
-colnames(posts) <- colnames
+post_col_names <- c("name", "text", "created_at", "document")
+colnames(posts) <- post_col_names
 
 posts <- merge(
   posts,
@@ -195,8 +195,11 @@ sparse_words <- tidy_posts %>%
   inner_join(train_data) %>%
   cast_sparse(document, word, n)
 
-class(sparse_words)
-dim(sparse_words)
+# cast_sparse() does not guarantee sorted row indices within each column,
+# which dgCMatrix requires. A double-transpose forces the Matrix package to
+# rebuild the compressed column structure in canonical order, preventing the
+# "i slot is not increasing" error that glmnet raises during validation.
+sparse_words <- Matrix::t(Matrix::t(sparse_words))
 
 word_rownames <- as.integer(rownames(sparse_words))
 
@@ -282,27 +285,27 @@ tokens <- sentimentdataset$text |>
 
 it <- itoken(tokens, ids = sentimentdataset$doc_id, progressbar = FALSE)
 
-vocab <- create_vocabulary(it) |>
-  prune_vocabulary(term_count_min = 5)
-
+# Build vocabulary with 1–4 ngrams; prune rare terms to keep the DTM tractable
 vocab <- create_vocabulary(it, ngram = c(1L, 4L)) |>
   prune_vocabulary(term_count_min = 5)
 
 vectorizer <- vocab_vectorizer(vocab)
-vectorizer_nb <- vocab_vectorizer(vocab)
+# NB uses raw term counts; glmnet uses TF-IDF — both need the same vocabulary
+# so they share one vectorizer, keeping the feature spaces identical.
+vectorizer_nb <- vectorizer
 
 dtm <- create_dtm(it, vectorizer)
-dtm_nb <- create_dtm(it, vectorizer_nb) # term counts
+# NB and glmnet start from the same raw count DTM; TF-IDF is applied later
+# only for glmnet, so we alias rather than rebuilding from scratch.
+dtm_nb <- dtm
 
 tfidf <- TfIdf$new()
 dtm_tfidf <- tfidf$fit_transform(dtm)
 
 y <- sentimentdataset$Sentiment
 
-# convert to dense/data.frame for e1071
-x_nb <- as.matrix(dtm_nb)
-train_df <- as.data.frame(x_nb)
-train_df$Sentiment <- y
+# dtm_nb is already a sparse matrix; keep it sparse for fastNaiveBayes
+x_nb <- dtm_nb
 
 cvfit <- cv.glmnet(
   x = dtm_tfidf,
@@ -318,11 +321,12 @@ y <- droplevels(y)
 pred <- factor(pred, levels = levels(y))
 confusionMatrix(pred, y)
 
-# Bayesian Sentiment Analysis
-# train Naive Bayes
-library(e1071)
-nb_model <- naiveBayes(Sentiment ~ ., data = train_df)
+# Bayesian Sentiment Analysis — train on the sparse DTM directly.
+# fastNaiveBayes accepts dgCMatrix so we avoid materialising the dense matrix.
+library(fastNaiveBayes)
+nb_model <- fnb.multinomial(x_nb, y = y, sparse = TRUE, laplace = 1)
 stopImplicitCluster()
+source("Model_functions.R")
 scored_posts <- score_sentiment(posts, cvfit, vectorizer, tfidf)
 
 sentiment_props <- scored_posts |>
@@ -356,16 +360,9 @@ sentiment_nb_props <- posts_nb |>
   count(sentiment_nb) |>
   mutate(prop = n / sum(n))
 
-library(lattice)
-
-sentiment_props <- sentiment_nb_props |>
-  arrange(desc(prop))
-
-library(latticeExtra)
-
 barchart(
   prop ~ sentiment_nb,
-  data = sentiment_nb_props,
+  data = sentiment_nb_props |> arrange(desc(prop)),
   xlab = "Sentiment",
   ylab = "Proportion of Posts",
   main = "Sentiment Distribution in Posts",
