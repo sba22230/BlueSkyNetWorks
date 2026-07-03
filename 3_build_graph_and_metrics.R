@@ -395,7 +395,7 @@ cat("\n=== 3l: Eigenvector centrality computed ===\n")
 bsn_ideg <- sna::degree(bluSkynet, cmode = "indegree")
 bsn_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
 total_degree <- bsn_ideg + bsn_odeg
-cat("\n=== Step 3l: Degree metrics (in/out/total) computed ===\n")
+cat("\n=== Step 3m: Degree metrics (in/out/total) computed ===\n")
 
 ### == these are already computed - no need to do it again == ###
 # PageRank (weighted by influence)
@@ -410,7 +410,7 @@ cat("\n=== Step 3l: Degree metrics (in/out/total) computed ===\n")
 
 # k-Core Decomposition
 kcore_vals <- sna::kcores(bluSkynet)
-cat("\n=== Step 3m: k-core decomposition computed ===\n")
+cat("\n=== Step 3n: k-core decomposition computed ===\n")
 
 # align numeric vectors to node order
 node_keys <- as.character(V(g)$name)
@@ -431,7 +431,7 @@ nodes_with_metrics <- nodes %>%
   )
 
 cat(
-  "\n=== Step 3n: Node-level metrics compiled into 'nodes_with_metrics' tibble ===\n"
+  "\n=== Step 3o: Node-level metrics compiled into 'nodes_with_metrics' tibble ===\n"
 )
 cat(sprintf(
   "  Rows: %d nodes | Cols: %d features\n",
@@ -474,7 +474,7 @@ rxDataStep(nodes_with_metrics, nodes_sql, overwrite = TRUE)
 ### These will be useful for a notebook === FINISH
 rxSetComputeContext(orgicc)
 cat(
-  "\n=== Step 3o: igraph layouts: Computing different layouts for igraph ===\n"
+  "\n=== Step 3p: igraph layouts: Computing different layouts for igraph ===\n"
 )
 
 layout_types <- c(
@@ -653,7 +653,7 @@ rxWriteObject(
 # SECTION 1.5: Create Subgraphs by Year and Month
 # ============================================================================
 cat(
-  "\n=== Step 3p: Creating subgraphs filtered by year and month of edgeStarts ===\n"
+  "\n=== Step 3q: Creating subgraphs filtered by year and month of edgeStarts ===\n"
 )
 
 # Assuming edgeStarts is a Date or can be converted to Date
