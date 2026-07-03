@@ -746,8 +746,6 @@ plot_community_svg <- function(entry, pal, save_graph_svg) {
           "Community ",
           entry$id,
           " ",
-          igraph::vcount(subg),
-          " nodes\n(",
           layout_name,
           ")"
         )

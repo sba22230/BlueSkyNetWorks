@@ -586,7 +586,7 @@ render_one_graph <- function(task) {
     layout_name,
     ")"
   )
-  out_file <- paste0("MainGraph_", vcount(subg), "_", layout_name, ".svg")
+  out_file <- paste0("MainGraph_", layout_name, ".svg")
 
   save_graph_svg(
     plot_or_expr = function() {
@@ -711,7 +711,7 @@ for (ym in unique_ym) {
       "steelblue"
     }
 
-    out_file <- paste0("SubGraph_", vcount(sub_g), "_", ym, ".svg")
+    out_file <- paste0("SubGraph_", ym, ".svg")
 
     save_graph_svg(
       plot_or_expr = function() {
