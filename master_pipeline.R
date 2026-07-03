@@ -17,6 +17,22 @@ cat("\n=== STEP 5: NLP analysis ===\n")
 source("Model_functions.R")
 source("5_NLP_analysis.R")
 
+# --- Example usage (adjust community IDs and paths to your data) ---
+# freq_plot      <- plot_author_word_freq(g)
+# comm_data      <- get_community_posts(g)
+# ViewPostsByDate(comm_data$posts, comm_1 = 6, comm_2 = 9)
+# ViewCommunityContrastedByWords(comm_data$totals, comm_data$counts,
+#                                comm_data$tidy_posts, comm_1 = 6, comm_2 = 9)
+#
+# community_graphs <- rxReadObject(ds_Graphs, "Community Graphs")
+# timelines        <- plot_community_timelines(community_graphs)
+# show_plots(timelines$word_plots, page = 1)
+#
+# classifier <- build_community_classifier(g, target_community = "1")
+#
+# sentiment_models <- build_sentiment_models("data/sentimentdataset.csv")
+# sentiment_output <- plot_sentiment_distributions(g, sentiment_models)
+
 cat("\n=== STEP 6: Text analysis ===\n")
 
 source("6_TextAnalysis.R")
