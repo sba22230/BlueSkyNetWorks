@@ -104,8 +104,10 @@ plan(orig_plan)
 # Add community membership to nodes
 # vis_nodes$community <- comm$membership
 
-# ensure community is used as the visNetwork group and add colours (group will be set later with labels)
-vis_nodes$isolated <- vis_nodes$degree == 0
+# Redefine isolated as degree below 10th percentile, since degree==0 is impossible
+# in an edge-list-derived graph (all nodes have at least one edge by definition)
+degree_p10 <- quantile(vis_nodes$degree, 0.10, na.rm = TRUE)
+vis_nodes$isolated <- vis_nodes$degree <= degree_p10
 
 rxWriteObject(
   ds_Graphs,
@@ -171,6 +173,7 @@ community_analysis <- vis_nodes |>
     size = n(),
     isolated_count = sum(isolated, na.rm = TRUE),
     active_members = sum(!isolated, na.rm = TRUE),
+    isolated_pct = isolated_count / size,
 
     # Connectivity metrics - degree measures the number of
     avg_degree = mean(degree, na.rm = TRUE),
@@ -207,9 +210,9 @@ q75_repost <- quantile(community_analysis$avg_repost_count, 0.75)
 community_labels <- community_analysis |>
   mutate(
     community_type = case_when(
-      # Peripheral check first: a large-but-isolated community should not be
-      # misclassified as a Core Hub by an earlier size-based condition
-      isolated_count >= active_members * 0.5 ~ "Peripheral",
+      # Peripheral check first: communities where 50%+ are low-degree nodes
+      # (degree <= 10th percentile). This is a meaningful measure in edge-list-derived graphs
+      isolated_pct >= 0.5 ~ "Peripheral",
 
       # Large, highly connected communities (hubs)
       size >= 50 & avg_degree > med_degree * 1.5 ~ "Core Hub",
@@ -232,14 +235,22 @@ community_labels <- community_analysis |>
 
     # Note: \n renders in plot labels; use a flat string for table display
     label = sprintf(
-      "Community %d: %s\n(%d members, avg degree: %.1f)",
+      "Community %d: %s\n(%d members, %.1f%% low-degree)",
       community,
       community_type,
       size,
-      avg_degree
+      isolated_pct * 100
     )
   ) |>
-  select(community, community_type, label, size, avg_degree, top_member)
+  select(
+    community,
+    community_type,
+    label,
+    size,
+    avg_degree,
+    top_member,
+    isolated_pct
+  )
 
 cat("\n=== COMMUNITY LABELS & TYPES ===\n")
 datatable(slice(community_labels, 1:10))

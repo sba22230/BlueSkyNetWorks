@@ -1,7 +1,7 @@
 # Rewritten to load network data into SQL Server (BlueSkyNet) and run calculations on the server
 # Requires: RevoScaleR, DBI/odbc (optional for direct checks), igraph/ggraph for local plotting
 
- source("0_functions.R")
+source("0_functions.R")
 
 # ---------------------------
 # Step 0: Read raw data Parquet files locally
@@ -150,7 +150,7 @@ SELECT
 
     SUM(CASE WHEN role = 'author' THEN 1 ELSE 0 END) AS posts_authored,
     SUM(CASE WHEN role = 'reposter' THEN 1 ELSE 0 END) AS reposts_made,
-    SUM(CASE WHEN role = 'author' THEN reposts_received ELSE 0 END) AS reposts_received, 
+    SUM(CASE WHEN role = 'reposter' THEN 1 ELSE 0 END) AS reposts_received, 
     MAX(like_count) AS total_likes_on_posts,
     MAX(reply_count) AS total_replies_on_posts,
     MAX(bookmark_count) AS total_bookmarks_on_posts
