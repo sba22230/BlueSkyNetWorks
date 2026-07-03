@@ -150,7 +150,7 @@ SELECT
 
     SUM(CASE WHEN role = 'author' THEN 1 ELSE 0 END) AS posts_authored,
     SUM(CASE WHEN role = 'reposter' THEN 1 ELSE 0 END) AS reposts_made,
-    SUM(CASE WHEN role = 'reposter' THEN 1 ELSE 0 END) AS reposts_received, 
+    SUM(CASE WHEN role = 'author' THEN reposts_received ELSE 0 END) AS reposts_received, 
     MAX(like_count) AS total_likes_on_posts,
     MAX(reply_count) AS total_replies_on_posts,
     MAX(bookmark_count) AS total_bookmarks_on_posts
@@ -158,21 +158,19 @@ FROM (
     --------------------------------------------------------------------
     -- Canonical network data frame
     --------------------------------------------------------------------
-    SELECT  P.author_handle AS handle, CAST(P.indexedAt AS date) AS PostedOn, 'author' AS role, 1 AS reposts_received, P.like_count, P.reply_count, P.bookmark_count
-FROM      posts_raw AS P INNER JOIN
+    SELECT  P.author_handle AS handle, COUNT(DISTINCT P.uri) AS IndividualPosts, CAST(P.indexedAt AS date) AS PostedOn, 'author' AS role, MAX(P.repost_count) AS reposts_received, P.like_count, P.reply_count, P.bookmark_count
+    FROM      posts_raw AS P INNER JOIN
                  reposts_raw AS RP ON P.uri = RP.uri
-
+    GROUP BY P.author_handle, CAST(P.indexedAt AS date), P.like_count, P.reply_count, P.bookmark_count
     UNION ALL
-
     SELECT
-        RP.handle AS handle,
+        RP.handle AS handle,1 AS IndividualPosts, 
         CAST(P.indexedAt AS date) AS PostedOn,
         'reposter' AS role,
         0 AS reposts_received, P.like_count, P.reply_count, P.bookmark_count
     FROM posts_raw AS P
     INNER JOIN reposts_raw AS RP ON P.uri = RP.uri
 ) AS X
-WHERE handle IS NOT NULL
 GROUP BY handle;"
 dbExecute(odbc_con, populate_person_sql)
 
