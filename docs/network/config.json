@@ -4,18 +4,18 @@
   "data": "data.json",
   "logo": {
     "file": "",
-    "link": "",
+    "link": "https://sba22230.github.io/BlueSkyNetWorks/",
     "text": "sba22230"
   },
   "text": {
-    "more": "A grpah representaion of the bluesky posts that have the hashtag #Speirogrm",
+    "more": "A graph representaion of the bluesky posts that have the hashtag #Speirogrm",
     "intro": "\t\t\t\t\tspeirgorm Network",
     "title": "Speirgorm  Network"
   },
   "legend": {
-    "edgeLabel": "black",
-    "colorLabel": "red",
-    "nodeLabel": "green"
+    "edgeLabel": "Edges",
+    "colorLabel": "Community",
+    "nodeLabel": "Nodes"
   },
   "features": {
     "search": true,
