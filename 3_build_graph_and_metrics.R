@@ -723,7 +723,7 @@ process_ym <- function(ym, year_month, g, pal, ds_Graphs, save_graph_svg) {
 }
 
 # Switch to parallel context (adjust numCoresToUse as needed)
-rxSetComputeContext(RxLocalParallel(numCoresToUse = wrkrs))
+rxSetComputeContext(RxLocalParallel())
 
 results <- rxExec(
   FUN            = process_ym,
