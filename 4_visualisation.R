@@ -847,12 +847,12 @@ cat(sprintf(
 #))
 
 # Add best community assignment to nodes
-best_comm <- comm_louvain$membership
-nodes_with_metrics <- nodes_with_metrics |>
-  dplyr::mutate(
-    community = best_comm[name],
-    modularity = modularity_louvain
-  )
+#best_comm <- comm_louvain$membership
+#nodes_with_metrics <- nodes_with_metrics |>
+#  dplyr::mutate(
+#    community = best_comm[name],
+#    modularity = modularity_louvain
+#  )
 
 # Community statistics (size, internal density, external connections)
 community_stats <- nodes |>
