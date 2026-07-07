@@ -13,7 +13,7 @@ library(visNetwork)
 library(retry)
 library(rgexf)
 
-orgicc <- rxGetComputeContext()
+origComputeContext <- rxGetComputeContext()
 # connect to SQL
 connStr <- "Driver=SQL Server;Server=.;Database=BlueSkyNet;Trusted_Connection=True;"
 sqlShareDir <- paste("H:\\AllShare\\", Sys.getenv("USERNAME"), sep = "")

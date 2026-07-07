@@ -7,7 +7,7 @@ database <- "BlueSkyNet"
 use_trusted_connection <- TRUE # set FALSE if using SQL auth
 sql_user <- "your_sql_user" # only used if not using trusted connection
 sql_password <- "your_password" # only used if not using trusted connection
-orgicc <- rxGetComputeContext()
+origComputeContext <- rxGetComputeContext()
 rxSetComputeContext("localpar")
 
 if (use_trusted_connection) {

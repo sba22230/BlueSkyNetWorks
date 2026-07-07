@@ -521,7 +521,7 @@ if (v$os != "linux-gnu" && sql_server_available()) {
   # only used if not using trusted connection
   #sql_password <- "your_password"
   # only used if not using trusted connection
-  orgicc <- rxGetComputeContext()
+  #orgicc <- rxGetComputeContext()
   rxOptions(numCoresToUse = wrkrs)
   rxSetComputeContext("localpar")
 

@@ -13,7 +13,7 @@ use_trusted_connection <- TRUE # set FALSE if using SQL auth
 shareDir <- paste("H:\\AllShare\\", Sys.getenv("USERNAME"), sep = "")
 # change to a path accessible by SQL Server machine
 
-orgicc <- rxGetComputeContext()
+origComputeContext <- rxGetComputeContext()
 if (use_trusted_connection) {
   odbc_con <- dbConnect(
     odbc::odbc(),

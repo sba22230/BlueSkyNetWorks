@@ -472,7 +472,7 @@ rxDataStep(nodes_with_metrics, nodes_sql, overwrite = TRUE)
 
 
 ### These will be useful for a notebook === FINISH
-rxSetComputeContext(orgicc)
+rxSetComputeContext(origComputeContext)
 cat(
   "\n=== Step 3p: igraph layouts: Computing different layouts for igraph ===\n"
 )
