@@ -472,7 +472,7 @@ rxDataStep(nodes_with_metrics, nodes_sql, overwrite = TRUE)
 
 
 ### These will be useful for a notebook === FINISH
-rxSetComputeContext(origComputeContext)
+rxSetComputeContext("localpar")
 cat(
   "\n=== Step 3p: igraph layouts: Computing different layouts for igraph ===\n"
 )
@@ -615,7 +615,7 @@ rxExec(
   execObjects = "save_graph_svg",
   packagesToLoad = c("igraph", "viridis")
 )
-rxSetComputeContext(origComputeContext)
+#rxSetComputeContext(origComputeContext)
 
 par(old_par)
 # Select top N nodes to label (e.g., top 50 by degree)
@@ -650,7 +650,7 @@ rxWriteObject(
 # --- end of one visualisation
 
 # ============================================================================
-# SECTION 1.5: Create Subgraphs by Year and Month
+# SECTION 1.5: Create Subgraphs by Year and Month (Parallel via rxExec)
 # ============================================================================
 cat(
   "\n=== Step 3q: Creating subgraphs filtered by year and month of edgeStarts ===\n"
@@ -664,101 +664,95 @@ if (!inherits(edge_dates, "Date")) {
 
 # Extract year-month as string "YYYY-MM"
 year_month <- format(edge_dates, "%Y-%m")
-unique_ym <- unique(year_month)
-unique_ym <- sort(unique_ym) # Sort for consistency
+unique_ym <- sort(unique(year_month))
 
-subgraphs_igraph <- list()
-subgraphs_statnet <- list()
+# Worker function: processes one year-month slice
+process_ym <- function(ym, year_month, g, pal, ds_Graphs, save_graph_svg) {
+  library(igraph)
+  library(intergraph)
+  library(network)
 
-for (ym in unique_ym) {
   eids <- which(year_month == ym)
-  if (length(eids) > 0) {
-    # Create igraph subgraph
-    sub_g <- subgraph_from_edges(g, eids)
-    subgraphs_igraph[[ym]] <- sub_g
+  if (length(eids) == 0) return(NULL)
 
-    # Convert to statnet network
-    sub_net <- asNetwork(sub_g)
-    subgraphs_statnet[[ym]] <- sub_net
+  sub_g   <- subgraph_from_edges(g, eids)
+  sub_net <- asNetwork(sub_g)
 
-    cat(
-      "Created subgraph for",
-      ym,
-      "with",
-      vcount(sub_g),
-      "nodes and",
-      ecount(sub_g),
-      "edges\n"
-    )
+  cat(
+    "Created subgraph for", ym,
+    "with", vcount(sub_g), "nodes and", ecount(sub_g), "edges\n"
+  )
 
-    main_title <- paste0(
-      "Sub Graph ",
-      vcount(sub_g),
-      " nodes\n(",
-      ym,
-      ")"
-    )
+  main_title <- paste0("Sub Graph ", vcount(sub_g), " nodes\n(", ym, ")")
 
-    # Precompute vertex aesthetics
-    vsize <- if (!is.null(V(sub_g)$pagerank)) {
-      V(sub_g)$pagerank + 1
-    } else {
-      rep(6, vcount(subg))
-    }
-    vcol <- if (!is.null(V(sub_g)$kcore)) {
-      pal[as.integer(V(sub_g)$kcore) + 1]
-    } else {
-      "steelblue"
-    }
-
-    out_file <- paste0("SubGraph_", ym, ".svg")
-
-    save_graph_svg(
-      plot_or_expr = function() {
-        par(mar = c(1, 1, 2, 1))
-        plot.igraph(
-          sub_g,
-          layout = layout_nicely(sub_g, dim = 2),
-          main = main_title,
-          vertex.size = vsize,
-          vertex.label.cex = 0.2,
-          edge.arrow.size = 0.3,
-          vertex.color = vcol
-        )
-      },
-      filename = out_file,
-      folder = "docs/images"
-    )
-
-    # Optionally save each subgraph
-    rxWriteObject(
-      ds_Graphs,
-      paste0("subgraph_igraph_", ym),
-      sub_g,
-      overwrite = TRUE
-    )
-    rxWriteObject(
-      ds_Graphs,
-      paste0("subgraph_statnet_", ym),
-      sub_net,
-      overwrite = TRUE
-    )
+  # Precompute vertex aesthetics (bug fix: subg -> sub_g)
+  vsize <- if (!is.null(V(sub_g)$pagerank)) {
+    V(sub_g)$pagerank + 1
+  } else {
+    rep(6, vcount(sub_g))
   }
+  vcol <- if (!is.null(V(sub_g)$kcore)) {
+    pal[as.integer(V(sub_g)$kcore) + 1]
+  } else {
+    "steelblue"
+  }
+
+  out_file <- paste0("SubGraph_", ym, ".svg")
+  save_graph_svg(
+    plot_or_expr = function() {
+      par(mar = c(1, 1, 2, 1))
+      plot.igraph(
+        sub_g,
+        layout         = layout_nicely(sub_g, dim = 2),
+        main           = main_title,
+        vertex.size    = vsize,
+        vertex.label.cex = 0.2,
+        edge.arrow.size  = 0.3,
+        vertex.color   = vcol
+      )
+    },
+    filename = out_file,
+    folder   = "docs/images"
+  )
+
+  # Each worker writes its own keys — no contention
+  rxWriteObject(ds_Graphs, paste0("subgraph_igraph_",  ym), sub_g,   overwrite = TRUE)
+  rxWriteObject(ds_Graphs, paste0("subgraph_statnet_", ym), sub_net, overwrite = TRUE)
+
+  list(ym = ym, sub_g = sub_g, sub_net = sub_net)
 }
 
-# Save the lists of subgraphs
-rxWriteObject(
-  ds_Graphs,
-  "subgraphs_igraph_by_ym",
-  subgraphs_igraph,
-  overwrite = TRUE
+# Switch to parallel context (adjust numCoresToUse as needed)
+rxSetComputeContext(RxLocalParallel(numCoresToUse = wrkrs))
+
+results <- rxExec(
+  FUN            = process_ym,
+  ym             = rxElemArg(unique_ym),
+  year_month     = year_month,
+  g              = g,
+  pal            = pal,
+  ds_Graphs      = ds_Graphs,
+  save_graph_svg = save_graph_svg,
+  packagesToLoad = c("igraph", "intergraph", "network")
 )
-rxWriteObject(
-  ds_Graphs,
-  "subgraphs_statnet_by_ym",
-  subgraphs_statnet,
-  overwrite = TRUE
+
+# Restore original compute context
+rxSetComputeContext(origComputeContext)
+
+# Filter out any NULL results and collect into named lists
+results <- Filter(Negate(is.null), results)
+subgraphs_igraph  <- setNames(
+  lapply(results, `[[`, "sub_g"),
+  sapply(results, `[[`, "ym")
 )
+subgraphs_statnet <- setNames(
+  lapply(results, `[[`, "sub_net"),
+  sapply(results, `[[`, "ym")
+)
+
+# Save the aggregated lists
+rxWriteObject(ds_Graphs, "subgraphs_igraph_by_ym",  subgraphs_igraph,  overwrite = TRUE)
+rxWriteObject(ds_Graphs, "subgraphs_statnet_by_ym", subgraphs_statnet, overwrite = TRUE)
 
 cat("Subgraphs created and saved.\n")
 
