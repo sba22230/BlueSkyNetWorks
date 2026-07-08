@@ -1,6 +1,6 @@
 USE [BlueSkyNet]
 GO
-
+/*
 -- Created by GitHub Copilot in SSMS - review carefully before executing
 SET NOCOUNT ON;
 
@@ -229,7 +229,7 @@ CREATE TABLE [dbo].[Reposted](
 )
 AS EDGE ON [dataonly] TEXTIMAGE_ON [dataonly]
 GO
-
+*/
 -- =============================================================================
 -- SECTION 2: CREATE GlobalNetworkMetrics TABLE
 -- =============================================================================

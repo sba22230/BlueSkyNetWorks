@@ -33,9 +33,9 @@ SET
 -- ============================================================================
 
 -- 1. Compute basic degree metrics (updates Person table)
-EXEC sp_ComputeCloseness;
-EXEC sp_ComputeClusteringCoefficient;
-EXEC sp_ComputeInfluenceScore;
+--EXEC sp_ComputeCloseness;
+--EXEC sp_ComputeClusteringCoefficient;
+--EXEC sp_ComputeInfluenceScore;
 
 -- 2. Retrieve network-level metrics
 DECLARE @stats NVARCHAR(MAX);
