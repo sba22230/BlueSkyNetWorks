@@ -19,7 +19,7 @@
   },
   "features": {
     "search": true,
-    "groupSelectorAttribute": "community",
+    "groupSelectorAttribute": "Id",
     "hoverBehavior": "dim"
   },
   "informationPanel": {
