@@ -19,8 +19,8 @@
   },
   "features": {
     "search": true,
-    "groupSelectorAttribute": "Id",
-    "hoverBehavior": "dim"
+    "groupSelectorAttribute": "community",
+    "hoverBehavior": "default"
   },
   "informationPanel": {
     "groupByEdgeDirection": true,
