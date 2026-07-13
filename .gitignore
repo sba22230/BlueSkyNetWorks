@@ -56,3 +56,7 @@ images/SubGraph_*.svg
 
 /.quarto/
 **/*.quarto_ipynb
+.vs/BlueSkyNetWorks/CopilotIndices/17.14.1686.8233/CodeChunks.db
+.vs/BlueSkyNetWorks/CopilotIndices/17.14.1686.8233/SemanticSymbols.db
+.vs/BlueSkyNetWorks/FileContentIndex/8a6a235f-5b1c-4ae9-8270-6271f760edde.vsidx
+.vs/BlueSkyNetWorks/FileContentIndex/c9f7e121-1758-4f32-b074-a80a47b3343d.vsidx
