@@ -70,7 +70,7 @@ if (is.null(res_g) || length(res_g) == 0) {
 nicely_idx <- which(vapply(
   res_g,
   function(x) {
-    identical(as.character(attr(x, "layout_type")), "nicely")
+    identical(as.character(attr(x, "layout_type")), "drl_fast")
   },
   logical(1)
 ))
@@ -95,6 +95,11 @@ if (any(is.na(coords_df))) {
 vis_nodes$x <- coords_df[, 1]
 vis_nodes$y <- coords_df[, 2]
 
+min_coord_range <- min(coords_df[,1:2])
+max_coord_range <- max(coords_df[,1:2])
+
+scaled_z <- min_coord_range + ((vis_nodes$reposts_made - min(vis_nodes$reposts_made)) / (max(vis_nodes$reposts_made) - min(vis_nodes$reposts_made))) * (max_coord_range - min_coord_range)
+vis_nodes$z <- scaled_z
 top_nodes <- vis_nodes |> arrange(desc(degree)) |> slice(1:50) |> pull(id)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 plan(orig_plan)
@@ -467,6 +472,12 @@ rxWriteObject(
   overwrite = TRUE
 )
 ## Export the Visnetwork into GEXF with visual encodings preserved
+# Node sizes 
+min_size <- 1
+max_size <- 30
+
+scaled_sizes <- min_size + ((vis_nodes$reposts_made - min(vis_nodes$reposts_made)) / (max(vis_nodes$reposts_made) - min(vis_nodes$reposts_made))) * (max_size - min_size)
+
 # Nodes (basic)
 ge_nodes <- data.frame(
   id = vis_nodes$id,
@@ -491,7 +502,7 @@ ge_nodesAtt <- vis_nodes |>
     value = ifelse(is.na(value), 1, as.numeric(value))
   )
 
-ge_nodesAtt$modularity_class <- as.integer(vis_nodes$community)
+#ge_nodesAtt$modularity_class <- as.integer(vis_nodes$community)
 # Node visual attributes for GEXF
 node_hex <- ifelse(
   is.na(vis_nodes$color.background),
@@ -513,13 +524,10 @@ ge_nodesVizAtt <- list(
   position = data.frame(
     x = vis_nodes$x,
     y = vis_nodes$y,
-    z = rep(0, nrow(vis_nodes))
+    z = vis_nodes$z
   ),
-  size = as.numeric(ifelse(
-    is.na(vis_nodes$value),
-    ge_nodesAtt$value,
-    vis_nodes$value
-  )),
+  size = scaled_sizes
+  ,
   color = data.frame(
     r = as.integer(node_rgba_df$r),
     g = as.integer(node_rgba_df$g),
@@ -571,7 +579,8 @@ ge_edgeDynamic <- if (
 ) {
   data.frame(
     start = ge_edgesAtt$edge_start,
-    end = ge_edgesAtt$edge_end
+    end = ge_edgesAtt$edge_end,
+    stringsAsFactors = FALSE
   )
 } else {
   NULL
@@ -602,24 +611,30 @@ char_cols <- sapply(ge_nodesAtt, is.character)
 ge_nodesAtt[char_cols] <- lapply(ge_nodesAtt[char_cols], sanitize_xml)
 char_cols_e <- sapply(ge_edgesAtt, is.character)
 ge_edgesAtt[char_cols_e] <- lapply(ge_edgesAtt[char_cols_e], sanitize_xml)
-
+min_t <- min(as.numeric(as.Date(ge_edgeDynamic$start)))
+max_t <- max(as.numeric(as.Date(ge_edgeDynamic$end)))
 # Use write.gexf, passing nodes, edges, attributes and viz attributes
 gexf_obj <- write.gexf(
   nodes = ge_nodes[, c("id", "label")],
   edges = ge_edges,
   nodesAtt = ge_nodesAtt,
   edgesAtt = ge_edgesAtt |> select(-color_raw),
-  nodesVizAtt = ge_nodesVizAtt,
+  nodesVizAtt = list(
+    color = ge_nodesVizAtt$color,
+    size = ge_nodesVizAtt$size,
+    position = ge_nodesVizAtt$position
+  ),
   edgeDynamic = ge_edgeDynamic,
+  tFormat = "date",
   edgesVizAtt = list(
     color = ge_edgesVizColor,
     size = as.numeric(ge_edgesAtt$weight)
   ),
   encoding = "UTF-8",
   defaultedgetype = "directed",
-  rescale.node.size = TRUE,
-  relsize = max(0.01, 1 / nrow(nodes)),
-  radius = 500
+  rescale.node.size = FALSE,
+  relsize = max(0.01, 1 / nrow(ge_nodes)),
+  radius = 1500
 )
 
 # Save to file
@@ -630,8 +645,8 @@ if (!dir.exists(file_path)) {
   dir.create(file_path, recursive = TRUE)
 }
 rgexf::write.gexf(gexf_obj, output = file_name)
-
 plot(gexf_obj)
+
 rxWriteObject(
   ds_Graphs,
   "Gephi_Graph - Gephi - GEXF",
