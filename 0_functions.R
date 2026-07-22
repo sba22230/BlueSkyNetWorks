@@ -1120,6 +1120,9 @@ layout_exec <- function(
 
 #### NLP helpers ####
 plot_word_comparison_date <- function(graph, community_id) {
+  replace_reg <- "https?://t.co/[A-Za-z\\d]+|http://[A-Za-z\\d]+|&amp;|&lt;|&gt;|RT|https"
+  unnest_reg <- "([^\\p{L}\\d#@']|'(?![\\p{L}\\d#@]))" # updated for all charahcters
+  
   # ---- 1. Extract posts from edges ----
   posts <- cbind(E(graph)$text, E(graph)$created_at) %>%
     as.data.frame() %>%
@@ -1139,6 +1142,9 @@ plot_word_comparison_date <- function(graph, community_id) {
   word_time <- tidy_posts %>%
     group_by(word) %>%
     summarise(median_time = median(created_at))
+  global_freq <- tidy_posts |>
+    count(word, name = "global_n") |>
+    mutate(global_freq = global_n / sum(global_n))
 
   # ---- 3. Compute counts + Dirichlet log-odds ----
   counts_long <- tidy_posts %>% count(word, name = "n")
