@@ -1,8 +1,8 @@
 source("0_functions.R")
 
 set.seed(22230)
-num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
-
+#num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
+num_posts <- 5000
 
 cat("\n=== Step 3a: Build igraph object and plot basic network ===\n")
 # Step 3: Build igraph object and plot basic network
@@ -673,14 +673,21 @@ process_ym <- function(ym, year_month, g, pal, ds_Graphs, save_graph_svg) {
   library(network)
 
   eids <- which(year_month == ym)
-  if (length(eids) == 0) return(NULL)
+  if (length(eids) == 0) {
+    return(NULL)
+  }
 
-  sub_g   <- subgraph_from_edges(g, eids)
+  sub_g <- subgraph_from_edges(g, eids)
   sub_net <- asNetwork(sub_g)
 
   cat(
-    "Created subgraph for", ym,
-    "with", vcount(sub_g), "nodes and", ecount(sub_g), "edges\n"
+    "Created subgraph for",
+    ym,
+    "with",
+    vcount(sub_g),
+    "nodes and",
+    ecount(sub_g),
+    "edges\n"
   )
 
   main_title <- paste0("Sub Graph ", vcount(sub_g), " nodes\n(", ym, ")")
@@ -703,21 +710,31 @@ process_ym <- function(ym, year_month, g, pal, ds_Graphs, save_graph_svg) {
       par(mar = c(1, 1, 2, 1))
       plot.igraph(
         sub_g,
-        layout         = layout_nicely(sub_g, dim = 2),
-        main           = main_title,
-        vertex.size    = vsize,
+        layout = layout_nicely(sub_g, dim = 2),
+        main = main_title,
+        vertex.size = vsize,
         vertex.label.cex = 0.2,
-        edge.arrow.size  = 0.3,
-        vertex.color   = vcol
+        edge.arrow.size = 0.3,
+        vertex.color = vcol
       )
     },
     filename = out_file,
-    folder   = "docs/images"
+    folder = "docs/images"
   )
 
   # Each worker writes its own keys — no contention
-  rxWriteObject(ds_Graphs, paste0("subgraph_igraph_",  ym), sub_g,   overwrite = TRUE)
-  rxWriteObject(ds_Graphs, paste0("subgraph_statnet_", ym), sub_net, overwrite = TRUE)
+  rxWriteObject(
+    ds_Graphs,
+    paste0("subgraph_igraph_", ym),
+    sub_g,
+    overwrite = TRUE
+  )
+  rxWriteObject(
+    ds_Graphs,
+    paste0("subgraph_statnet_", ym),
+    sub_net,
+    overwrite = TRUE
+  )
 
   list(ym = ym, sub_g = sub_g, sub_net = sub_net)
 }
@@ -726,12 +743,12 @@ process_ym <- function(ym, year_month, g, pal, ds_Graphs, save_graph_svg) {
 rxSetComputeContext(RxLocalParallel())
 
 results <- rxExec(
-  FUN            = process_ym,
-  ym             = rxElemArg(unique_ym),
-  year_month     = year_month,
-  g              = g,
-  pal            = pal,
-  ds_Graphs      = ds_Graphs,
+  FUN = process_ym,
+  ym = rxElemArg(unique_ym),
+  year_month = year_month,
+  g = g,
+  pal = pal,
+  ds_Graphs = ds_Graphs,
   save_graph_svg = save_graph_svg,
   packagesToLoad = c("igraph", "intergraph", "network")
 )
@@ -741,7 +758,7 @@ rxSetComputeContext(origComputeContext)
 
 # Filter out any NULL results and collect into named lists
 results <- Filter(Negate(is.null), results)
-subgraphs_igraph  <- setNames(
+subgraphs_igraph <- setNames(
   lapply(results, `[[`, "sub_g"),
   sapply(results, `[[`, "ym")
 )
@@ -751,8 +768,18 @@ subgraphs_statnet <- setNames(
 )
 
 # Save the aggregated lists
-rxWriteObject(ds_Graphs, "subgraphs_igraph_by_ym",  subgraphs_igraph,  overwrite = TRUE)
-rxWriteObject(ds_Graphs, "subgraphs_statnet_by_ym", subgraphs_statnet, overwrite = TRUE)
+rxWriteObject(
+  ds_Graphs,
+  "subgraphs_igraph_by_ym",
+  subgraphs_igraph,
+  overwrite = TRUE
+)
+rxWriteObject(
+  ds_Graphs,
+  "subgraphs_statnet_by_ym",
+  subgraphs_statnet,
+  overwrite = TRUE
+)
 
 cat("Subgraphs created and saved.\n")
 
