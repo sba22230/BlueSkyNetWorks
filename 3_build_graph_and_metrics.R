@@ -667,7 +667,15 @@ year_month <- format(edge_dates, "%Y-%m")
 unique_ym <- sort(unique(year_month))
 
 # Worker function: processes one year-month slice
-process_ym <- function(ym, year_month, g, pal, ds_Graphs, save_graph_svg, plot_word_comparison_date) {
+process_ym <- function(
+  ym,
+  year_month,
+  g,
+  pal,
+  ds_Graphs,
+  save_graph_svg,
+  plot_word_comparison_date
+) {
   library(dplyr)
   library(ggrepel)
   library(stringr)
@@ -675,7 +683,6 @@ process_ym <- function(ym, year_month, g, pal, ds_Graphs, save_graph_svg, plot_w
   library(lubridate)
   library(igraph)
   library(magrittr)
-  
 
   eids <- which(year_month == ym)
   if (length(eids) == 0) {
@@ -727,8 +734,11 @@ process_ym <- function(ym, year_month, g, pal, ds_Graphs, save_graph_svg, plot_w
     folder = "docs/images"
   )
   out_file <- paste0("SubGraph_wordComparison_", ym, ".svg")
-  save_graph_svg(plot_word_comparison_date(sub_g, ym),filename = out_file,
-                 folder = "docs/images")
+  save_graph_svg(
+    plot_word_comparison_date(sub_g, ym),
+    filename = out_file,
+    folder = "docs/images"
+  )
 
   # Each worker writes its own keys — no contention
   rxWriteObject(
@@ -759,7 +769,18 @@ results <- rxExec(
   ds_Graphs = ds_Graphs,
   save_graph_svg = save_graph_svg,
   plot_word_comparison_date = plot_word_comparison_date,
-  packagesToLoad = c("dplyr", "igraph",  "ggplot2", "ggrepel", "intergraph", "lubridate", "magrittr", "network", "stringr", "tidytext")
+  packagesToLoad = c(
+    "dplyr",
+    "igraph",
+    "ggplot2",
+    "ggrepel",
+    "intergraph",
+    "lubridate",
+    "magrittr",
+    "network",
+    "stringr",
+    "tidytext"
+  )
 )
 
 # Restore original compute context
