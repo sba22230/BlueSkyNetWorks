@@ -1,6 +1,7 @@
 # NLP of posts using TidyText
 
 edges <- igraph::as_data_frame(g, what = "edges")
+nodes <- igraph::as_data_frame(g, what = "vertices")
 
 posts <- cbind(edges$to, edges$text, edges$created_at)
 posts <- as.data.frame(posts)
@@ -86,7 +87,10 @@ posts_dt <- posts |>
 
 datatable(posts_dt)
 
-ViewPostsByDate(posts, 6, 9)
+comm_1 <- posts_dt$community[1]
+comm_2 <- posts_dt$community[2]
+
+ViewPostsByDate(posts, comm_1, comm_2)
 
 tidy_posts <- posts |>
   filter(!str_detect(text, "^RT")) |>
@@ -111,7 +115,7 @@ totals <- counts_long |>
 counts <- counts_long |>
   pivot_wider(names_from = community, values_from = n, values_fill = 0)
 
-ViewCommunityContrastedByWords(totals, counts, tidy_posts, 6, 9)
+ViewCommunityContrastedByWords(totals, counts, tidy_posts, comm_1, comm_2)
 
 community_graphs <- rxReadObject(ds_Graphs, "Community Graphs")
 #community_graphs <- comm
@@ -128,15 +132,21 @@ all_posts <- lapply(seq_len(n_comm), function(i) {
 }) |>
   dplyr::bind_rows()
 
-ggplot(all_posts, aes(x = created_at)) +
-  geom_bar(show.legend = FALSE) +
-  facet_wrap(~community_id, ncol = 3, scales = "free_y") + # <-- key fix
-  labs(
-    x = "Date of posts",
-    y = "Count of posts",
-    title = "Posting timelines for all communities"
-  ) +
-  theme_minimal(base_size = 12)
+out_file <- "Post Timelines for Communities.svg"
+save_graph_svg(
+  ggplot(all_posts, aes(x = created_at)) +
+    geom_bar(show.legend = FALSE) +
+    facet_wrap(~community_id, ncol = 4, scales = "free_y") + # <-- key fix
+    labs(
+      x = "Date of posts",
+      y = "Count of posts",
+      title = "Posting timelines for all communities"
+    ) +
+    theme_minimal(base_size = 12),
+  filename = out_file,
+  folder = "docs/images"
+)
+
 
 plots <- lapply(seq_len(n_comm), function(i) {
   plot_word_comparison_date(
