@@ -8,8 +8,8 @@
     "text": "sba22230"
   },
   "text": {
-    "more": "A graph representaion of the bluesky posts that have the hashtag #Speirogrm",
-    "intro": "\t\t\t\t\tspeirgorm Network",
+    "more": "The project downloads discussions around the #Speirgorm hashtag, constructing directed networks of reposts for graph-theoretic analysis, community detection, and NLP-based post analysis.",
+    "intro": "Speirgorm Network: ",
     "title": "Speirgorm  Network"
   },
   "legend": {
