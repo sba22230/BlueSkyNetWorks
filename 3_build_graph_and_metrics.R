@@ -1,8 +1,8 @@
 source("0_functions.R")
 
 set.seed(22230)
-#num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
-num_posts <- 5000
+num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
+#num_posts <- 5000
 
 cat("\n=== Step 3a: Build igraph object and plot basic network ===\n")
 # Step 3: Build igraph object and plot basic network
