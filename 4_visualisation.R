@@ -689,11 +689,11 @@ cat("\n=== Step 4d: Computing layouts for each community in parallel ===\n")
 # compute layouts in parallel for all community x layout combinations
 layout_types <- c(
   "drl_fast",
-  #"drl",
-  #,"fr"
+  "drl",
+  "fr",
   #"graphopt",
-  #,"lgl"
-  #"kk",
+  "lgl",
+  "kk",
   #,"mds"
   "nicely"
   #,"tree"
@@ -771,9 +771,9 @@ plot_community_svg <- function(entry, pal, save_graph_svg) {
         main_title <- paste0(
           "Community ",
           entry$id,
-          " ",
+          " (",
           layout_name,
-          ")"
+          ") size: ", vcount(subg)
         )
         igraph::plot.igraph(
           subg,
