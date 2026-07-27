@@ -1,3 +1,112 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:0f988f3af1541d8f85194b5420f06a837c44f55b718f73a10677c4d008d811ae
-size 12162
+<?xml version='1.0' encoding='UTF-8' ?>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='1152.00pt' height='864.00pt' viewBox='0 0 1152.00 864.00'>
+<g class='svglite'>
+<defs>
+  <style type='text/css'><![CDATA[
+    .svglite line, .svglite polyline, .svglite polygon, .svglite path, .svglite rect, .svglite circle {
+      fill: none;
+      stroke: #000000;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-miterlimit: 10.00;
+    }
+    .svglite text {
+      white-space: pre;
+    }
+    .svglite g.glyphgroup path {
+      fill: inherit;
+      stroke: none;
+    }
+  ]]></style>
+</defs>
+<rect width='100%' height='100%' style='stroke: none; fill: #FFFFFF;'/>
+<defs>
+  <clipPath id='cpMC4wMHwxMTUyLjAwfDAuMDB8ODY0LjAw'>
+    <rect x='0.00' y='0.00' width='1152.00' height='864.00' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMC4wMHwxMTUyLjAwfDAuMDB8ODY0LjAw)'>
+<rect x='0.00000000000013' y='0.00' width='1152.00' height='864.00' style='stroke-width: 1.07; stroke: none; fill: #FFFFFF;' />
+</g>
+<defs>
+  <clipPath id='cpNjcuODN8MTA1Ny4zNnwyMy4xOHw4MzIuNTA='>
+    <rect x='67.83' y='23.18' width='989.53' height='809.33' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpNjcuODN8MTA1Ny4zNnwyMy4xOHw4MzIuNTA=)'>
+<polyline points='204.24,832.50 204.24,23.18 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='387.10,832.50 387.10,23.18 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='569.96,832.50 569.96,23.18 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='752.83,832.50 752.83,23.18 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='935.69,832.50 935.69,23.18 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='67.83,784.90 1057.36,784.90 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='67.83,705.55 1057.36,705.55 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='67.83,626.20 1057.36,626.20 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='67.83,546.86 1057.36,546.86 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='67.83,467.51 1057.36,467.51 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='67.83,388.17 1057.36,388.17 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='67.83,308.82 1057.36,308.82 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='67.83,229.48 1057.36,229.48 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='67.83,150.13 1057.36,150.13 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='67.83,70.78 1057.36,70.78 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='112.81,832.50 112.81,23.18 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='295.67,832.50 295.67,23.18 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='478.53,832.50 478.53,23.18 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='661.39,832.50 661.39,23.18 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='844.26,832.50 844.26,23.18 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='1027.12,832.50 1027.12,23.18 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<rect x='112.81' y='35.08' width='899.57' height='71.41' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #00B0F6;' />
+<rect x='112.81' y='114.42' width='585.56' height='71.41' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #00BFC4;' />
+<rect x='112.81' y='193.77' width='521.46' height='71.41' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #FF62BC;' />
+<rect x='112.81' y='273.12' width='468.84' height='71.41' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #D89000;' />
+<rect x='112.81' y='352.46' width='380.66' height='71.41' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #00BF7D;' />
+<rect x='112.81' y='431.81' width='339.57' height='71.41' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #39B600;' />
+<rect x='112.81' y='511.15' width='295.02' height='71.41' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #9590FF;' />
+<rect x='112.81' y='590.50' width='276.34' height='71.41' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #F8766D;' />
+<rect x='112.81' y='669.84' width='200.44' height='71.41' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #E76BF3;' />
+<rect x='112.81' y='749.19' width='171.92' height='71.41' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #A3A500;' />
+</g>
+<g clip-path='url(#cpMC4wMHwxMTUyLjAwfDAuMDB8ODY0LjAw)'>
+<text x='62.90' y='788.05' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='27.88px' lengthAdjust='spacingAndGlyphs'>disgust</text>
+<text x='62.90' y='708.70' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='31.28px' lengthAdjust='spacingAndGlyphs'>surprise</text>
+<text x='62.90' y='629.35' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='22.48px' lengthAdjust='spacingAndGlyphs'>anger</text>
+<text x='62.90' y='550.01' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='32.78px' lengthAdjust='spacingAndGlyphs'>sadness</text>
+<text x='62.90' y='470.66' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='15.14px' lengthAdjust='spacingAndGlyphs'>fear</text>
+<text x='62.90' y='391.32' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='11.25px' lengthAdjust='spacingAndGlyphs'>joy</text>
+<text x='62.90' y='311.97' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='44.48px' lengthAdjust='spacingAndGlyphs'>anticipation</text>
+<text x='62.90' y='232.63' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='17.09px' lengthAdjust='spacingAndGlyphs'>trust</text>
+<text x='62.90' y='153.28' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='33.25px' lengthAdjust='spacingAndGlyphs'>negative</text>
+<text x='62.90' y='73.93' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='29.83px' lengthAdjust='spacingAndGlyphs'>positive</text>
+<text x='112.81' y='843.74' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='4.89px' lengthAdjust='spacingAndGlyphs'>0</text>
+<text x='295.67' y='843.74' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='24.45px' lengthAdjust='spacingAndGlyphs'>25000</text>
+<text x='478.53' y='843.74' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='24.45px' lengthAdjust='spacingAndGlyphs'>50000</text>
+<text x='661.39' y='843.74' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='24.45px' lengthAdjust='spacingAndGlyphs'>75000</text>
+<text x='844.26' y='843.74' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='29.34px' lengthAdjust='spacingAndGlyphs'>100000</text>
+<text x='1027.12' y='843.74' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='29.34px' lengthAdjust='spacingAndGlyphs'>125000</text>
+<text x='562.59' y='856.20' text-anchor='middle' style='font-size: 11.00px; font-family: "Arial";' textLength='29.38px' lengthAdjust='spacingAndGlyphs'>Count</text>
+<text transform='translate(13.36,427.84) rotate(-90)' text-anchor='middle' style='font-size: 11.00px; font-family: "Arial";' textLength='49.56px' lengthAdjust='spacingAndGlyphs'>Sentiment</text>
+<text x='1073.80' y='342.64' style='font-size: 11.00px; font-family: "Arial";' textLength='47.72px' lengthAdjust='spacingAndGlyphs'>sentiment</text>
+<rect x='1074.51' y='349.99' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #F8766D;' />
+<rect x='1074.51' y='367.27' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #D89000;' />
+<rect x='1074.51' y='384.55' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #A3A500;' />
+<rect x='1074.51' y='401.83' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #39B600;' />
+<rect x='1074.51' y='419.11' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #00BF7D;' />
+<rect x='1074.51' y='436.39' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #00BFC4;' />
+<rect x='1074.51' y='453.67' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #00B0F6;' />
+<rect x='1074.51' y='470.95' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #9590FF;' />
+<rect x='1074.51' y='488.23' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #E76BF3;' />
+<rect x='1074.51' y='505.51' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #FF62BC;' />
+<text x='1096.56' y='361.07' style='font-size: 8.80px; font-family: "Arial";' textLength='22.48px' lengthAdjust='spacingAndGlyphs'>anger</text>
+<text x='1096.56' y='378.35' style='font-size: 8.80px; font-family: "Arial";' textLength='44.48px' lengthAdjust='spacingAndGlyphs'>anticipation</text>
+<text x='1096.56' y='395.63' style='font-size: 8.80px; font-family: "Arial";' textLength='27.88px' lengthAdjust='spacingAndGlyphs'>disgust</text>
+<text x='1096.56' y='412.91' style='font-size: 8.80px; font-family: "Arial";' textLength='15.14px' lengthAdjust='spacingAndGlyphs'>fear</text>
+<text x='1096.56' y='430.19' style='font-size: 8.80px; font-family: "Arial";' textLength='11.25px' lengthAdjust='spacingAndGlyphs'>joy</text>
+<text x='1096.56' y='447.47' style='font-size: 8.80px; font-family: "Arial";' textLength='33.25px' lengthAdjust='spacingAndGlyphs'>negative</text>
+<text x='1096.56' y='464.75' style='font-size: 8.80px; font-family: "Arial";' textLength='29.83px' lengthAdjust='spacingAndGlyphs'>positive</text>
+<text x='1096.56' y='482.03' style='font-size: 8.80px; font-family: "Arial";' textLength='32.78px' lengthAdjust='spacingAndGlyphs'>sadness</text>
+<text x='1096.56' y='499.31' style='font-size: 8.80px; font-family: "Arial";' textLength='31.28px' lengthAdjust='spacingAndGlyphs'>surprise</text>
+<text x='1096.56' y='516.59' style='font-size: 8.80px; font-family: "Arial";' textLength='17.09px' lengthAdjust='spacingAndGlyphs'>trust</text>
+<text x='67.83' y='14.93' style='font-size: 13.20px; font-family: "Arial";' textLength='230.09px' lengthAdjust='spacingAndGlyphs'>Sentiment Analysis Using NRC Lexicon</text>
+</g>
+</g>
+</svg>
