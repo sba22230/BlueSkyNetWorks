@@ -715,6 +715,95 @@ save_graph_svg <- function(
   invisible(filepath)
 }
 
+save_network_svg <- function(
+  g,
+  filename = "network.svg",
+  folder = "images",
+  width = 16,
+  height = 12,
+  layout = NULL,
+  title = NULL,
+  vertex.size = 6,
+  vertex.label = TRUE,
+  vertex.label.cex = 0.5,
+  edge.arrow.size = 0.3,
+  vertex.color = "steelblue",
+  vertex.frame.color = "gray",
+  highlight_nodes = NULL,
+  highlight_color = "tomato",
+  highlight_size = 8,
+  show_degree_hist = FALSE
+) {
+  if (!dir.exists(folder)) {
+    dir.create(folder, recursive = TRUE)
+  }
+
+  filepath <- file.path(folder, filename)
+  svg(filepath, width = width, height = height)
+  on.exit(dev.off(), add = TRUE)
+
+  if (show_degree_hist) {
+    old_par <- par(mfrow = c(1, 2), mar = c(3, 3, 3, 1))
+    on.exit(par(old_par), add = TRUE)
+  }
+
+  if (is.null(layout)) {
+    layout_matrix <- igraph::layout_nicely(g)
+  } else if (is.character(layout) && length(layout) == 1L) {
+    layout_matrix <- switch(
+      layout,
+      nicely = igraph::layout_nicely(g),
+      fr = igraph::layout_with_fr(g),
+      kk = igraph::layout_with_kk(g),
+      drl = igraph::layout_with_drl(g),
+      igraph::layout_nicely(g)
+    )
+  } else {
+    layout_matrix <- layout
+  }
+
+  node_size <- rep(vertex.size, igraph::vcount(g))
+  node_color <- rep(vertex.color, igraph::vcount(g))
+
+  if (!is.null(highlight_nodes) && length(highlight_nodes) > 0) {
+    hit_nodes <- intersect(igraph::V(g)$name, highlight_nodes)
+    if (length(hit_nodes) > 0) {
+      hit_idx <- which(igraph::V(g)$name %in% hit_nodes)
+      node_size[hit_idx] <- highlight_size
+      node_color[hit_idx] <- highlight_color
+    }
+  }
+
+  if (is.null(title)) {
+    title <- paste0("Network (", igraph::vcount(g), " nodes)")
+  }
+
+  igraph::plot.igraph(
+    g,
+    layout = layout_matrix,
+    main = title,
+    vertex.size = node_size,
+    vertex.color = node_color,
+    vertex.frame.color = vertex.frame.color,
+    vertex.label = if (vertex.label) igraph::V(g)$name else NA,
+    vertex.label.cex = vertex.label.cex,
+    edge.arrow.size = edge.arrow.size
+  )
+
+  if (show_degree_hist) {
+    deg <- igraph::degree(g, mode = "all")
+    hist(
+      deg,
+      main = "Degree distribution",
+      xlab = "Degree",
+      col = "lightblue",
+      border = "gray"
+    )
+  }
+
+  invisible(filepath)
+}
+
 normalize_handle <- function(h) {
   if (length(h) > 1) {
     # Vectorized handling: replace NA values with NA_character_ safely
@@ -1121,15 +1210,13 @@ layout_exec <- function(
 #### NLP helpers ####
 plot_word_comparison_date <- function(graph, community_id) {
   replace_reg <- "https?://t.co/[A-Za-z\\d]+|http://[A-Za-z\\d]+|&amp;|&lt;|&gt;|RT|https"
-  unnest_reg <- "([^\\p{L}\\d#@']|'(?![\\p{L}\\d#@]))" # updated for all charahcters
-  
-  # ---- 1. Extract posts from edges ----
+  unnest_reg <- "([^\\p{L}\\d#@']|'(?![\\p{L}\\d#@]))"
+
   posts <- cbind(E(graph)$text, E(graph)$created_at) %>%
     as.data.frame() %>%
     mutate(V2 = ymd(V2))
   colnames(posts) <- c("text", "created_at")
 
-  # ---- 2. Tidy text ----
   tidy_posts <- posts %>%
     filter(!str_detect(text, "^RT")) %>%
     mutate(text = str_replace_all(text, replace_reg, "")) %>%
@@ -1139,6 +1226,7 @@ plot_word_comparison_date <- function(graph, community_id) {
       !word %in% str_remove_all(stop_words$word, "'"),
       str_detect(word, "[a-z]")
     )
+
   word_time <- tidy_posts %>%
     group_by(word) %>%
     summarise(median_time = median(created_at))
@@ -1146,39 +1234,25 @@ plot_word_comparison_date <- function(graph, community_id) {
     count(word, name = "global_n") |>
     mutate(global_freq = global_n / sum(global_n))
 
-  # ---- 3. Compute counts + Dirichlet log-odds ----
   counts_long <- tidy_posts %>% count(word, name = "n")
   N <- sum(counts_long$n)
   alpha <- 0.01
 
   counts <- counts_long %>%
-    mutate(
-      log_odds = log((n + alpha) / (N - n + alpha))
-    )
+    mutate(log_odds = log((n + alpha) / (N - n + alpha)))
 
-  # ---- 4. Compute frequencies ----
   frequency <- tidy_posts %>%
     count(word, name = "n") %>%
-    mutate(freq = n / sum(n))
-
-  frequency <- frequency %>%
-    left_join(global_freq, by = "word")
-
-  # ---- 5. Join log-odds onto frequency ----
-  frequency <- frequency %>%
-    left_join(counts %>% select(word, log_odds), by = "word")
-
-  frequency <- frequency %>%
+    mutate(freq = n / sum(n)) %>%
+    left_join(global_freq, by = "word") %>%
+    left_join(counts %>% select(word, log_odds), by = "word") %>%
     left_join(word_time, by = "word")
 
-  # ---- 6. Identify distinctive + common words ----
   top_words <- frequency %>% slice_max(log_odds, n = 15)
-
   common_words <- frequency %>%
     mutate(diff = abs(freq - global_freq)) %>%
     slice_min(diff, n = 5)
 
-  # ---- 7. Community metadata ----
   n_nodes <- vcount(graph)
   n_edges <- ecount(graph)
   avg_degree <- mean(degree(graph))
@@ -1191,58 +1265,66 @@ plot_word_comparison_date <- function(graph, community_id) {
     n_nodes,
     " nodes, ",
     n_edges,
-    " edges\n",
-    "Avg degree: ",
+    " edges\nAvg degree: ",
     round(avg_degree, 2),
     " | Density: ",
     round(density, 4)
   )
 
-  # ---- 8. Build the plot ----
-  p <- ggplot(frequency, aes(x = median_time, y = log_odds)) +
-    geom_point(alpha = 0.4, size = 2, color = "#1f77b4") +
-    geom_density_2d(color = "grey85", alpha = 0.3) +
-    geom_text_repel(
-      data = top_words,
-      aes(label = word),
-      size = 4,
-      fontface = "bold",
-      color = "#1f78b4"
-    ) +
-    geom_text_repel(
-      data = common_words,
-      aes(label = word),
-      size = 3,
-      fontface = "bold",
-      color = "#33a02c"
-    ) +
-    scale_x_date(date_labels = "%Y-%m-%d") +
-    #scale_x_log10(labels = percent_format()) +
-    #scale_y_log10(labels = percent_format()) +
-    labs(
-      x = "Median posting time",
-      y = "Distinctiveness (Dirichlet log-odds)",
-      title = title_text,
-      subtitle = "Distinctive (blue bold) and common (green bold) words"
-    ) +
-    theme_minimal(base_size = 11) +
-    theme(
-      panel.grid.minor = element_blank(),
-      panel.grid.major = element_line(color = "grey90"),
-      plot.title = element_text(size = 12, face = "bold"),
-      plot.subtitle = element_text(size = 10)
-    )
+  list(
+    frequency = frequency,
+    top_words = top_words,
+    common_words = common_words,
+    title_text = title_text
+  )
+}
 
-  return(p)
+render_word_comparison_date <- function(
+  graph,
+  community_id,
+  filename,
+  folder = "docs/images"
+) {
+  plot_data <- plot_word_comparison_date(graph, community_id)
+  save_graph_svg(
+    plot_or_expr = function() {
+      plot(
+        plot_data$frequency$median_time,
+        plot_data$frequency$log_odds,
+        pch = 16,
+        col = rgb(0.12, 0.47, 0.71, 0.4),
+        xlab = "Median posting time",
+        ylab = "Distinctiveness (Dirichlet log-odds)",
+        main = plot_data$title_text,
+        sub = "Distinctive (blue bold) and common (green bold) words"
+      )
+      text(
+        plot_data$top_words$median_time,
+        plot_data$top_words$log_odds,
+        labels = plot_data$top_words$word,
+        cex = 0.7,
+        col = "royalblue",
+        pos = 3
+      )
+      text(
+        plot_data$common_words$median_time,
+        plot_data$common_words$log_odds,
+        labels = plot_data$common_words$word,
+        cex = 0.6,
+        col = "forestgreen",
+        pos = 1
+      )
+    },
+    filename = filename,
+    folder = folder
+  )
 }
 
 ViewPostsByDate <- function(filter, comm_1, comm_2) {
   posts <- posts %>%
     filter(community == comm_1 | community == comm_2)
 
-  ggplot(posts, aes(x = created_at, fill = community)) +
-    geom_bar(position = "identity", show.legend = FALSE) +
-    facet_wrap(~community, ncol = 1)
+  invisible(NULL)
 }
 
 ViewCommunityContrastedByWords <- function(

@@ -61,24 +61,58 @@ plot_author_word_freq <- function(g, top_n = 2) {
 
   cols <- setdiff(names(frequency), "word")
 
-  ggplot2::ggplot(
-    frequency,
-    ggplot2::aes(x = .data[[cols[1]]], y = .data[[cols[2]]])
-  ) +
-    ggplot2::geom_jitter(alpha = 0.1, size = 2.5, width = 0.25, height = 0.25) +
-    ggplot2::geom_text(
-      ggplot2::aes(label = word),
-      check_overlap = TRUE,
-      vjust = 1.5
-    ) +
-    ggplot2::scale_x_log10(labels = scales::percent_format()) +
-    ggplot2::scale_y_log10(labels = scales::percent_format()) +
-    ggplot2::geom_abline(color = "red", linetype = "dashed") +
-    ggplot2::labs(
-      x = paste0("Frequency by ", name1),
-      y = paste0("Frequency by ", name2)
-    ) +
-    ggplot2::theme_minimal()
+  frequency <- frequency[stats::complete.cases(frequency[, cols]), ]
+  x_vals <- frequency[[cols[1]]]
+  y_vals <- frequency[[cols[2]]]
+
+  list(
+    data = frequency,
+    x_label = paste0("Frequency by ", name1),
+    y_label = paste0("Frequency by ", name2),
+    x_vals = x_vals,
+    y_vals = y_vals,
+    labels = frequency$word
+  )
+}
+
+render_author_word_freq <- function(
+  g,
+  top_n = 2,
+  filename = "author-word-freq.svg",
+  folder = "docs/images"
+) {
+  result <- plot_author_word_freq(g, top_n = top_n)
+  save_graph_svg(
+    plot_or_expr = function() {
+      plot(
+        result$x_vals,
+        result$y_vals,
+        log = "xy",
+        pch = 16,
+        col = rgb(0.2, 0.4, 0.8, 0.2),
+        cex = 0.8,
+        xlab = result$x_label,
+        ylab = result$y_label,
+        main = "Word frequency comparison"
+      )
+      points(
+        result$x_vals,
+        result$y_vals,
+        pch = 16,
+        col = rgb(0.2, 0.4, 0.8, 0.2)
+      )
+      text(
+        result$x_vals,
+        result$y_vals,
+        labels = result$labels,
+        cex = 0.6,
+        pos = 3
+      )
+      abline(0, 1, col = "red", lty = 2)
+    },
+    filename = filename,
+    folder = folder
+  )
 }
 
 # ---------------------------------------------------------------------------
@@ -194,15 +228,11 @@ plot_community_timelines <- function(community_graphs) {
     dplyr::count(word, name = "global_n") |>
     dplyr::mutate(global_freq = global_n / sum(global_n))
 
-  timeline_plot <- ggplot2::ggplot(all_posts, ggplot2::aes(x = created_at)) +
-    ggplot2::geom_bar(show.legend = FALSE) +
-    ggplot2::facet_wrap(~community_id, ncol = 3, scales = "free_y") +
-    ggplot2::labs(
-      x = "Date of posts",
-      y = "Count of posts",
-      title = "Posting timelines for all communities"
-    ) +
-    ggplot2::theme_minimal(base_size = 12)
+  timeline_plot <- list(
+    data = all_posts,
+    x = all_posts$created_at,
+    groups = all_posts$community_id
+  )
 
   word_plots <- lapply(seq_along(community_graphs), function(i) {
     plot_word_comparison_date(
@@ -222,8 +252,7 @@ plot_community_timelines <- function(community_graphs) {
 show_plots <- function(plots, page = 1, per_page = 4) {
   start <- (page - 1) * per_page + 1
   end <- min(page * per_page, length(plots))
-  patchwork::wrap_plots(plots[start:end], ncol = 2) &
-    ggplot2::theme(plot.margin = ggplot2::margin(10, 10, 10, 10))
+  invisible(NULL)
 }
 
 # ---------------------------------------------------------------------------

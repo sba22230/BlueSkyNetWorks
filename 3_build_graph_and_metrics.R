@@ -623,23 +623,22 @@ deg <- degree(g, mode = "all")
 
 top_nodes <- names(sort(deg, decreasing = TRUE))[1:50]
 
-# Faster ggraph call
+# Use a base-R network plot so the same SVG writer can be reused for
+# the network view and any companion panels.
 coords_drl <- res_g[[1]]
-gtn <- ggraph(
-  g,
-  layout = "manual",
-  x = coords_drl[, 1],
-  y = coords_drl[, 2]
-) +
-  geom_edge_link(alpha = 0.3) +
-  geom_node_point(size = 5) +
-  geom_node_text(
-    aes(label = ifelse(name %in% top_nodes, name, "")),
-    repel = TRUE,
-    max.overlaps = 1000
-  )
 
-save_graph_svg(gtn, "gtn_TopNodes_Speirgorm_Network.svg")
+save_network_svg(
+  g,
+  filename = "gtn_TopNodes_Speirgorm_Network.svg",
+  folder = "docs/images",
+  layout = coords_drl,
+  title = "Speirgorm network (top degree nodes)",
+  vertex.size = 5,
+  vertex.label.cex = 0.25,
+  highlight_nodes = top_nodes,
+  highlight_size = 8,
+  highlight_color = "tomato"
+)
 rxWriteObject(
   ds_Graphs,
   "gtn_Graph - ggraph - layout_with_drl",
@@ -717,25 +716,23 @@ process_ym <- function(
   }
 
   out_file <- paste0("SubGraph_", ym, ".svg")
-  save_graph_svg(
-    plot_or_expr = function() {
-      par(mar = c(1, 1, 2, 1))
-      plot.igraph(
-        sub_g,
-        layout = layout_nicely(sub_g, dim = 2),
-        main = main_title,
-        vertex.size = vsize,
-        vertex.label.cex = 0.2,
-        edge.arrow.size = 0.3,
-        vertex.color = vcol
-      )
-    },
+  save_network_svg(
+    sub_g,
     filename = out_file,
-    folder = "docs/images"
+    folder = "docs/images",
+    title = main_title,
+    layout = layout_nicely(sub_g, dim = 2),
+    vertex.size = 6,
+    vertex.label = TRUE,
+    vertex.label.cex = 0.2,
+    edge.arrow.size = 0.3,
+    vertex.color = "steelblue",
+    show_degree_hist = TRUE
   )
   out_file <- paste0("SubGraph_wordComparison_", ym, ".svg")
-  save_graph_svg(
-    plot_word_comparison_date(sub_g, ym),
+  render_word_comparison_date(
+    sub_g,
+    ym,
     filename = out_file,
     folder = "docs/images"
   )
