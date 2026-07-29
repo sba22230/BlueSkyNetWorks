@@ -132,21 +132,102 @@ all_posts <- lapply(seq_len(n_comm), function(i) {
 }) |>
   dplyr::bind_rows()
 
+plot_community_timelines <- function(posts_df) {
+  comms <- unique(posts_df$community_id)
+  n_plots <- length(comms)
+  ncol <- 4
+  nrow <- ceiling(n_plots / ncol)
+  old_par <- par(
+    mfrow = c(nrow, ncol),
+    mar = c(3, 3, 2, 1),
+    oma = c(2, 2, 3, 1)
+  )
+  on.exit(par(old_par), add = TRUE)
+
+  for (comm in comms) {
+    comm_posts <- posts_df[posts_df$community_id == comm, , drop = FALSE]
+    if (nrow(comm_posts) == 0) {
+      plot.new()
+      title(main = paste("Community", comm))
+      next
+    }
+
+    counts <- table(comm_posts$created_at)
+    dates <- as.Date(names(counts))
+    values <- as.integer(counts)
+
+    plot(
+      dates,
+      values,
+      type = "h",
+      lwd = 10,
+      lend = "butt",
+      col = "steelblue",
+      xlab = "",
+      ylab = "Count",
+      main = paste("Community", comm),
+      xaxt = "n"
+    )
+    axis.Date(
+      1,
+      at = pretty(dates),
+      format = "%Y-%m-%d",
+      las = 2,
+      cex.axis = 0.7
+    )
+  }
+  title("Post Timelines for Communities", outer = TRUE, cex.main = 1.2)
+}
+
 out_file <- "Post Timelines for Communities.svg"
 save_graph_svg(
-  ggplot(all_posts, aes(x = created_at)) +
-    geom_bar(show.legend = FALSE) +
-    facet_wrap(~community_id, ncol = 4, scales = "free_y") + # <-- key fix
-    labs(
-      x = "Date of posts",
-      y = "Count of posts",
-      title = "Posting timelines for all communities"
-    ) +
-    theme_minimal(base_size = 12),
+  plot_or_expr = function() {
+    plot_community_timelines(all_posts)
+  },
   filename = out_file,
-  folder = "docs/images"
+  folder = "docs/images",
+  width = 16,
+  height = 12
 )
 
+plot_word_comparison_date_base <- function(plot_data) {
+  plot(
+    plot_data$frequency$median_time,
+    plot_data$frequency$log_odds,
+    pch = 16,
+    col = rgb(0.12, 0.47, 0.71, 0.4),
+    xlab = "Median posting time",
+    ylab = "Distinctiveness (Dirichlet log-odds)",
+    main = plot_data$title_text
+  )
+
+  if (nrow(plot_data$top_words) > 0) {
+    with(
+      plot_data$top_words,
+      text(
+        median_time,
+        log_odds,
+        labels = word,
+        cex = 0.7,
+        col = "royalblue",
+        pos = 3
+      )
+    )
+  }
+  if (nrow(plot_data$common_words) > 0) {
+    with(
+      plot_data$common_words,
+      text(
+        median_time,
+        log_odds,
+        labels = word,
+        cex = 0.6,
+        col = "forestgreen",
+        pos = 1
+      )
+    )
+  }
+}
 
 plots <- lapply(seq_len(n_comm), function(i) {
   plot_word_comparison_date(
@@ -158,8 +239,23 @@ plots <- lapply(seq_len(n_comm), function(i) {
 show_plots <- function(plots, page = 1, per_page = 4) {
   start <- (page - 1) * per_page + 1
   end <- min(page * per_page, length(plots))
-  wrap_plots(plots[start:end], ncol = 2) &
-    theme(plot.margin = margin(10, 10, 10, 10))
+  svg_filename <- paste0("WordComparison_Page_", page, ".svg")
+
+  save_graph_svg(
+    plot_or_expr = function() {
+      old_par <- par(mfrow = c(2, 2), mar = c(4, 4, 3, 1), oma = c(2, 2, 3, 1))
+      on.exit(par(old_par), add = TRUE)
+
+      for (i in seq(start, end)) {
+        plot_word_comparison_date_base(plots[[i]])
+      }
+      title("Word Comparison by Community", outer = TRUE, cex.main = 1.2)
+    },
+    filename = svg_filename,
+    folder = "docs/images",
+    width = 16,
+    height = 12
+  )
 }
 
 show_plots(plots, page = 1, per_page = 4)

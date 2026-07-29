@@ -262,17 +262,11 @@ datatable(comparison_table)
 # ============================================================================
 # SECTION 3: Ploting Network - Components, islands of nodes in the overall network
 # ============================================================================
-# Ensure a graphics device exists before calling par()
-opened_dev <- FALSE
-if (grDevices::dev.cur() == 1) {
-  if (!dir.exists("images")) {
-    dir.create("images", recursive = TRUE)
-  }
-  grDevices::svg(filename = "images/auto_device.svg", width = 16, height = 12)
-  opened_dev <- TRUE
+# Ensure output directory exists before saving SVGs
+if (!dir.exists("docs/images")) {
+  dir.create("docs/images", recursive = TRUE)
 }
 
-old_par <- par(no.readonly = TRUE) # save current par settings
 cat("\n=== Step 3g: Plot the small components of the Graph ===\n")
 
 cat(sprintf(
@@ -292,24 +286,34 @@ if (length(small_ids) > 6) {
 } else {
   n <- length(small_ids)
 }
-nrow <- ceiling(sqrt(n))
-ncol <- ceiling(n / nrow)
 
-par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
+save_graph_svg(
+  plot_or_expr = function() {
+    old_par <- par(no.readonly = TRUE)
+    nrow <- ceiling(sqrt(n))
+    ncol <- ceiling(n / nrow)
+    par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
 
-for (i in seq(1, n)) {
-  verts <- which(ig_comp$membership == i)
-  subg <- induced_subgraph(g, verts)
+    for (idx in seq_len(n)) {
+      comp_id <- small_ids[idx]
+      verts <- which(ig_comp$membership == comp_id)
+      subg <- induced_subgraph(g, verts)
 
-  plot(
-    subg,
-    main = paste("Component", i, "-", length(verts), "nodes"),
-    vertex.size = 12,
-    vertex.label.cex = 0.7,
-    edge.arrow.size = 0.3
-  )
-}
-par(old_par) # restore original par settings
+      plot(
+        subg,
+        main = paste("Component", comp_id, "-", length(verts), "nodes"),
+        vertex.size = 12,
+        vertex.label.cex = 0.7,
+        edge.arrow.size = 0.3
+      )
+    }
+
+    par(old_par)
+  },
+  folder = "docs/images",
+  filename = "igraph_small_components.svg"
+)
+
 cat("\n=== Step 3i: Plot the small components using the sna ===\n")
 cat(sprintf(
   "Components: %d (largest: %d = %.1f%%)\n",
@@ -327,27 +331,35 @@ if (length(bsn_small_ids) > 6) {
 } else {
   n <- length(bsn_small_ids)
 }
-nrow <- ceiling(sqrt(n))
-ncol <- ceiling(n / nrow)
 
-par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
+save_graph_svg(
+  plot_or_expr = function() {
+    old_par <- par(no.readonly = TRUE)
+    nrow <- ceiling(sqrt(n))
+    ncol <- ceiling(n / nrow)
+    par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
 
-for (j in seq(1, n)) {
-  verts <- which(bsn_comp$membership == j)
-  subg <- get.inducedSubgraph(bluSkynet, verts)
+    for (idx in seq_len(n)) {
+      comp_id <- bsn_small_ids[idx]
+      verts <- which(bsn_comp$membership == comp_id)
+      subg <- get.inducedSubgraph(bluSkynet, verts)
 
-  gplot(
-    subg,
-    gmode = "digraph",
-    mode = "fruchtermanreingold",
-    main = paste("Component", i, "-", length(verts), "nodes"),
-    vertex.cex = 1.2,
-    label.cex = 0.7,
-    arrowhead.cex = 0.3
-  )
-}
+      gplot(
+        subg,
+        gmode = "digraph",
+        mode = "fruchtermanreingold",
+        main = paste("Component", comp_id, "-", length(verts), "nodes"),
+        vertex.cex = 1.2,
+        label.cex = 0.7,
+        arrowhead.cex = 0.3
+      )
+    }
 
-par(old_par) # restore original par settings
+    par(old_par)
+  },
+  folder = "docs/images",
+  filename = "sna_small_components.svg"
+)
 
 # ============================================================================
 # SECTION 4: Computing remaining node Metrics using Statnet
@@ -646,12 +658,12 @@ save_graph_svg(
   filename = "gtn_TopNodes_Speirgorm_Network.svg",
   folder = "docs/images"
 )
-rxWriteObject(
-  ds_Graphs,
-  "gtn_Graph - ggraph - layout_with_drl",
-  gtn,
-  overwrite = TRUE
-)
+# rxWriteObject(
+#   ds_Graphs,
+#   "gtn_Graph - ggraph - layout_with_drl",
+#   gtn,
+#   overwrite = TRUE
+# )
 
 # --- end of one visualisation
 
@@ -680,7 +692,9 @@ process_ym <- function(
   pal,
   ds_Graphs,
   save_graph_svg,
-  plot_word_comparison_date
+  save_network_svg,
+  plot_word_comparison_date,
+  render_word_comparison_date
 ) {
   library(dplyr)
   library(ggrepel)
@@ -695,7 +709,7 @@ process_ym <- function(
     return(NULL)
   }
 
-  sub_g <- subgraph_from_edges(g, eids)
+  sub_g <- igraph::subgraph.edges(g, eids, delete.vertices = TRUE)
   sub_net <- asNetwork(sub_g)
 
   cat(
@@ -772,7 +786,18 @@ results <- rxExec(
   pal = pal,
   ds_Graphs = ds_Graphs,
   save_graph_svg = save_graph_svg,
+  save_network_svg = save_network_svg,
   plot_word_comparison_date = plot_word_comparison_date,
+  render_word_comparison_date = render_word_comparison_date,
+  execObjects = c(
+    "save_graph_svg",
+    "save_network_svg",
+    "plot_word_comparison_date",
+    "render_word_comparison_date",
+    "subgraph_from_edges",
+    "ds_Graphs"
+  ),
+
   packagesToLoad = c(
     "dplyr",
     "igraph",

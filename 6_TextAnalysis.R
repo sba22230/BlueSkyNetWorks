@@ -71,19 +71,23 @@ sentiment_analysis_bing <- tidy_posts |>
 sentiment_summary_bing <- sentiment_analysis_bing |>
   count(sentiment, sort = TRUE)
 
-bingsentiment <- ggplot(
-  sentiment_summary_bing,
-  aes(x = sentiment, y = n, fill = sentiment)
-) +
-  geom_bar(stat = "identity") +
-  labs(
-    title = "Sentiment Analysis Using Bing Lexicon",
-    x = "Sentiment",
-    y = "Count"
-  ) +
-  theme_minimal()
-
-save_graph_svg(bingsentiment, "bingsentiment.svg", folder = "docs/images")
+save_graph_svg(
+  plot_or_expr = function() {
+    counts <- sentiment_summary_bing$n
+    names(counts) <- sentiment_summary_bing$sentiment
+    barplot(
+      counts,
+      col = c("#2ca02c", "#d62728"),
+      border = NA,
+      main = "Sentiment Analysis Using Bing Lexicon",
+      xlab = "Sentiment",
+      ylab = "Count",
+      las = 1
+    )
+  },
+  filename = "bingsentiment.svg",
+  folder = "docs/images"
+)
 
 # --- NRC: 8 emotions + aggregate positive / negative -------------------------
 
@@ -93,20 +97,21 @@ sentiment_analysis <- tidy_posts |>
 sentiment_summary <- sentiment_analysis |>
   count(sentiment, sort = TRUE)
 
-nrcsentiment <- ggplot(
-  sentiment_summary,
-  aes(x = n, y = reorder(sentiment, n), fill = sentiment)
-) +
-  geom_bar(stat = "identity") +
-  labs(
-    title = "Sentiment Analysis Using NRC Lexicon",
-    x = "Count",
-    y = "Sentiment"
-  ) +
-  theme_minimal()
-
 save_graph_svg(
-  nrcsentiment,
+  plot_or_expr = function() {
+    counts <- sentiment_summary$n
+    names(counts) <- sentiment_summary$sentiment
+    counts <- counts[order(counts)]
+    barplot(
+      counts,
+      horiz = TRUE,
+      col = grDevices::rainbow(length(counts), alpha = 0.7),
+      border = NA,
+      main = "Sentiment Analysis Using NRC Lexicon",
+      xlab = "Count",
+      las = 1
+    )
+  },
   filename = "nrcsentiment.svg",
   folder = "docs/images"
 )
@@ -120,20 +125,24 @@ sentiment_summary_afinn <- sentiment_analysis_afinn |>
   count(value, name = "count") |>
   arrange(desc(value))
 
-afinnsentiment <- ggplot(
-  sentiment_summary_afinn,
-  aes(x = count, y = factor(value), fill = factor(value))
-) +
-  geom_bar(stat = "identity") +
-  labs(
-    title = "Sentiment Analysis Using AFINN Lexicon",
-    x = "Count",
-    y = "Sentiment Score"
-  ) +
-  theme_minimal()
-
 save_graph_svg(
-  afinnsentiment,
+  plot_or_expr = function() {
+    counts <- sentiment_summary_afinn$count
+    labels <- sentiment_summary_afinn$value
+    order_idx <- order(labels)
+    counts <- counts[order_idx]
+    labels <- labels[order_idx]
+    barplot(
+      counts,
+      names.arg = labels,
+      horiz = TRUE,
+      col = ifelse(labels >= 0, "#2ca02c", "#d62728"),
+      border = NA,
+      main = "Sentiment Analysis Using AFINN Lexicon",
+      xlab = "Count",
+      las = 1
+    )
+  },
   filename = "afinnsentiment.svg",
   folder = "docs/images"
 )
