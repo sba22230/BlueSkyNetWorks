@@ -615,29 +615,36 @@ rxExec(
   execObjects = "save_graph_svg",
   packagesToLoad = c("igraph", "viridis")
 )
-#rxSetComputeContext(origComputeContext)
+
 
 par(old_par)
 # Select top N nodes to label (e.g., top 50 by degree)
 deg <- degree(g, mode = "all")
 
 top_nodes <- names(sort(deg, decreasing = TRUE))[1:50]
-
 # Use a base-R network plot so the same SVG writer can be reused for
 # the network view and any companion panels.
 coords_drl <- res_g[[1]]
+# Convert layout to numeric matrix
+xy <- as.matrix(coords_drl[, c("x", "y")])
 
-save_network_svg(
-  g,
+save_graph_svg(
+  plot_or_expr = function() {
+    par(mar = c(1, 1, 2, 1))
+    g_top <- induced_subgraph(g, vids = top_nodes)
+    xy_top <- xy[match(top_nodes, V(g)$name), ]
+    plot.igraph(
+      g_top,
+      layout = xy_top,
+      main = "Speirgorm network (top degree nodes)",
+      vertex.size = 4,
+      vertex.label.cex = 0.25,
+      edge.arrow.size = 0.3,
+      vertex.color = adjustcolor("tomato", alpha.f = 0.6)
+    )
+  },
   filename = "gtn_TopNodes_Speirgorm_Network.svg",
-  folder = "docs/images",
-  layout = coords_drl,
-  title = "Speirgorm network (top degree nodes)",
-  vertex.size = 5,
-  vertex.label.cex = 0.25,
-  highlight_nodes = top_nodes,
-  highlight_size = 8,
-  highlight_color = "tomato"
+  folder = "docs/images"
 )
 rxWriteObject(
   ds_Graphs,
@@ -858,6 +865,7 @@ rxWriteObject(
 cat("\n" %+% strrep("=", 70) %+% "\n")
 cat("METRICS COMPUTATION SUMMARY\n")
 cat(strrep("=", 70) %+% "\n")
+
 cat(sprintf(
   "Network Size:        %d nodes, %d edges\n",
   ig_summary_df$network_size,
