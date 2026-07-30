@@ -1,8 +1,8 @@
 source("0_functions.R")
 
 set.seed(22230)
-num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
-#num_posts <- 5000
+#num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
+num_posts <- 1000
 
 cat("\n=== Step 3a: Build igraph object and plot basic network ===\n")
 # Step 3: Build igraph object and plot basic network
@@ -737,25 +737,71 @@ process_ym <- function(
   }
 
   out_file <- paste0("SubGraph_", ym, ".svg")
-  save_network_svg(
-    sub_g,
-    filename = out_file,
+  save_graph_svg(
+    expression({
+      par(mfrow = c(1, 2))
+
+      ## Panel 1: igraph
+      plot.igraph(
+        sub_g,
+        layout = layout_nicely(sub_g, dim = 2),
+        main = main_title,
+        vertex.size = vsize,
+        vertex.label.cex = 0.2,
+        edge.arrow.size = 0.3,
+        vertex.color = vcol
+      )
+
+      ## Panel 2: word comparison
+      plot_data <- plot_word_comparison_date(sub_g, ym)
+
+      x_main <- as.numeric(plot_data$frequency$median_time)
+
+      plot(
+        x_main,
+        plot_data$frequency$log_odds,
+        pch = 16,
+        col = rgb(0.12, 0.47, 0.71, 0.4),
+        xlab = "Median posting time",
+        ylab = "Distinctiveness (Dirichlet log-odds)",
+        main = plot_data$title_text,
+        sub = "Distinctive (blue bold) and common (green bold) words",
+        xaxt = "n" # suppress default x-axis
+      )
+
+      # Proper date labels
+      axis(
+        1,
+        at = as.numeric(plot_data$frequency$median_time),
+        labels = format(plot_data$frequency$median_time, "%b %d"),
+        las = 2
+      )
+
+      # Helper for jittering Date values
+      jitter_date <- function(x, amount = 0.2) jitter(as.numeric(x), amount)
+
+      # Label distinctive words
+      text(
+        jitter_date(plot_data$top_words$median_time, amount = 0.05),
+        jitter(plot_data$top_words$log_odds, amount = 0.07),
+        labels = plot_data$top_words$word,
+        cex = 0.7,
+        col = "royalblue",
+        pos = 3
+      )
+
+      # Label common words
+      text(
+        jitter_date(plot_data$common_words$median_time, amount = 0.1),
+        jitter(plot_data$common_words$log_odds, amount = 0.1),
+        labels = plot_data$common_words$word,
+        cex = 0.6,
+        col = "forestgreen",
+        pos = 1
+      )
+    }),
     folder = "docs/images",
-    title = main_title,
-    layout = layout_nicely(sub_g, dim = 2),
-    vertex.size = 6,
-    vertex.label = TRUE,
-    vertex.label.cex = 0.2,
-    edge.arrow.size = 0.3,
-    vertex.color = "steelblue",
-    show_degree_hist = TRUE
-  )
-  out_file <- paste0("SubGraph_wordComparison_", ym, ".svg")
-  render_word_comparison_date(
-    sub_g,
-    ym,
-    filename = out_file,
-    folder = "docs/images"
+    filename = out_file
   )
 
   # Each worker writes its own keys — no contention
