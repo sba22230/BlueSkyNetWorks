@@ -710,9 +710,10 @@ save_graph_svg <- function(
     stop("Input must be a ggplot, trellis, or a plotting expression/function.")
   }
 
-  dev.off()
+  
   message("Saved base/igraph/sna/network SVG to: ", filepath)
   invisible(filepath)
+  on.exit(dev.off(), add = TRUE)
 }
 
 save_network_svg <- function(
