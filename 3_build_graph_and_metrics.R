@@ -1,8 +1,8 @@
 source("0_functions.R")
 
 set.seed(22230)
-#num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
-num_posts <- 1000
+num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
+#num_posts <- 1000
 
 cat("\n=== Step 3a: Build igraph object and plot basic network ===\n")
 # Step 3: Build igraph object and plot basic network
@@ -686,32 +686,112 @@ unique_ym <- sort(unique(year_month))
 
 # Worker function: processes one year-month slice
 process_ym <- function(
-  ym,
-  year_month,
-  g,
-  pal,
-  ds_Graphs,
-  save_graph_svg,
-  save_network_svg,
-  plot_word_comparison_date,
-  render_word_comparison_date
+    ym,
+    year_month,
+    g,
+    pal,
+    ds_Graphs,
+    save_graph_svg,
+    save_network_svg,
+    plot_word_comparison_date,
+    render_word_comparison_date
 ) {
   library(dplyr)
-  library(ggrepel)
   library(stringr)
   library(tidytext)
   library(lubridate)
   library(igraph)
-  library(magrittr)
+  library(wordcloud)
+  library(sna)
+  library(network)
+  library(RColorBrewer)
 
+  # date preparation - build the sub graphs
   eids <- which(year_month == ym)
   if (length(eids) == 0) {
     return(NULL)
   }
-
+  
+  nrc <- get_sentiments("nrc")
   sub_g <- igraph::subgraph.edges(g, eids, delete.vertices = TRUE)
   sub_net <- asNetwork(sub_g)
-
+  bsn_ideg <- sna::degree(sub_net, cmode = "indegree")
+  bsn_odeg <- sna::degree(sub_net, cmode = "outdegree")
+  # Extract edge-level posts and attach community membership from the graph object
+  nodes <- igraph::as_data_frame(sub_g, what = "vertices")
+  edges <- igraph::as_data_frame(sub_g, what = "edges")
+  
+  posts <- data.frame(
+    name = edges$from,
+    text = edges$text,
+    created_at = lubridate::ymd(edges$created_at),
+    document = seq_len(nrow(edges))
+  ) |>
+    merge(nodes[, c("name", "community")], by = "name", all.x = TRUE)
+  
+  # Tokenise, clean, and remove stop words.
+  # Returns one row per (document, word) with community membership preserved.
+  build_tidy_posts <- function(df) {
+    # "ireland" / "irish" are corpus-wide ubiquitous (this is an Irish Bluesky
+    # community) and are not discriminative for LDA; treat them like stop words.
+    custom_stops <- tibble::tibble(
+      word = c(
+        "speirgorm",
+        "spéirgorm",
+        "speirghorm",
+        "spéirghorm",
+        "ireland",
+        "irish"
+      )
+    )
+    
+    df |>
+      dplyr::filter(!stringr::str_detect(text, "^RT")) |>
+      dplyr::mutate(
+        text = stringr::str_to_lower(text),
+        text = stringr::str_replace_all(text, "https?://\\S+|www\\.\\S+", " "),
+        text = stringr::str_replace_all(text, "[#@]", " "),
+        text = stringr::str_replace_all(text, "&amp;|&lt;|&gt;", " ")
+      ) |>
+      tidytext::unnest_tokens(word, text, token = "words") |>
+      dplyr::filter(
+        !word %in% stop_words$word,
+        !word %in% stringr::str_remove_all(stop_words$word, "'"),
+        !word %in% custom_stops$word,
+        nchar(word) > 1
+      ) |>
+      dplyr::mutate(document = as.integer(document))
+  }
+  
+  tidy_posts <- build_tidy_posts(posts)
+  
+  sentiment_analysis <- tidy_posts |>
+    inner_join(nrc, by = "word", relationship = "many-to-many")
+  
+  sentiment_summary <- sentiment_analysis |>
+    count(sentiment, sort = TRUE)
+  
+  counts <- sentiment_summary$n
+  names(counts) <- sentiment_summary$sentiment
+  counts <- counts[order(counts)]
+  global_freq <- tidy_posts |>
+    count(word, sort = TRUE)
+  
+  make_wordcloud_base <- function(freq_df) {
+    wordcloud(
+      words = freq_df$word,
+      freq  = freq_df$n,
+      max.words = 200,
+      random.order = FALSE,
+      rot.per = 0.35,
+      colors = RColorBrewer::brewer.pal(8, "Dark2")
+    )
+  }
+  
+  # build a grid layout for the plots: 3 rows, 2 columns
+  grid_matrix <- matrix(c(1,2,1,3,1, 4), nrow = 3, byrow = TRUE)
+  
+  # plot creation
   cat(
     "Created subgraph for",
     ym,
@@ -721,9 +801,9 @@ process_ym <- function(
     ecount(sub_g),
     "edges\n"
   )
-
+  
   main_title <- paste0("Sub Graph ", vcount(sub_g), " nodes\n(", ym, ")")
-
+  
   # Precompute vertex aesthetics (bug fix: subg -> sub_g)
   vsize <- if (!is.null(V(sub_g)$pagerank)) {
     V(sub_g)$pagerank + 1
@@ -735,75 +815,49 @@ process_ym <- function(
   } else {
     "steelblue"
   }
-
-  out_file <- paste0("SubGraph_", ym, ".svg")
-  save_graph_svg(
-    expression({
-      par(mfrow = c(1, 2))
-
-      ## Panel 1: igraph
-      plot.igraph(
-        sub_g,
-        layout = layout_nicely(sub_g, dim = 2),
-        main = main_title,
-        vertex.size = vsize,
-        vertex.label.cex = 0.2,
-        edge.arrow.size = 0.3,
-        vertex.color = vcol
-      )
-
-      ## Panel 2: word comparison
-      plot_data <- plot_word_comparison_date(sub_g, ym)
-
-      x_main <- as.numeric(plot_data$frequency$median_time)
-
-      plot(
-        x_main,
-        plot_data$frequency$log_odds,
-        pch = 16,
-        col = rgb(0.12, 0.47, 0.71, 0.4),
-        xlab = "Median posting time",
-        ylab = "Distinctiveness (Dirichlet log-odds)",
-        main = plot_data$title_text,
-        sub = "Distinctive (blue bold) and common (green bold) words",
-        xaxt = "n" # suppress default x-axis
-      )
-
-      # Proper date labels
-      axis(
-        1,
-        at = as.numeric(plot_data$frequency$median_time),
-        labels = format(plot_data$frequency$median_time, "%b %d"),
-        las = 2
-      )
-
-      # Helper for jittering Date values
-      jitter_date <- function(x, amount = 0.2) jitter(as.numeric(x), amount)
-
-      # Label distinctive words
-      text(
-        jitter_date(plot_data$top_words$median_time, amount = 0.05),
-        jitter(plot_data$top_words$log_odds, amount = 0.07),
-        labels = plot_data$top_words$word,
-        cex = 0.7,
-        col = "royalblue",
-        pos = 3
-      )
-
-      # Label common words
-      text(
-        jitter_date(plot_data$common_words$median_time, amount = 0.1),
-        jitter(plot_data$common_words$log_odds, amount = 0.1),
-        labels = plot_data$common_words$word,
-        cex = 0.6,
-        col = "forestgreen",
-        pos = 1
-      )
-    }),
-    folder = "docs/images",
-    filename = out_file
+  
+  out_file <- paste0("docs/images/SubGraph_", ym, ".svg")
+  svg(out_file, width = 20, height = 12)
+  layout(grid_matrix)
+  
+  # Plot the subgraph using igraph
+  plot.igraph(
+    sub_g,
+    layout = layout_nicely(sub_g, dim = 2),
+    main = main_title,
+    vertex.size = vsize,
+    vertex.label.cex = 0.9,
+    edge.arrow.size = 0.3,
+    vertex.color = vcol
   )
-
+  
+  # Plot 2 the sentiment barplot
+  barplot(
+    counts,
+    horiz = TRUE,
+    col = grDevices::rainbow(length(counts), alpha = 0.7),
+    border = NA,
+    main = "Sentiment Analysis Using NRC Lexicon",
+    xlab = "Count",
+    las = 1
+  )
+  
+  # Plot 3 the word cloud
+  make_wordcloud_base(global_freq)  # row 2 col 2
+  
+  # Plot 4 the degree scatter plot
+  plot(bsn_ideg, bsn_odeg, type = "n", xlab = "Re-posts received", ylab = "Re-posts made")
+  abline(0, 1, lty = 3)
+  text(
+    jitter(bsn_ideg, factor = 0.5, amount = 0.5),
+    jitter(bsn_odeg, factor = 0.5, amount = 0.5),
+    labels = network.vertex.names(sub_net),
+    cex = 0.9,
+    col = 2
+  )
+  
+  dev.off()
+  
   # Each worker writes its own keys — no contention
   rxWriteObject(
     ds_Graphs,
@@ -817,9 +871,9 @@ process_ym <- function(
     sub_net,
     overwrite = TRUE
   )
-
   list(ym = ym, sub_g = sub_g, sub_net = sub_net)
 }
+
 
 # Switch to parallel context (adjust numCoresToUse as needed)
 rxSetComputeContext(RxLocalParallel())

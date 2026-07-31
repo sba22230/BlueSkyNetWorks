@@ -80,3 +80,15 @@ save_graph_svg(
   }),
   filename = "test_subgraph_code.svg"
 )
+
+
+f <- tempfile(fileext = ".svg")
+svg(f, width = 10, height = 8)
+layout(grid_matrix)
+
+  plot(1:10, main = "plot1 (left column - Full height)")
+  plot(1:15, main = "plot 2 (right column - row 1)")
+  plot(2:20, main = "plot 3 (right column - row 2)")
+  plot(10:1, main = "plot 4 (right column - row 3)")
+
+dev.off()
