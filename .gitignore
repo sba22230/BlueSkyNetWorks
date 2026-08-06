@@ -21,31 +21,8 @@ graphs/g3 visnetwork_export.gexf
 .vs/slnx.sqlite
 .Rhistory
 misc/~$reamlineTheProcess.docx
-images/Community_5_layouts.svg
-images/Community_8_layouts.svg
-images/Community_11_layouts.svg
-images/Community_1_layouts.svg
 .gitignore
-images/Community_3_layouts.svg
-images/Community_4_layouts.svg
-images/Community_7_layouts.svg
-images/Community_2_layouts.svg
-images/Community_6_layouts.svg
-images/Community_12_layouts.svg
-images/Community_16_layouts.svg
-images/Community_14_layouts.svg
-images/Community_15_layouts.svg
-images/Community_13_layouts.svg
-images/Main Graph_layouts.svg
-graphs/visnetwork_tmp.html
-images/Community_9_layouts.svg
-images/Community_13_layouts.svg
 .vs/*
-graphs/visnetwork_tmp.html
-images/MainGraph_*.svg
-images/Community_13_layouts.svg
-graphs/g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml
-images/SubGraph_*.svg
 .posit/assistant
 /.quarto/
 **/*.quarto_ipynb
