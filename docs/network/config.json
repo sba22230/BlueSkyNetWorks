@@ -23,8 +23,8 @@
     "hoverBehavior": "dim"
   },
   "informationPanel": {
-    "groupByEdgeDirection": false,
-    "imageAttribute": false
+    "groupByEdgeDirection": true,
+    "imageAttribute": "Id"
   },
   "sigma": {
     "drawingProperties": {
