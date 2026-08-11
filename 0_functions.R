@@ -14,6 +14,7 @@ list.of.packages <- c(
   'fastNaiveBayes',
   'forcats',
   'future',
+  'gganimate',
   'ggraph',
   'ggrepel',
   'ggplot2',
@@ -41,6 +42,7 @@ list.of.packages <- c(
   'visNetwork',
   'wordcloud2',
   'scales',
+  'tictoc',
   'tm',
   'tidytext',
   'textdata'
