@@ -1,3 +1,11 @@
+### Community Analysis 
+
+For node size > 1500 use layout 'drl_fast' 
+between 1500 and 1000 use nicely
+node size < 1000 use fr
+
+
+
 ## 📊 Feature Suggestions Summary
 # 
 # Here’s a table of all the feature ideas and enhancements we discussed:

@@ -21,6 +21,20 @@
     "text": "0.2 Project Structure\nBlueSkyNetWorks/ \n├── master_pipeline.R               # Orchestrates all pipeline stages \n├── 0_functions.R                   # Libraries, authentication, utility functions \n├── 1_BlueSky_Robust.r              # API data collection and hydration \n├── 2_load network data into SQL.r  # SQL Server ingestion and graph table setup \n├── 3_build_graph_and_metrics.R     # igraph/statnet construction and metrics    \n├── 4_visualisation.R               # visNetwork, ggraph, GEXF export \n├── 5_NLP_analysis.R                # TidyText NLP and post frequency analysis \n├── 6_TextAnalysis.R                # Sentiment lexicon analysis (Bing, NRC, AFINN) \n├── SQL/                            # T-SQL schema, stored procedures, views \n├── data/                           # Parquet and CSV data artifacts \n├── graphs/                         # Exported graph files (Parquet, GEXF, GraphML, SVG, HTML)"
   },
   {
+    "objectID": "index.html#speirgorm-network-over-the-years-and-months",
+    "href": "index.html#speirgorm-network-over-the-years-and-months",
+    "title": "Speirgorm Bluesky Network Analysis",
+    "section": "4.1 Speirgorm Network over the years and months",
+    "text": "4.1 Speirgorm Network over the years and months"
+  },
+  {
+    "objectID": "index.html#network-sentiment",
+    "href": "index.html#network-sentiment",
+    "title": "Speirgorm Bluesky Network Analysis",
+    "section": "4.2 Network sentiment",
+    "text": "4.2 Network sentiment\nOverall Speirgorm Network Sentiment\nTimeline of posts for the communities in Speirgorm\nPosts timelines in the sub communities\nTo learn more about Quarto websites visit https://quarto.org/docs/websites.\n\n\n[1] 2"
+  },
+  {
     "objectID": "about.html",
     "href": "about.html",
     "title": "About",

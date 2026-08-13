@@ -43,6 +43,8 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="site_libs/bootstrap/bootstrap-a0f9fd0d421825b736dc1bbcbcba2219.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="site_libs/quarto-contrib/videojs/video.min.js"></script>
+<link href="site_libs/quarto-contrib/videojs/video-js.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -149,7 +151,11 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#load-the-network-data" id="toc-load-the-network-data" class="nav-link" data-scroll-target="#load-the-network-data"><span class="header-section-number">1</span> Load the Network Data</a></li>
   <li><a href="#build-the-network-metrics" id="toc-build-the-network-metrics" class="nav-link" data-scroll-target="#build-the-network-metrics"><span class="header-section-number">2</span> Build the Network metrics</a></li>
   <li><a href="#computing-network-metrics-using-statnet" id="toc-computing-network-metrics-using-statnet" class="nav-link" data-scroll-target="#computing-network-metrics-using-statnet"><span class="header-section-number">3</span> Computing Network Metrics using StatNet</a></li>
-  <li><a href="#display-the-network-metrics" id="toc-display-the-network-metrics" class="nav-link" data-scroll-target="#display-the-network-metrics"><span class="header-section-number">4</span> Display the network metrics</a></li>
+  <li><a href="#display-the-network-metrics" id="toc-display-the-network-metrics" class="nav-link" data-scroll-target="#display-the-network-metrics"><span class="header-section-number">4</span> Display the network metrics</a>
+  <ul class="collapse">
+  <li><a href="#speirgorm-network-over-the-years-and-months" id="toc-speirgorm-network-over-the-years-and-months" class="nav-link" data-scroll-target="#speirgorm-network-over-the-years-and-months"><span class="header-section-number">4.1</span> Speirgorm Network over the years and months</a></li>
+  <li><a href="#network-sentiment" id="toc-network-sentiment" class="nav-link" data-scroll-target="#network-sentiment"><span class="header-section-number">4.2</span> Network sentiment</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -219,7 +225,7 @@ ul.task-list li input[type="checkbox"] {
 <pre><code>Graph summary:</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>IGRAPH cca070d DNW- 19998 91075 -- 
+<pre><code>IGRAPH 9f0b988 DNW- 20024 91275 -- 
 + attr: name (v/c), earliestPost (v/c), latestPost (v/c),
 | posts_authored (v/n), reposts_made (v/n), reposts_received (v/n),
 | total_likes_on_posts (v/n), total_replies_on_posts (v/n),
@@ -232,7 +238,7 @@ ul.task-list li input[type="checkbox"] {
 | (e/c), created_at (e/c), like_count (e/n), reply_count (e/n),
 | bookmark_count (e/n), repost_count (e/n), betweenness (e/n), weight
 | (e/n), edgeStarts (e/c), edgeEnds (e/c), text (e/c)
-IGRAPH cca070d DNW- 19998 91075 -- 
+IGRAPH 9f0b988 DNW- 20024 91275 -- 
 + attr: name (v/c), earliestPost (v/c), latestPost (v/c),
 | posts_authored (v/n), reposts_made (v/n), reposts_received (v/n),
 | total_likes_on_posts (v/n), total_replies_on_posts (v/n),
@@ -245,7 +251,7 @@ IGRAPH cca070d DNW- 19998 91075 --
 | (e/c), created_at (e/c), like_count (e/n), reply_count (e/n),
 | bookmark_count (e/n), repost_count (e/n), betweenness (e/n), weight
 | (e/n), edgeStarts (e/c), edgeEnds (e/c), text (e/c)
-+ edges from cca070d (vertex names):</code></pre>
++ edges from 9f0b988 (vertex names):</code></pre>
 </div>
 </div>
 </section>
@@ -261,22 +267,19 @@ IGRAPH cca070d DNW- 19998 91075 --
 <h1 data-number="4"><span class="header-section-number">4</span> Display the network metrics</h1>
 <div class="cell">
 <div class="cell-output-display">
-<div class="datatables html-widget html-fill-item" id="htmlwidget-594a001cb2e61675b7f0" style="width:100%;height:auto;"></div>
-<script type="application/json" data-for="htmlwidget-594a001cb2e61675b7f0">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23"],["analysis_timestamp","network_size","edge_count","dyad_count","density","mutual_pairs","asymetric_pairs","isolated_nodes","diameter","avg_path_length","neighbours_average","reciprocity_default","reciprocity_ratio","average_in_degree","average_out_degree","most_replied_to","most_active_replier","num_components","largest_component_size","giant_component_pct","transitivity_val","avg_local_clustering","centralization_in"],["Date that the metrics were generated","Number of nodes (users) in network","Number of directed edges (reposts)","Total number of possible dyadic pairs","Proportion of possible edges present","Number of mutual dyads (both directions present)","Number of asymmetric dyads (one direction only)","Number of pairs with no connection between them","Longest shortest path between any two nodes","Average shortest path across all node pairs","Average number of adjacent nodes per node","Proportion of edges that are reciprocated (edgewise reciprocity)","Proportion of non-null dyads that are mutual (dyadic reciprocity)","Average number of incoming ties per node","Average number of outgoing ties per node","Node with highest in-degree (most replies received)","Node with highest out-degree (most replies/reposts sent)","Number of disconnected components","Nodes in largest connected component","Percentage of nodes in largest component","Global clustering coefficient (transitivity)","Mean of local clustering coefficients","Degree centralization index (in-degree)"],["2026-08-12","19998","91075","199950003","0.000223190794350726","36423","16408","199897172","9","3.55314271042738","12363","0.816165101844175","0.689424769548182","4.46314631463146","4.46314631463146","ciaraioch.bsky.social","sharrow.bsky.social","14","19970","99.8599859985999","0.313235131054836","0.123361708577587","0.375620745992475"],["2026-08-12","19998","91075","199950003","0.000227744432692007","1135","51696","199897172","9","0.178930318605669","12363","0.0478858090393708","0.0245302294615287","4.55420542054205","4.55420542054205","ciaraioch.bsky.social","sharrow.bsky.social","14","19970","99.8599859985999","0.0285330471336572","0.123361708577587","0.377766729522331"],["2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12","2026-08-12"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>metric<\/th>\n      <th>description<\/th>\n      <th>network/sna<\/th>\n      <th>igraph<\/th>\n      <th>run_date<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"orderable":false,"targets":0},{"name":" ","targets":0},{"name":"metric","targets":1},{"name":"description","targets":2},{"name":"network/sna","targets":3},{"name":"igraph","targets":4},{"name":"run_date","targets":5}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<div class="datatables html-widget html-fill-item" id="htmlwidget-f91e886d004967ffa372" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-f91e886d004967ffa372">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23"],["analysis_timestamp","network_size","edge_count","dyad_count","density","mutual_pairs","asymetric_pairs","isolated_nodes","diameter","avg_path_length","neighbours_average","reciprocity_default","reciprocity_ratio","average_in_degree","average_out_degree","most_replied_to","most_active_replier","num_components","largest_component_size","giant_component_pct","transitivity_val","avg_local_clustering","centralization_in"],["Date that the metrics were generated","Number of nodes (users) in network","Number of directed edges (reposts)","Total number of possible dyadic pairs","Proportion of possible edges present","Number of mutual dyads (both directions present)","Number of asymmetric dyads (one direction only)","Number of pairs with no connection between them","Longest shortest path between any two nodes","Average shortest path across all node pairs","Average number of adjacent nodes per node","Proportion of edges that are reciprocated (edgewise reciprocity)","Proportion of non-null dyads that are mutual (dyadic reciprocity)","Average number of incoming ties per node","Average number of outgoing ties per node","Node with highest in-degree (most replies received)","Node with highest out-degree (most replies/reposts sent)","Number of disconnected components","Nodes in largest connected component","Percentage of nodes in largest component","Global clustering coefficient (transitivity)","Mean of local clustering coefficients","Degree centralization index (in-degree)"],["2026-08-13","20024","91275","200470276","0.000223105394437627","36513","16426","200417337","9","3.55328568282187","12383","0.816370791038769","0.689718355087931","4.46723931282461","4.46723931282461","ciaraioch.bsky.social","sharrow.bsky.social","14","19996","99.8601677986416","0.313206466920503","0.123405494478069","0.377230544079184"],["2026-08-13","20024","91275","200470276","0.000227652203162528","1138","51801","200417337","9","0.176064329244446","12383","0.0478916066717346","0.0245332722483106","4.55828006392329","4.55828006392329","ciaraioch.bsky.social","sharrow.bsky.social","14","19996","99.8601677986416","0.0285373141033599","0.123405494478069","0.379373741673452"],["2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>metric<\/th>\n      <th>description<\/th>\n      <th>network/sna<\/th>\n      <th>igraph<\/th>\n      <th>run_date<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"orderable":false,"targets":0},{"name":" ","targets":0},{"name":"metric","targets":1},{"name":"description","targets":2},{"name":"network/sna","targets":3},{"name":"igraph","targets":4},{"name":"run_date","targets":5}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 </div>
 </div>
-<div class="cell">
-<div class="cell-output-display">
-<div>
+<div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid figure-img" width="2100"></p>
+<p><img src="./images/degree_scatter.svg" class="img-fluid figure-img"></p>
+<figcaption>Out degree vs In degree</figcaption>
 </figure>
-</div>
-</div>
 </div>
 <div class="cell">
 <div class="cell-output cell-output-stdout">
-<pre><code>Components: 14 (largest: 19970 = 99.9%)</code></pre>
+<pre><code>Components: 14 (largest: 19996 = 99.9%)</code></pre>
 </div>
 </div>
 <div class="cell">
@@ -290,8 +293,8 @@ IGRAPH cca070d DNW- 19998 91075 --
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>            used   (Mb) gc trigger    (Mb)   max used    (Mb)
-Ncells   7501981  400.7   97608829  5212.9  190642242 10181.4
-Vcells 419773695 3202.7 1766538209 13477.7 2407569501 18368.3</code></pre>
+Ncells   7502564  400.7  161859181  8644.3  225339433 12034.5
+Vcells 420825995 3210.7 1771106393 13512.5 2413809456 18416.0</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>
@@ -312,7 +315,7 @@ Vcells 419773695 3202.7 1766538209 13477.7 2407569501 18368.3</code></pre>
 === Step 3o: Node-level metrics compiled into 'nodes_with_metrics' tibble ===</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>  Rows: 19998 nodes | Cols: 27 features</code></pre>
+<pre><code>  Rows: 20024 nodes | Cols: 27 features</code></pre>
 </div>
 </div>
 <div class="cell">
@@ -325,81 +328,81 @@ Vcells 419773695 3202.7 1766538209 13477.7 2407569501 18368.3</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>                                                   name           pagerank
-ciaraioch.bsky.social             ciaraioch.bsky.social 0.1192485569260190
-robosullivan.bsky.social       robosullivan.bsky.social 0.0393914553989365
-oisinmcgann.bsky.social         oisinmcgann.bsky.social 0.0299950046918128
-eolai.bsky.social                     eolai.bsky.social 0.0279995581358215
-frankoconnor.bsky.social       frankoconnor.bsky.social 0.0211938590199295
-judesherry.bsky.social           judesherry.bsky.social 0.0185826497513561
-drmarymcauliffe.bsky.social drmarymcauliffe.bsky.social 0.0156239896752448
-bgormley.bsky.social               bgormley.bsky.social 0.0148455144345195
-lamhfada.bsky.social               lamhfada.bsky.social 0.0121027356119877
-sharrow.eurosky.social           sharrow.eurosky.social 0.0108988033198999
+ciaraioch.bsky.social             ciaraioch.bsky.social 0.1193275276995128
+robosullivan.bsky.social       robosullivan.bsky.social 0.0389081034967845
+oisinmcgann.bsky.social         oisinmcgann.bsky.social 0.0297125326303631
+eolai.bsky.social                     eolai.bsky.social 0.0276980732156035
+frankoconnor.bsky.social       frankoconnor.bsky.social 0.0212540076099087
+judesherry.bsky.social           judesherry.bsky.social 0.0187126839651086
+drmarymcauliffe.bsky.social drmarymcauliffe.bsky.social 0.0155647755475797
+bgormley.bsky.social               bgormley.bsky.social 0.0147108354039026
+lamhfada.bsky.social               lamhfada.bsky.social 0.0119866652044002
+sharrow.eurosky.social           sharrow.eurosky.social 0.0108342809989197
                             in_degree out_degree
-ciaraioch.bsky.social            7558         89
-robosullivan.bsky.social         4584        663
-oisinmcgann.bsky.social          2797        764
+ciaraioch.bsky.social            7600         89
+robosullivan.bsky.social         4584        664
+oisinmcgann.bsky.social          2802        767
 eolai.bsky.social                3247        259
 frankoconnor.bsky.social         1458        138
 judesherry.bsky.social            548        250
 drmarymcauliffe.bsky.social      4693         65
-bgormley.bsky.social             1935        105
-lamhfada.bsky.social             2454        578
-sharrow.eurosky.social            558        488</code></pre>
+bgormley.bsky.social             1935        107
+lamhfada.bsky.social             2454        580
+sharrow.eurosky.social            560        493</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>  --- By Betweenness ---</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>                                                   name      betweenness
-sharrow.bsky.social                 sharrow.bsky.social 4657737.02298798
-lamhfada.bsky.social               lamhfada.bsky.social 3879078.98902776
-ciaraioch.bsky.social             ciaraioch.bsky.social 3507382.30350775
-oisinmcgann.bsky.social         oisinmcgann.bsky.social 3393446.20962233
-robosullivan.bsky.social       robosullivan.bsky.social 2882609.38483583
-drmarymcauliffe.bsky.social drmarymcauliffe.bsky.social 1906446.61000884
-bgormley.bsky.social               bgormley.bsky.social 1902492.52810866
-emmadragon.bsky.social           emmadragon.bsky.social 1585451.23027528
-darylfeehely.com                       darylfeehely.com 1259439.24936082
-tggleeson.bsky.social             tggleeson.bsky.social 1156485.09754844
+sharrow.bsky.social                 sharrow.bsky.social 4656269.82092947
+lamhfada.bsky.social               lamhfada.bsky.social 3878477.92716506
+ciaraioch.bsky.social             ciaraioch.bsky.social 3520226.05038548
+oisinmcgann.bsky.social         oisinmcgann.bsky.social 3394796.15182785
+robosullivan.bsky.social       robosullivan.bsky.social 2875824.93121556
+drmarymcauliffe.bsky.social drmarymcauliffe.bsky.social 1907087.86318316
+bgormley.bsky.social               bgormley.bsky.social 1905573.48445392
+emmadragon.bsky.social           emmadragon.bsky.social 1590497.44070005
+darylfeehely.com                       darylfeehely.com 1263585.15496895
+tggleeson.bsky.social             tggleeson.bsky.social 1159331.40313942
                             total_degree
 sharrow.bsky.social                 3299
-lamhfada.bsky.social                3032
-ciaraioch.bsky.social               7647
-oisinmcgann.bsky.social             3561
-robosullivan.bsky.social            5247
+lamhfada.bsky.social                3034
+ciaraioch.bsky.social               7689
+oisinmcgann.bsky.social             3569
+robosullivan.bsky.social            5248
 drmarymcauliffe.bsky.social         4758
-bgormley.bsky.social                2040
-emmadragon.bsky.social              1236
-darylfeehely.com                    1510
-tggleeson.bsky.social                975</code></pre>
+bgormley.bsky.social                2042
+emmadragon.bsky.social              1238
+darylfeehely.com                    1518
+tggleeson.bsky.social                979</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>  --- By Authority Score (most reposted) ---</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>                                                   name    authority_score
-robosullivan.bsky.social       robosullivan.bsky.social 0.6150356174678686
-oisinmcgann.bsky.social         oisinmcgann.bsky.social 0.5239121213192340
-ciaraioch.bsky.social             ciaraioch.bsky.social 0.3075060302620014
-shazbear.bsky.social               shazbear.bsky.social 0.2079887938869396
-sharrow.eurosky.social           sharrow.eurosky.social 0.1685937231376990
-dailigh.eurosky.social           dailigh.eurosky.social 0.1469745943209999
-frankoconnor.bsky.social       frankoconnor.bsky.social 0.1286755561550237
-sullydaysleeper.bsky.social sullydaysleeper.bsky.social 0.1046196006365521
-darylfeehely.com                       darylfeehely.com 0.0994383976933701
-mmdc.bsky.social                       mmdc.bsky.social 0.0962962684730014
+robosullivan.bsky.social       robosullivan.bsky.social 0.6006609528608784
+oisinmcgann.bsky.social         oisinmcgann.bsky.social 0.5358593959521676
+ciaraioch.bsky.social             ciaraioch.bsky.social 0.3240037923023074
+shazbear.bsky.social               shazbear.bsky.social 0.2042487099329469
+sharrow.eurosky.social           sharrow.eurosky.social 0.1666051246232062
+dailigh.eurosky.social           dailigh.eurosky.social 0.1439595178537442
+frankoconnor.bsky.social       frankoconnor.bsky.social 0.1254578946060451
+sullydaysleeper.bsky.social sullydaysleeper.bsky.social 0.1042921279634103
+darylfeehely.com                       darylfeehely.com 0.1015303961623154
+mmdc.bsky.social                       mmdc.bsky.social 0.0958030177122794
                             in_degree reposts_received
 robosullivan.bsky.social         4584             4586
-oisinmcgann.bsky.social          2797             2795
-ciaraioch.bsky.social            7558             7596
-shazbear.bsky.social              807              806
-sharrow.eurosky.social            558              553
+oisinmcgann.bsky.social          2802             2800
+ciaraioch.bsky.social            7600             7638
+shazbear.bsky.social              811              810
+sharrow.eurosky.social            560              555
 dailigh.eurosky.social            718              721
 frankoconnor.bsky.social         1458             1491
-sullydaysleeper.bsky.social       490              493
-darylfeehely.com                 1235             1241
-mmdc.bsky.social                  202              195</code></pre>
+sullydaysleeper.bsky.social       494              497
+darylfeehely.com                 1243             1249
+mmdc.bsky.social                  203              196</code></pre>
 </div>
 </div>
 <div class="cell">
@@ -407,7 +410,7 @@ mmdc.bsky.social                  202              195</code></pre>
 <pre><code>METRICS COMPUTATION SUMMARY</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Network Size:        19998 nodes, 91075 edges</code></pre>
+<pre><code>Network Size:        20024 nodes, 91275 edges</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Density:             0.0002 (0.02% of possible edges)</code></pre>
@@ -416,7 +419,7 @@ mmdc.bsky.social                  202              195</code></pre>
 <pre><code>Clustering:          Global: 0.0285 | Local mean: 0.1234</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Communities:         44 (Louvain, modularity = 0.4444)</code></pre>
+<pre><code>Communities:         43 (Louvain, modularity = 0.4451)</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Reciprocity:         0.0479 (edgewise)</code></pre>
@@ -425,7 +428,7 @@ mmdc.bsky.social                  202              195</code></pre>
 <pre><code>Path Length:         Avg: 0.18 | Diameter: 9.000000</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Centralization:      0.3778 (in-degree based)</code></pre>
+<pre><code>Centralization:      0.3794 (in-degree based)</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Components:          14 (giant component: 99.9%)</code></pre>
@@ -447,6 +450,15 @@ mmdc.bsky.social                  202              195</code></pre>
 <pre><code>  Use community_stats to understand cluster structure</code></pre>
 </div>
 </div>
+<section id="speirgorm-network-over-the-years-and-months" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="speirgorm-network-over-the-years-and-months"><span class="header-section-number">4.1</span> Speirgorm Network over the years and months</h2>
+<div class="quarto-video"><video id="video_shortcode_videojs_video1" class="video-js vjs-default-skin vjs-big-play-centered vjs-fluid" controls="" preload="auto" data-setup="{}" title=""><source src="./video/SpeirgormTimeline.mp4"></video></div>
+</section>
+<section id="network-sentiment" class="level2" data-number="4.2">
+<h2 data-number="4.2" class="anchored" data-anchor-id="network-sentiment"><span class="header-section-number">4.2</span> Network sentiment</h2>
+<p><a href="./images/nrcsentiment.svg">Overall Speirgorm Network Sentiment</a></p>
+<p>Timeline of posts for the communities in Speirgorm</p>
+<p><a href="./images/Post Timelines for Communities.svg">Posts timelines in the sub communities</a></p>
 <p>To learn more about Quarto websites visit <a href="https://quarto.org/docs/websites" class="uri">https://quarto.org/docs/websites</a>.</p>
 <div class="cell">
 <div class="cell-output cell-output-stdout">
@@ -455,6 +467,7 @@ mmdc.bsky.social                  202              195</code></pre>
 </div>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->
@@ -859,6 +872,7 @@ mmdc.bsky.social                  202              195</code></pre>
   });
   </script>
 </div> <!-- /content -->
+<script>videojs(video_shortcode_videojs_video1);</script>
 
 
 

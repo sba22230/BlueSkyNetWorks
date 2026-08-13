@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 ```{r setup}
 #| label: R Setup
 #| echo: false
@@ -8,10 +13,14 @@ library(here)
 here_parent <- function(...) {
   # Get the current here() root
   root <- here::here()
-  
+
   # Go one level up
-  parent_root <- normalizePath(file.path(root, ".."), winslash = "/", mustWork = FALSE)
-  
+  parent_root <- normalizePath(
+    file.path(root, ".."),
+    winslash = "/",
+    mustWork = FALSE
+  )
+
   # Append any extra path components passed in (...)
   if (nargs() > 0) {
     return(file.path(parent_root, ...))
@@ -26,13 +35,13 @@ workingDir <- normalizePath(here_parent())
 
 # Set global chunk options
 knitr::opts_chunk$set(
-	echo = FALSE,
-	fig.height = 5,
-	fig.width = 7,
-	message = FALSE,
-	warning = FALSE,
-	dpi = 300,
-	root.dir = workingDir
+  echo = FALSE,
+  fig.height = 5,
+  fig.width = 7,
+  message = FALSE,
+  warning = FALSE,
+  dpi = 300,
+  root.dir = workingDir
 )
 # Optional: confirm during render
 
@@ -72,8 +81,6 @@ The pipeline:
 
 ```{r}
 #| echo: false
-
-
 ```
 
 ```         
@@ -96,7 +103,7 @@ BlueSkyNetWorks/
 ```{r}
 #| label: Load Network Data
 #| include: false
-echo = FALSE
+echo <- FALSE
 setwd(here_parent())
 getwd()
 
@@ -204,7 +211,7 @@ bsn_comp <- component.dist(bluSkynet, connected = "weak")
 bsn_num_components <- length(bsn_comp$csize)
 bsn_largest_component_size <- max(bsn_comp$csize)
 bsn_largest_component_size_pct <- (bsn_largest_component_size /
-                                     bsn_network_size) *
+  bsn_network_size) *
   100
 # Local Clustering Coefficient (for directed graphs, variants exist)
 bsn_local_clustering <- ig_avg_local_clustering # Placeholder: SNA's clustering is more complex for directed graphs
@@ -300,26 +307,16 @@ comparison_table <- bind_rows(
     values_from = value
   ) %>%
   mutate(run_date = Sys.Date())
-
 ```
 
 ```{r}
 #| label: Show Datatable
 datatable(comparison_table)
 ```
-
-```{r}
-plot(bsn_ideg, bsn_odeg, type = "n", xlab = "Incoming", ylab = "Outgoing")
-    abline(0, 1, lty = 3)
-    text(
-      jitter(bsn_ideg),
-      jitter(bsn_odeg),
-      labels = network.vertex.names(bluSkynet),
-      cex = 0.5,
-      col = 2
-    )
-```
-
+:::{.column-page}
+![](./images/degree_scatter.svg)
+:::
+[Out degree vs In degree]
 ```{r}
 cat(sprintf(
   "Components: %d (largest: %d = %.1f%%)\n",
@@ -327,8 +324,6 @@ cat(sprintf(
   bsn_largest_component_size,
   bsn_largest_component_size_pct
 ))
-
-
 ```
 
 ```{r}
@@ -422,7 +417,6 @@ cat(sprintf(
   nrow(nodes_with_metrics),
   ncol(nodes_with_metrics)
 ))
-
 ```
 
 ```{r}
@@ -505,6 +499,18 @@ cat("  Use nodes_with_metrics for per-user analysis\n")
 cat("  Use network_metrics for global statistics\n")
 cat("  Use community_stats to understand cluster structure\n\n")
 ```
+
+## Speirgorm Network over the years and months
+
+{{< video ./video/SpeirgormTimeline.mp4 >}}
+
+## Network sentiment 
+
+![Overall Speirgorm Network Sentiment](./images/nrcsentiment.svg)
+
+Timeline of posts for the communities in Speirgorm 
+
+![Posts timelines in the sub communities](./images/Post Timelines for Communities.svg)
 
 To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
 
