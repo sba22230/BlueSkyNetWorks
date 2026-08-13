@@ -160,7 +160,7 @@ ul.task-list li input[type="checkbox"] {
 </nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content">
+<main class="content page-columns page-full" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
@@ -225,7 +225,7 @@ ul.task-list li input[type="checkbox"] {
 <pre><code>Graph summary:</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>IGRAPH 9f0b988 DNW- 20024 91275 -- 
+<pre><code>IGRAPH 4f43f8f DNW- 20024 91275 -- 
 + attr: name (v/c), earliestPost (v/c), latestPost (v/c),
 | posts_authored (v/n), reposts_made (v/n), reposts_received (v/n),
 | total_likes_on_posts (v/n), total_replies_on_posts (v/n),
@@ -238,7 +238,7 @@ ul.task-list li input[type="checkbox"] {
 | (e/c), created_at (e/c), like_count (e/n), reply_count (e/n),
 | bookmark_count (e/n), repost_count (e/n), betweenness (e/n), weight
 | (e/n), edgeStarts (e/c), edgeEnds (e/c), text (e/c)
-IGRAPH 9f0b988 DNW- 20024 91275 -- 
+IGRAPH 4f43f8f DNW- 20024 91275 -- 
 + attr: name (v/c), earliestPost (v/c), latestPost (v/c),
 | posts_authored (v/n), reposts_made (v/n), reposts_received (v/n),
 | total_likes_on_posts (v/n), total_replies_on_posts (v/n),
@@ -251,7 +251,7 @@ IGRAPH 9f0b988 DNW- 20024 91275 --
 | (e/c), created_at (e/c), like_count (e/n), reply_count (e/n),
 | bookmark_count (e/n), repost_count (e/n), betweenness (e/n), weight
 | (e/n), edgeStarts (e/c), edgeEnds (e/c), text (e/c)
-+ edges from 9f0b988 (vertex names):</code></pre>
++ edges from 4f43f8f (vertex names):</code></pre>
 </div>
 </div>
 </section>
@@ -263,7 +263,7 @@ IGRAPH 9f0b988 DNW- 20024 91275 --
 <h1 data-number="3"><span class="header-section-number">3</span> Computing Network Metrics using StatNet</h1>
 <p>=== Step 3b: Build out the metrics using StatNet… ===</p>
 </section>
-<section id="display-the-network-metrics" class="level1" data-number="4">
+<section id="display-the-network-metrics" class="level1 page-columns page-full" data-number="4">
 <h1 data-number="4"><span class="header-section-number">4</span> Display the network metrics</h1>
 <div class="cell">
 <div class="cell-output-display">
@@ -271,12 +271,10 @@ IGRAPH 9f0b988 DNW- 20024 91275 --
 <script type="application/json" data-for="htmlwidget-f91e886d004967ffa372">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23"],["analysis_timestamp","network_size","edge_count","dyad_count","density","mutual_pairs","asymetric_pairs","isolated_nodes","diameter","avg_path_length","neighbours_average","reciprocity_default","reciprocity_ratio","average_in_degree","average_out_degree","most_replied_to","most_active_replier","num_components","largest_component_size","giant_component_pct","transitivity_val","avg_local_clustering","centralization_in"],["Date that the metrics were generated","Number of nodes (users) in network","Number of directed edges (reposts)","Total number of possible dyadic pairs","Proportion of possible edges present","Number of mutual dyads (both directions present)","Number of asymmetric dyads (one direction only)","Number of pairs with no connection between them","Longest shortest path between any two nodes","Average shortest path across all node pairs","Average number of adjacent nodes per node","Proportion of edges that are reciprocated (edgewise reciprocity)","Proportion of non-null dyads that are mutual (dyadic reciprocity)","Average number of incoming ties per node","Average number of outgoing ties per node","Node with highest in-degree (most replies received)","Node with highest out-degree (most replies/reposts sent)","Number of disconnected components","Nodes in largest connected component","Percentage of nodes in largest component","Global clustering coefficient (transitivity)","Mean of local clustering coefficients","Degree centralization index (in-degree)"],["2026-08-13","20024","91275","200470276","0.000223105394437627","36513","16426","200417337","9","3.55328568282187","12383","0.816370791038769","0.689718355087931","4.46723931282461","4.46723931282461","ciaraioch.bsky.social","sharrow.bsky.social","14","19996","99.8601677986416","0.313206466920503","0.123405494478069","0.377230544079184"],["2026-08-13","20024","91275","200470276","0.000227652203162528","1138","51801","200417337","9","0.176064329244446","12383","0.0478916066717346","0.0245332722483106","4.55828006392329","4.55828006392329","ciaraioch.bsky.social","sharrow.bsky.social","14","19996","99.8601677986416","0.0285373141033599","0.123405494478069","0.379373741673452"],["2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13","2026-08-13"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>metric<\/th>\n      <th>description<\/th>\n      <th>network/sna<\/th>\n      <th>igraph<\/th>\n      <th>run_date<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"orderable":false,"targets":0},{"name":" ","targets":0},{"name":"metric","targets":1},{"name":"description","targets":2},{"name":"network/sna","targets":3},{"name":"igraph","targets":4},{"name":"run_date","targets":5}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 </div>
 </div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="./images/degree_scatter.svg" class="img-fluid figure-img"></p>
-<figcaption>Out degree vs In degree</figcaption>
-</figure>
+<div class="column-page">
+<p><img src="./images/degree_scatter.svg" class="img-fluid"></p>
 </div>
+<p>[Out degree vs In degree]</p>
 <div class="cell">
 <div class="cell-output cell-output-stdout">
 <pre><code>Components: 14 (largest: 19996 = 99.9%)</code></pre>
@@ -293,8 +291,8 @@ IGRAPH 9f0b988 DNW- 20024 91275 --
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>            used   (Mb) gc trigger    (Mb)   max used    (Mb)
-Ncells   7502564  400.7  161859181  8644.3  225339433 12034.5
-Vcells 420825995 3210.7 1771106393 13512.5 2413809456 18416.0</code></pre>
+Ncells   7499739  400.6  198087234 10579.0  225336885 12034.3
+Vcells 420822959 3210.7 1771103964 13512.5 2413806404 18415.9</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>
@@ -456,9 +454,19 @@ mmdc.bsky.social                  203              196</code></pre>
 </section>
 <section id="network-sentiment" class="level2" data-number="4.2">
 <h2 data-number="4.2" class="anchored" data-anchor-id="network-sentiment"><span class="header-section-number">4.2</span> Network sentiment</h2>
-<p><a href="./images/nrcsentiment.svg">Overall Speirgorm Network Sentiment</a></p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./images/nrcsentiment.svg" class="img-fluid figure-img"></p>
+<figcaption>Overall Speirgorm Network Sentiment</figcaption>
+</figure>
+</div>
 <p>Timeline of posts for the communities in Speirgorm</p>
-<p><a href="./images/Post Timelines for Communities.svg">Posts timelines in the sub communities</a></p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./images/Post Timelines for Communities.svg" class="img-fluid figure-img"></p>
+<figcaption>Posts timelines in the sub communities</figcaption>
+</figure>
+</div>
 <p>To learn more about Quarto websites visit <a href="https://quarto.org/docs/websites" class="uri">https://quarto.org/docs/websites</a>.</p>
 <div class="cell">
 <div class="cell-output cell-output-stdout">
