@@ -1,7 +1,10 @@
 # NLP of posts using TidyText
-
-edges <- igraph::as_data_frame(g, what = "edges")
+set.seed(22230)
+num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
+#num_posts <- 1000
+g <- get_graph_data(num_posts)
 nodes <- igraph::as_data_frame(g, what = "vertices")
+edges <- igraph::as_data_frame(g, what = "edges")
 
 posts <- cbind(edges$to, edges$text, edges$created_at)
 posts <- as.data.frame(posts)
