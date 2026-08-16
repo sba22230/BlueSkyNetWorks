@@ -243,7 +243,8 @@ pick_unique_terms <- function(df) {
     purrr::list_rbind()
 }
 
-community_topics |>
+### TODO: fix the code below to show only 1 topic per square
+community_topics |> 
   filter(community %in% top6_comms) |>
   group_by(community) |>
   group_modify(~ pick_unique_terms(.x)) |>
@@ -522,7 +523,7 @@ community_sentiment_nrc |>
 # Community-size lookup derived from Louvain membership vector
 mem_tbl <- tibble::tibble(
   node = igraph::V(g)$name,
-  community = igraph::membership(comm_louvain)
+  community = igraph::V(g)$community
 )
 comm_sizes_tbl <- mem_tbl |> count(community, name = "size")
 
@@ -555,7 +556,7 @@ cos_mat <- cosine_sim(gamma_mat)
 # --- Cross-community edge density for each community pair --------------------
 
 el <- igraph::as_edgelist(g, names = FALSE)
-node_comm <- igraph::membership(comm_louvain)
+node_comm <- igraph::V(g)$community
 
 edge_comm_pairs <- tibble::tibble(
   c1 = node_comm[el[, 1]],
@@ -681,3 +682,4 @@ p_edge <- ggplot(
   theme(axis.text = element_text(size = 6), panel.grid = element_blank())
 
 p_cos / p_edge
+
