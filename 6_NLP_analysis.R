@@ -94,7 +94,7 @@ datatable(posts_dt)
 
 comm_1 <- posts_dt$community[1]
 comm_2 <- posts_dt$community[2]
-
+### TODO: figure do I want to keep this
 ViewPostsByDate(posts, comm_1, comm_2)
 
 tidy_posts <- posts |>
