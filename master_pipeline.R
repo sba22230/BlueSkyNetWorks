@@ -13,10 +13,13 @@ source("3_build_graph_and_metrics.R")
 cat("\n=== STEP 4: Visualisation exports ===\n")
 source("4_visualisation.R")
 
-cat("\n=== STEP 5: NLP analysis ===\n")
-source("Model_functions.R")
-source("5_NLP_analysis.R")
+cat("\n=== STEP 5: Community Analysis ===\n")
 
+cat("\n=== STEP 6: NLP analysis ===\n")
+source("Model_functions.R")
+source("6_NLP_analysis.R")
+
+cat("\n=== STEP 7: Text Analysis ===\n")
 # --- Example usage (adjust community IDs and paths to your data) ---
 # freq_plot      <- plot_author_word_freq(g)
 # comm_data      <- get_community_posts(g)
