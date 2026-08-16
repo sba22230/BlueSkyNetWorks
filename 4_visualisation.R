@@ -1,8 +1,9 @@
 source("0_functions.R")
 
 set.seed(22230)
-num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
-#num_posts <- 1000
+if (!exists("num_posts")  || is.null(num_posts)) {
+  num_posts <- 1000
+}
 g <- get_graph_data(num_posts)
 nodes <- igraph::as_data_frame(g, what = "vertices")
 edges <- igraph::as_data_frame(g, what = "edges")
