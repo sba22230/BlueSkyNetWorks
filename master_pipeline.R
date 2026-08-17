@@ -14,12 +14,16 @@ cat("\n=== STEP 4: Visualisation exports ===\n")
 source("4_visualisation.R")
 
 cat("\n=== STEP 5: Community Analysis ===\n")
+source("5_Communities.R")
 
 cat("\n=== STEP 6: NLP analysis ===\n")
 source("Model_functions.R")
 source("6_NLP_analysis.R")
 
 cat("\n=== STEP 7: Text Analysis ===\n")
+source("7_TextAnalysis.R")
+
+cat("\nPipeline complete.\n")
 # --- Example usage (adjust community IDs and paths to your data) ---
 # freq_plot      <- plot_author_word_freq(g)
 # comm_data      <- get_community_posts(g)
@@ -35,10 +39,3 @@ cat("\n=== STEP 7: Text Analysis ===\n")
 #
 # sentiment_models <- build_sentiment_models("data/sentimentdataset.csv")
 # sentiment_output <- plot_sentiment_distributions(g, sentiment_models)
-
-cat("\n=== STEP 6: Text analysis ===\n")
-
-source("6_TextAnalysis.R")
-
-
-cat("\nPipeline complete.\n")
