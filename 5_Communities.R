@@ -93,10 +93,10 @@ plot_community_svg <- function(entry, pal, save_graph_svg) {
   if (m == 0) {
     return(invisible(NULL))
   }
-  
+
   plot_nrow <- ceiling(sqrt(m))
   plot_ncol <- ceiling(m / plot_nrow)
-  
+
   save_graph_svg(
     plot_or_expr = function() {
       par(mfrow = c(plot_nrow, plot_ncol), mar = c(1, 1, 2, 1))
@@ -118,7 +118,8 @@ plot_community_svg <- function(entry, pal, save_graph_svg) {
           entry$id,
           " (",
           layout_name,
-          ") size: ", vcount(subg)
+          ") size: ",
+          vcount(subg)
         )
         igraph::plot.igraph(
           subg,
@@ -132,7 +133,7 @@ plot_community_svg <- function(entry, pal, save_graph_svg) {
       }
     },
     filename = paste0("Community_", entry$id, "_layouts.svg"),
-    folder = "docs/images"
+    folder = "images"
   )
   invisible(NULL)
 }

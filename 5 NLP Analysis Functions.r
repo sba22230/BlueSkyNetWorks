@@ -79,7 +79,7 @@ render_author_word_freq <- function(
   g,
   top_n = 2,
   filename = "author-word-freq.svg",
-  folder = "docs/images"
+  folder = "images"
 ) {
   result <- plot_author_word_freq(g, top_n = top_n)
   save_graph_svg(

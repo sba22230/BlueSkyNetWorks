@@ -8,7 +8,7 @@ source("0_functions.R")
 
 # Extract edge-level posts and attach community membership from the graph object
 set.seed(22230)
-if (!exists("num_posts")  || is.null(num_posts)) {
+if (!exists("num_posts") || is.null(num_posts)) {
   num_posts <- 1000
 }
 g <- get_graph_data(num_posts)
@@ -91,7 +91,7 @@ save_graph_svg(
     )
   },
   filename = "bingsentiment.svg",
-  folder = "docs/images"
+  folder = "images"
 )
 
 # --- NRC: 8 emotions + aggregate positive / negative -------------------------
@@ -149,7 +149,7 @@ save_graph_svg(
     )
   },
   filename = "afinnsentiment.svg",
-  folder = "docs/images"
+  folder = "images"
 )
 
 # =============================================================================
@@ -249,7 +249,7 @@ pick_unique_terms <- function(df) {
 }
 
 ### TODO: fix the code below to show only 1 topic per square
-community_topics |> 
+community_topics |>
   filter(community %in% top6_comms) |>
   group_by(community) |>
   group_modify(~ pick_unique_terms(.x)) |>
@@ -687,4 +687,3 @@ p_edge <- ggplot(
   theme(axis.text = element_text(size = 6), panel.grid = element_blank())
 
 p_cos / p_edge
-

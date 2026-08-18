@@ -1,7 +1,7 @@
 source("0_functions.R")
 
 set.seed(22230)
-if (!exists("num_posts")  || is.null(num_posts)) {
+if (!exists("num_posts") || is.null(num_posts)) {
   num_posts <- 1000
 }
 g <- get_graph_data(num_posts)
@@ -103,10 +103,13 @@ if (any(is.na(coords_df))) {
 vis_nodes$x <- coords_df[, 1]
 vis_nodes$y <- coords_df[, 2]
 
-min_coord_range <- min(coords_df[,1:2])
-max_coord_range <- max(coords_df[,1:2])
+min_coord_range <- min(coords_df[, 1:2])
+max_coord_range <- max(coords_df[, 1:2])
 
-scaled_z <- min_coord_range + ((vis_nodes$reposts_made - min(vis_nodes$reposts_made)) / (max(vis_nodes$reposts_made) - min(vis_nodes$reposts_made))) * (max_coord_range - min_coord_range)
+scaled_z <- min_coord_range +
+  ((vis_nodes$reposts_made - min(vis_nodes$reposts_made)) /
+    (max(vis_nodes$reposts_made) - min(vis_nodes$reposts_made))) *
+    (max_coord_range - min_coord_range)
 vis_nodes$z <- scaled_z
 top_nodes <- vis_nodes |> arrange(desc(degree)) |> slice(1:50) |> pull(id)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
@@ -144,11 +147,12 @@ edge_comm_df <- edges |>
 # Build a cross‑community interaction matrix:
 # Count how many edges go FROM each community TO each other community
 comm_matrix <- edge_comm_df |>
-  count(comm_from, comm_to) |>                 # count edges by (from, to)
-  pivot_wider(                                 # convert long → wide matrix
-    names_from = comm_to,                      # columns = target communities
-    values_from = n,                           # values = interaction counts
-    values_fill = 0                            # fill missing combos with 0
+  count(comm_from, comm_to) |> # count edges by (from, to)
+  pivot_wider(
+    # convert long → wide matrix
+    names_from = comm_to, # columns = target communities
+    values_from = n, # values = interaction counts
+    values_fill = 0 # fill missing combos with 0
   )
 
 comm_matrix
@@ -158,17 +162,17 @@ library(lattice)
 
 # Identify the top 20 communities by total outgoing interactions
 top_comms <- comm_matrix |>
-  mutate(total = rowSums(across(-comm_from))) |>  # sum interactions across all targets
-  slice_max(total, n = 20) |>                     # pick top 20 communities
-  pull(comm_from) |>                              # extract their names
+  mutate(total = rowSums(across(-comm_from))) |> # sum interactions across all targets
+  slice_max(total, n = 20) |> # pick top 20 communities
+  pull(comm_from) |> # extract their names
   as.character()
 
 # Subset the matrix to only the top communities (rows + matching columns)
 mat <- comm_matrix |>
-  filter(comm_from %in% top_comms) |>             # keep only top communities (rows)
-  select(comm_from, any_of(top_comms)) |>         # keep only matching columns
-  tibble::column_to_rownames("comm_from") |>      # convert rownames
-  as.matrix()                                     # convert to numeric matrix
+  filter(comm_from %in% top_comms) |> # keep only top communities (rows)
+  select(comm_from, any_of(top_comms)) |> # keep only matching columns
+  tibble::column_to_rownames("comm_from") |> # convert rownames
+  as.matrix() # convert to numeric matrix
 
 # Log-transform the matrix (log1p handles zeros safely)
 mat_log <- log1p(mat)
@@ -176,15 +180,14 @@ mat_log <- log1p(mat)
 # Heatmap of cross-community interactions
 plotobj <- levelplot(
   mat_log,
-  xlab = "Community (to)",                        # x-axis label
-  ylab = "Community (from)",                      # y-axis label
+  xlab = "Community (to)", # x-axis label
+  ylab = "Community (from)", # y-axis label
   main = "Cross-community interactions (log scale)",
-  col.regions = viridis::viridis(100),            # color palette
-  scales = list(x = list(rot = 45))               # rotate x labels for readability
+  col.regions = viridis::viridis(100), # color palette
+  scales = list(x = list(rot = 45)) # rotate x labels for readability
 )
 
 # This produces a clear heatmap showing interaction intensity between communities
-
 
 save_graph_svg(
   plotobj,
@@ -202,49 +205,49 @@ cat("\n=== ANALYZING COMMUNITIES ===\n")
 
 # Summarise node‑level metrics at the community level
 community_analysis <- vis_nodes |>
-  
+
   # Group all nodes by their community assignment
   group_by(community) |>
-  
+
   summarise(
     # --- Size & structural composition ---
-    
-    size = n(),                                   # number of nodes in the community
+
+    size = n(), # number of nodes in the community
     isolated_count = sum(isolated, na.rm = TRUE), # nodes marked as isolated (no edges)
-    active_members = sum(!isolated, na.rm = TRUE),# nodes that are not isolated
-    isolated_pct = isolated_count / size,         # proportion of isolated nodes
-    
+    active_members = sum(!isolated, na.rm = TRUE), # nodes that are not isolated
+    isolated_pct = isolated_count / size, # proportion of isolated nodes
+
     # --- Connectivity metrics ---
     # degree = number of edges connected to the node
-    
-    avg_degree = mean(degree, na.rm = TRUE),      # average degree within the community
-    max_degree = max(degree, na.rm = TRUE),       # most connected node
+
+    avg_degree = mean(degree, na.rm = TRUE), # average degree within the community
+    max_degree = max(degree, na.rm = TRUE), # most connected node
     median_degree = median(degree, na.rm = TRUE), # typical degree (robust to outliers)
-    
+
     # --- Engagement metrics ---
     # 'value' appears to be repost_count or similar engagement measure
-    
+
     avg_repost_count = mean(value, na.rm = TRUE), # average engagement per member
-    max_repost_count = max(value, na.rm = TRUE),  # highest engagement in the community
-    
+    max_repost_count = max(value, na.rm = TRUE), # highest engagement in the community
+
     # --- Temporal reach ---
     # earliestPost / latestPost describe first/last activity timestamps
-    
+
     earliest_first_seen = min(earliestPost, na.rm = TRUE), # earliest activity in community
-    latest_last_seen = max(latestPost, na.rm = TRUE),       # most recent activity
-    
+    latest_last_seen = max(latestPost, na.rm = TRUE), # most recent activity
+
     # --- Influencer extraction ---
     # Sort members by degree (descending), take top 3 names, collapse into a string
-    
+
     top_member = paste(
-      head(name[order(desc(degree))], 3),          # top 3 by degree
+      head(name[order(desc(degree))], 3), # top 3 by degree
       collapse = ", "
     ),
-    
+
     # Drop grouping after summarise
     .groups = "drop"
   ) |>
-  
+
   # Order communities by size (largest first)
   arrange(desc(size))
 
@@ -314,7 +317,7 @@ for (comm_id in sort(unique(vis_nodes$community))) {
     arrange(desc(degree)) |>
     slice(1:10) |>
     pull(id)
-  
+
   comm_type <- unique(vis_nodes$community_type[vis_nodes$community == comm_id])
   cat(sprintf("\nCommunity %d (%s) - Top 10 Members:\n", comm_id, comm_type))
   cat(paste(members, collapse = ", "))
@@ -518,11 +521,14 @@ rxWriteObject(
   overwrite = TRUE
 )
 ## Export the Visnetwork into GEXF with visual encodings preserved
-# Node sizes 
+# Node sizes
 min_size <- 1
 max_size <- 30
 
-scaled_sizes <- min_size + ((vis_nodes$reposts_made - min(vis_nodes$reposts_made)) / (max(vis_nodes$reposts_made) - min(vis_nodes$reposts_made))) * (max_size - min_size)
+scaled_sizes <- min_size +
+  ((vis_nodes$reposts_made - min(vis_nodes$reposts_made)) /
+    (max(vis_nodes$reposts_made) - min(vis_nodes$reposts_made))) *
+    (max_size - min_size)
 
 # Nodes (basic)
 ge_nodes <- data.frame(
@@ -572,8 +578,7 @@ ge_nodesVizAtt <- list(
     y = vis_nodes$y,
     z = vis_nodes$z
   ),
-  size = scaled_sizes
-  ,
+  size = scaled_sizes,
   color = data.frame(
     r = as.integer(node_rgba_df$r),
     g = as.integer(node_rgba_df$g),
@@ -730,7 +735,6 @@ datatable(top_reposters, caption = "Top 10 Accounts by Reposts Made")
 #   cex = 0.5,
 #   col = 2
 # )
-
 
 tobermvd <- c(
   'bluSkynet',

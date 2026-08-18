@@ -1,7 +1,7 @@
 # NLP of posts using TidyText
 source("0_functions.R")
 set.seed(22230)
-if (!exists("num_posts")  || is.null(num_posts)) {
+if (!exists("num_posts") || is.null(num_posts)) {
   num_posts <- 1000
 }
 g <- get_graph_data(num_posts)
@@ -257,7 +257,7 @@ show_plots <- function(plots, page = 1, per_page = 4) {
       title("Word Comparison by Community", outer = TRUE, cex.main = 1.2)
     },
     filename = svg_filename,
-    folder = "docs/images",
+    folder = "images",
     width = 16,
     height = 12
   )

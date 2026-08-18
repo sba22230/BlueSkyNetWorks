@@ -2,7 +2,7 @@ source("0_functions.R")
 
 set.seed(22230)
 num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
-if (!exists("num_posts")  || is.null(num_posts)) {
+if (!exists("num_posts") || is.null(num_posts)) {
   num_posts <- 1000
 }
 #
@@ -128,7 +128,7 @@ save_graph_svg(
       prob = TRUE
     )
   },
-  folder = "docs/images",
+  folder = "images",
   filename = "indegree_dist.svg"
 )
 
@@ -141,7 +141,7 @@ save_graph_svg(
       prob = TRUE
     )
   },
-  folder = "docs/images",
+  folder = "images",
   filename = "outdegree_dist.svg"
 )
 
@@ -266,8 +266,8 @@ datatable(comparison_table)
 # SECTION 3: Ploting Network - Components, islands of nodes in the overall network
 # ============================================================================
 # Ensure output directory exists before saving SVGs
-if (!dir.exists("docs/images")) {
-  dir.create("docs/images", recursive = TRUE)
+if (!dir.exists("images")) {
+  dir.create("images", recursive = TRUE)
 }
 
 cat("\n=== Step 3g: Plot the small components of the Graph ===\n")
@@ -313,7 +313,7 @@ save_graph_svg(
 
     par(old_par)
   },
-  folder = "docs/images",
+  folder = "images",
   filename = "igraph_small_components.svg"
 )
 
@@ -360,7 +360,7 @@ save_graph_svg(
 
     par(old_par)
   },
-  folder = "docs/images",
+  folder = "images",
   filename = "sna_small_components.svg"
 )
 
@@ -617,7 +617,7 @@ render_one_graph <- function(task) {
       )
     },
     filename = out_file,
-    folder = "docs/images"
+    folder = "images"
   )
   invisible(out_file)
 }
@@ -659,7 +659,7 @@ save_graph_svg(
     )
   },
   filename = "gtn_TopNodes_Speirgorm_Network.svg",
-  folder = "docs/images"
+  folder = "images"
 )
 # rxWriteObject(
 #   ds_Graphs,
@@ -689,15 +689,15 @@ unique_ym <- sort(unique(year_month))
 
 # Worker function: processes one year-month slice
 process_ym <- function(
-    ym,
-    year_month,
-    g,
-    pal,
-    ds_Graphs,
-    save_graph_svg,
-    save_network_svg,
-    plot_word_comparison_date,
-    render_word_comparison_date
+  ym,
+  year_month,
+  g,
+  pal,
+  ds_Graphs,
+  save_graph_svg,
+  save_network_svg,
+  plot_word_comparison_date,
+  render_word_comparison_date
 ) {
   library(dplyr)
   library(stringr)
@@ -714,7 +714,7 @@ process_ym <- function(
   if (length(eids) == 0) {
     return(NULL)
   }
-  
+
   nrc <- get_sentiments("nrc")
   sub_g <- igraph::subgraph.edges(g, eids, delete.vertices = TRUE)
   sub_net <- asNetwork(sub_g)
@@ -723,7 +723,7 @@ process_ym <- function(
   # Extract edge-level posts and attach community membership from the graph object
   nodes <- igraph::as_data_frame(sub_g, what = "vertices")
   edges <- igraph::as_data_frame(sub_g, what = "edges")
-  
+
   posts <- data.frame(
     name = edges$from,
     text = edges$text,
@@ -731,7 +731,7 @@ process_ym <- function(
     document = seq_len(nrow(edges))
   ) |>
     merge(nodes[, c("name", "community")], by = "name", all.x = TRUE)
-  
+
   # Tokenise, clean, and remove stop words.
   # Returns one row per (document, word) with community membership preserved.
   build_tidy_posts <- function(df) {
@@ -747,7 +747,7 @@ process_ym <- function(
         "irish"
       )
     )
-    
+
     df |>
       dplyr::filter(!stringr::str_detect(text, "^RT")) |>
       dplyr::mutate(
@@ -765,35 +765,35 @@ process_ym <- function(
       ) |>
       dplyr::mutate(document = as.integer(document))
   }
-  
+
   tidy_posts <- build_tidy_posts(posts)
-  
+
   sentiment_analysis <- tidy_posts |>
     inner_join(nrc, by = "word", relationship = "many-to-many")
-  
+
   sentiment_summary <- sentiment_analysis |>
     count(sentiment, sort = TRUE)
-  
+
   counts <- sentiment_summary$n
   names(counts) <- sentiment_summary$sentiment
   counts <- counts[order(counts)]
   global_freq <- tidy_posts |>
     count(word, sort = TRUE)
-  
+
   make_wordcloud_base <- function(freq_df) {
     wordcloud(
       words = freq_df$word,
-      freq  = freq_df$n,
+      freq = freq_df$n,
       max.words = 200,
       random.order = FALSE,
       rot.per = 0.35,
       colors = RColorBrewer::brewer.pal(8, "Dark2")
     )
   }
-  
+
   # build a grid layout for the plots: 3 rows, 2 columns
-  grid_matrix <- matrix(c(1,2,1,3,1, 4), nrow = 3, byrow = TRUE)
-  
+  grid_matrix <- matrix(c(1, 2, 1, 3, 1, 4), nrow = 3, byrow = TRUE)
+
   # plot creation
   cat(
     "Created subgraph for",
@@ -804,9 +804,9 @@ process_ym <- function(
     ecount(sub_g),
     "edges\n"
   )
-  
+
   main_title <- paste0("Sub Graph ", vcount(sub_g), " nodes\n(", ym, ")")
-  
+
   # Precompute vertex aesthetics (bug fix: subg -> sub_g)
   vsize <- if (!is.null(V(sub_g)$pagerank)) {
     V(sub_g)$pagerank + 1
@@ -818,11 +818,11 @@ process_ym <- function(
   } else {
     "steelblue"
   }
-  
-  out_file <- paste0("docs/images/SubGraph_", ym, ".svg")
+
+  out_file <- paste0("images/SubGraph_", ym, ".svg")
   svg(out_file, width = 20, height = 12)
   layout(grid_matrix)
-  
+
   # Plot the subgraph using igraph
   plot.igraph(
     sub_g,
@@ -833,7 +833,7 @@ process_ym <- function(
     edge.arrow.size = 0.3,
     vertex.color = vcol
   )
-  
+
   # Plot 2 the sentiment barplot
   barplot(
     counts,
@@ -844,12 +844,18 @@ process_ym <- function(
     xlab = "Count",
     las = 1
   )
-  
+
   # Plot 3 the word cloud
-  make_wordcloud_base(global_freq)  # row 2 col 2
-  
+  make_wordcloud_base(global_freq) # row 2 col 2
+
   # Plot 4 the degree scatter plot
-  plot(bsn_ideg, bsn_odeg, type = "n", xlab = "Re-posts received", ylab = "Re-posts made")
+  plot(
+    bsn_ideg,
+    bsn_odeg,
+    type = "n",
+    xlab = "Re-posts received",
+    ylab = "Re-posts made"
+  )
   abline(0, 1, lty = 3)
   text(
     jitter(bsn_ideg, factor = 0.5, amount = 0.5),
@@ -858,9 +864,9 @@ process_ym <- function(
     cex = 0.9,
     col = 2
   )
-  
+
   dev.off()
-  
+
   # Each worker writes its own keys — no contention
   rxWriteObject(
     ds_Graphs,
