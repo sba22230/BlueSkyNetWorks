@@ -4,7 +4,7 @@
     "href": "index.html",
     "title": "Speirgorm Bluesky Network Analysis",
     "section": "",
-    "text": "here() starts at L:/Source/Repos/BlueSkyNetWorks/docs\n\n\nknitr root.dir set to: L:\\Source\\Repos\\BlueSkyNetWorks\nThis is a Quarto web site showing an R-based social network analysis project that collects, processes, and analyses interaction data from the Bluesky social media platform. The project downloads discussions around the #Speirgorm hashtag, constructing directed networks of reposts for graph-theoretic analysis, community detection, and NLP-based post analysis.\nA side project was getting RevoScaleR working with SQL 2025 and “R version 4.6.0 (2026-04-24 ucrt)”, the instructions for installing RevoScaleR are to be found here"
+    "text": "here() starts at /home/sba22230/Source/Repos/BlueSkyNetWorks/docs\n\n\nknitr root.dir set to: /home/sba22230/Source/Repos/BlueSkyNetWorks\nThis is a Quarto web site showing an R-based social network analysis project that collects, processes, and analyses interaction data from the Bluesky social media platform. The project downloads discussions around the #Speirgorm hashtag, constructing directed networks of reposts for graph-theoretic analysis, community detection, and NLP-based post analysis.\nA side project was getting RevoScaleR working with SQL 2025 and “R version 4.6.0 (2026-04-24 ucrt)”, the instructions for installing RevoScaleR are to be found here"
   },
   {
     "objectID": "index.html#overview",

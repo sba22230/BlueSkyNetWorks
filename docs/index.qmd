@@ -55,6 +55,7 @@ format:
     toc: true
     number-sections: true
     css: styles.css
+    lightbox: true
 ---
 
 This is a Quarto web site showing an R-based social network analysis project that collects, processes, and analyses interaction data from the [Bluesky](https://bsky.app/) social media platform. The project downloads discussions around the **#Speirgorm** hashtag, constructing directed networks of reposts for graph-theoretic analysis, community detection, and NLP-based post analysis.
@@ -111,7 +112,7 @@ source("0_functions.R")
 
 set.seed(22230)
 num_posts <- nrow(read_parquet("./docs/graphs/speirgorm_edges.parquet"))
-#num_posts <- 5000
+num_posts <- 5000
 
 cat("\n=== Step 3a: Build igraph object and plot basic network ===\n")
 # Step 3: Build igraph object and plot basic network
@@ -506,7 +507,7 @@ cat("  Use community_stats to understand cluster structure\n\n")
 
 ## Network sentiment 
 
-![Overall Speirgorm Network Sentiment](./images/nrcsentiment.svg)
+![Overall Speirgorm Network Sentiment](nrcsentiment.svg)
 
 Timeline of posts for the communities in Speirgorm 
 
