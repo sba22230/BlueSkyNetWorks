@@ -191,7 +191,7 @@ plotobj <- levelplot(
 
 save_graph_svg(
   plotobj,
-  filename = "Cross Community interaction.svg",
+  filename = "Cross_Community_interaction.svg",
   folder = "docs/images"
 )
 
