@@ -184,7 +184,7 @@ plot_community_timelines <- function(posts_df) {
   title("Post Timelines for Communities", outer = TRUE, cex.main = 1.2)
 }
 
-out_file <- "Post Timelines for Communities.svg"
+out_file <- "Post_Timelines_for_Communities.svg"
 save_graph_svg(
   plot_or_expr = function() {
     plot_community_timelines(all_posts)
@@ -484,3 +484,4 @@ barchart(
     )
   )
 )
+

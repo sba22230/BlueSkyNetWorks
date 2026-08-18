@@ -3,6 +3,7 @@ output: html_document
 editor_options: 
   chunk_output_type: console
 ---
+
 ```{r setup}
 #| label: R Setup
 #| echo: false
@@ -314,10 +315,13 @@ comparison_table <- bind_rows(
 #| label: Show Datatable
 datatable(comparison_table)
 ```
-:::{.column-page}
+
+::: column-page
 ![](./images/degree_scatter.svg)
 :::
-[Out degree vs In degree]
+
+\[Out degree vs In degree\]
+
 ```{r}
 cat(sprintf(
   "Components: %d (largest: %d = %.1f%%)\n",
@@ -505,13 +509,13 @@ cat("  Use community_stats to understand cluster structure\n\n")
 
 {{< video ./video/SpeirgormTimeline.mp4 >}}
 
-## Network sentiment 
+## Network sentiment
 
-![Overall Speirgorm Network Sentiment](nrcsentiment.svg)
+![Overall Speirgorm Network Sentiment](./images/nrcsentiment.svg)
 
-Timeline of posts for the communities in Speirgorm 
+Overall Speirgorm Network SentimentTimeline of posts for the communities in Speirgorm
 
-![Posts timelines in the sub communities](./images/Post Timelines for Communities.svg)
+![Posts timelines in the sub communities](./images/Post_Timelines_for_Communities.svg)
 
 To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
 
