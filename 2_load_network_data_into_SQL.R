@@ -601,6 +601,28 @@ cat(
   "\n=== Step 2m: Created edges and nodes csv files for later ===\n"
 )
 
+cat(
+  "\n=== Step 2n: Run remaining stored procedures in SQL server===\n"
+)
+
+tryCatch(
+  {
+    dbExecute(odbc_con, "EXEC InsertGlobalMetrics;")
+  },
+  error = function(e) {
+    cat("  ⚠ Global Metrics computation warning:", e$message, "\n")
+  }
+)
+
+tryCatch(
+  {
+    dbExecute(odbc_con, "EXEC Insert_community_stats;")
+  },
+  error = function(e) {
+    cat("  ⚠ Community stats computation warning:", e$message, "\n")
+  }
+)
+
 tobermvd <- c(
   'posts_local',
   'reposts_local',
