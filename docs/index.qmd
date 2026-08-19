@@ -9,24 +9,13 @@ editor_options:
 # Load knitr
 library(knitr)
 library(here)
-# Drop-in replacement: always returns parent of here() root
+# Return a path relative to the project root detected by here.
 here_parent <- function(...) {
-  # Get the current here() root
   root <- here::here()
-
-  # Go one level up
-  parent_root <- normalizePath(
-    file.path(root, ".."),
-    winslash = "/",
-    mustWork = FALSE
-  )
-
-  # Append any extra path components passed in (...)
-  if (nargs() > 0) {
-    return(file.path(parent_root, ...))
-  } else {
-    return(parent_root)
+  if (!file.exists(file.path(root, "0_functions.R"))) {
+    root <- file.path(root, "..")
   }
+  normalizePath(file.path(root, ...), winslash = "/", mustWork = FALSE)
 }
 
 # Set global chunk options
@@ -97,7 +86,7 @@ echo <- FALSE
 source(here_parent("0_functions.R"))
 
 set.seed(22230)
-num_posts <- nrow(read_parquet(here_parent("docs/graphs", "speirgorm_edges.parquet")))
+num_posts <- nrow(read_parquet(here_parent("docs", "graphs", "speirgorm_edges.parquet")))
 num_posts <- 15000
 
 cat("\n=== Step 3a: Build igraph object and plot basic network ===\n")

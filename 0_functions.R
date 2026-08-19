@@ -95,26 +95,14 @@ library(wordcloud2)
 
 #### Path Functions ####
 library(here)
-# Drop-in replacement: always returns parent of here() root
+# Return a path relative to the project root detected by here.
 here_parent <- function(...) {
-  # Get the current here() root
   root <- here::here()
-
-  # Go one level up
-  parent_root <- normalizePath(
-    file.path(root, ".."),
-    winslash = "/",
-    mustWork = FALSE
-  )
-
-  # Append any extra path components passed in (...)
-  if (nargs() > 0) {
-    return(file.path(parent_root, ...))
-  } else {
-    return(parent_root)
+  if (!file.exists(file.path(root, "0_functions.R"))) {
+    root <- file.path(root, "..")
   }
+  normalizePath(file.path(root, ...), winslash = "/", mustWork = FALSE)
 }
-
 
 
 #### Blue Sky Functions ####
@@ -629,9 +617,16 @@ if (v$os != "linux-gnu" && sql_server_available()) {
 #### Graph Function ####
 get_graph_data <- function(num_posts) {
   # Step 1: Load data
-  edges_df <- read_parquet(here_parent("docs", "graphs", "speirgorm_edges.parquet"))
-  nodes_df <- read_parquet(here_parent("docs", "graphs", "speirgorm_nodes.parquet"))
-
+  edges_df <- read_parquet(here_parent(
+    "docs",
+    "graphs",
+    "speirgorm_edges.parquet"
+  ))
+  nodes_df <- read_parquet(here_parent(
+    "docs",
+    "graphs",
+    "speirgorm_nodes.parquet"
+  ))
 
   # plan(multisession, workers = wrkrs)  ## to be moved closer to its use
   # ============================================================================
