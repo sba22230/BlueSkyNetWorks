@@ -2,19 +2,19 @@
 # SECTION 5: COMMUNITY STRUCTURE ANALYSIS
 # ============================================================================
 
-cat("\n=== Step 4b: Computing community structure... ===\n")
+cat("\n=== Step 5a: Computing community structure... ===\n")
 # Re-compute if necessary
 #comm_louvain <- igraph::cluster_louvain(as_undirected(g)) #-- computed in SQL
 #comm_louvain <- igraph::cluster_leiden(as_undirected(g), objective_function = 'modularity', n_iterations = 45, initial_membership = V(g)$community , resolution = 1)
 num_communities <- length(unique(V(g)$community))
 modularity_louvain <- modularity(g, V(g)$community)
 cat(sprintf(
-  "\n=== Step 4c: Leiden detection: %d communities, modularity = %.4f ===\n",
+  "\n=== Step 5b: Leiden detection: %d communities, modularity = %.4f ===\n",
   num_communities,
   modularity_louvain
 ))
 
-cat("\n=== Step 4c: Extracting Community Subgraphs ===\n")
+cat("\n=== Step 5c: Extracting Community Subgraphs ===\n")
 # Assuming you have your community detection results
 #communities <- comm_louvain # or your preferred method
 membership <- setNames(as.numeric(V(g)$community), V(g)$name)
@@ -29,7 +29,7 @@ community_graphs <- lapply(top_10_ids, function(id) {
 })
 
 
-cat("\n=== Step 4d: Computing layouts for each community in parallel ===\n")
+cat("\n=== Step 5d: Computing layouts for each community in parallel ===\n")
 # compute layouts in parallel for all community x layout combinations
 layout_types <- c(
   "drl_fast",
@@ -79,7 +79,7 @@ for (k in seq_along(res_all)) {
 }
 
 cat(
-  "\n=== Step 4e: Layouts computed for each community and plotting the graphs ===\n"
+  "\n=== Step 5e: Layouts computed for each community and plotting the graphs ===\n"
 )
 
 pal <- viridis::viridis(max(V(g)$kcore, na.rm = TRUE) + 1)
@@ -161,12 +161,12 @@ names(community_graphs) <- paste0("Community_", top_10_ids)
 rxWriteObject(ds_Graphs, "Community Graphs", community_graphs, overwrite = TRUE)
 
 cat(
-  "\n=== Step 4f: Analyze Internal Structure, 
+  "\n=== Step 5f: Analyze Internal Structure, 
 For each community subgraph, examine: ===\n"
 )
 # Batch Analysis
 # Analyze all top 10 at once
-cat("\n=== Step 4g: Batch analysis of community metrics ===\n")
+cat("\n=== Step 5g: Batch analysis of community metrics ===\n")
 community_metrics <- data.frame(
   community = names(community_graphs),
   size = sapply(community_graphs, vcount),

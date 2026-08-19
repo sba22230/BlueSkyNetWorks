@@ -1,13 +1,11 @@
 source("0_functions.R")
 
+cat("\n=== Step 3a: Build igraph object and plot basic network ===\n")
 set.seed(22230)
 num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
 if (!exists("num_posts") || is.null(num_posts)) {
-  num_posts <- 1000
+  num_posts <- 5000
 }
-#
-
-cat("\n=== Step 3a: Build igraph object and plot basic network ===\n")
 # Step 3: Build igraph object and plot basic network
 g <- get_graph_data(num_posts)
 cat("Graph summary:\n")
@@ -994,7 +992,9 @@ rxWriteObject(
 # ============================================================================
 # SECTION 6: SAVE RESULTS
 # ============================================================================
-
+cat(
+  "\n=== Step 3r: Print out the summary metrics ===\n"
+)
 # Summary report
 cat("\n" %+% strrep("=", 70) %+% "\n")
 cat("METRICS COMPUTATION SUMMARY\n")

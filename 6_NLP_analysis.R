@@ -8,6 +8,9 @@ g <- get_graph_data(num_posts)
 nodes <- igraph::as_data_frame(g, what = "vertices")
 edges <- igraph::as_data_frame(g, what = "edges")
 
+cat(
+  "\n=== Step 6a: Build posts dataframe for NLP analysis ===\n"
+)
 posts <- cbind(edges$to, edges$text, edges$created_at)
 posts <- as.data.frame(posts)
 posts <- posts |> mutate(V3 = lubridate::ymd(V3))
@@ -52,7 +55,9 @@ frequency <- frequency |>
   arrange(name1, name2)
 
 cols <- setdiff(names(frequency), "word")
-
+cat(
+  "\n=== Step 6b: Plot the frequency comparison of top 2 authors ===\n"
+)
 library(scales)
 ggplot(
   frequency,
@@ -69,6 +74,9 @@ ggplot(
   ) +
   theme_minimal()
 
+cat(
+  "\n=== Step 6c: Examining community posts ===\n"
+)
 # Adding Community to the posts data frame
 nodes <- igraph::as_data_frame(g, what = "vertices")
 edges <- igraph::as_data_frame(g, what = "edges")
@@ -122,6 +130,9 @@ counts <- counts_long |>
 
 ViewCommunityContrastedByWords(totals, counts, tidy_posts, comm_1, comm_2)
 
+cat(
+  "\n=== Step 6d: Examining community posts timelines ===\n"
+)
 community_graphs <- rxReadObject(ds_Graphs, "Community Graphs")
 #community_graphs <- comm
 n_comm <- length(community_graphs)
@@ -268,7 +279,9 @@ show_plots(plots, page = 2, per_page = 4)
 show_plots(plots, page = 3, per_page = 4)
 
 ### Model Building ###
-
+cat(
+  "\n=== Step 6e: Building NLP models - TBD ===\n"
+)
 posts <- cbind(edges$from, edges$text, edges$created_at)
 posts <- as.data.frame(posts)
 posts <- posts |>
@@ -320,6 +333,9 @@ posts_joined <- tibble(document = word_rownames) %>%
       select(document, community)
   )
 
+cat(
+  "\n=== Step 6f: Building glmnet models ===\n"
+)
 library(glmnet)
 library(doParallel)
 
@@ -432,6 +448,9 @@ y <- droplevels(y)
 pred <- factor(pred, levels = levels(y))
 confusionMatrix(pred, y)
 
+cat(
+  "\n=== Step 6g: Building Bayesian Sentiment Analysis models ===\n"
+)
 # Bayesian Sentiment Analysis — train on the sparse DTM directly.
 # fastNaiveBayes accepts dgCMatrix so we avoid materialising the dense matrix.
 library(fastNaiveBayes)
@@ -484,4 +503,3 @@ barchart(
     )
   )
 )
-

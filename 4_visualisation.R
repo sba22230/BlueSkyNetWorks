@@ -60,6 +60,7 @@ sorted_ids <- vis_nodes |>
   arrange((name)) |>
   pull(id)
 
+cat("\n===  Step 4b: Load precomputed 'nicely' layout coordinates from SQL ===")
 # --- Load precomputed 'nicely' layout coordinates from SQL ---
 res_g <- tryCatch(
   rxReadObject(ds_Graphs, "layout_exec_results"),
@@ -144,6 +145,7 @@ edge_comm_df <- edges |>
   # Rename the joined community column
   rename(comm_to = community)
 
+cat("\n===  Step 4c: Build a cross‑community interaction matrix ===")
 # Build a cross‑community interaction matrix:
 # Count how many edges go FROM each community TO each other community
 comm_matrix <- edge_comm_df |>
@@ -156,7 +158,6 @@ comm_matrix <- edge_comm_df |>
   )
 
 comm_matrix
-
 
 library(lattice)
 
@@ -200,8 +201,7 @@ save_graph_svg(
 # ========================================================================
 # Analyze what defines each community to create meaningful labels
 # TBD needs to use the communities already computed
-
-cat("\n=== ANALYZING COMMUNITIES ===\n")
+cat("\n===  Step 4d: ANALYZING COMMUNITIES ===")
 
 # Summarise node‑level metrics at the community level
 community_analysis <- vis_nodes |>
@@ -251,8 +251,8 @@ community_analysis <- vis_nodes |>
   # Order communities by size (largest first)
   arrange(desc(size))
 
+cat("\n===  Step 4e: Community Statistics: ===")
 
-cat("Community Statistics:\n")
 datatable(slice(community_analysis, 1:10))
 
 # Pre-compute thresholds once to avoid repeated evaluation inside mutate()
@@ -306,11 +306,11 @@ community_labels <- community_analysis |>
     isolated_pct
   )
 
-cat("\n=== COMMUNITY LABELS & TYPES ===\n")
+cat("\n===  Step 4e: COMMUNITY LABELS & TYPES ===")
 datatable(slice(community_labels, 1:10))
 
 # Print community members for inspection
-cat("\n=== COMMUNITY MEMBERSHIP BREAKDOWN ===\n")
+cat("\n===  Step 4f: COMMUNITY MEMBERSHIP BREAKDOWN ===\n")
 for (comm_id in sort(unique(vis_nodes$community))) {
   members <- vis_nodes |>
     filter(community == comm_id) |>
@@ -324,6 +324,7 @@ for (comm_id in sort(unique(vis_nodes$community))) {
   cat("\n")
 }
 
+cat("\n===  Step 4g: Build out the Visnetwork object ===\n")
 # Map labels back to vis_nodes
 community_label_map <- setNames(
   community_labels$label,
@@ -520,6 +521,9 @@ rxWriteObject(
   vis_obj,
   overwrite = TRUE
 )
+cat(
+  "\n===  Step 4h: Saved the Visnetwork object, Export the Visnetwork into GEXF with visual encodings preserved ===\n"
+)
 ## Export the Visnetwork into GEXF with visual encodings preserved
 # Node sizes
 min_size <- 1
@@ -704,7 +708,9 @@ rxWriteObject(
   gexf_obj,
   overwrite = TRUE
 )
-
+cat(
+  "\n===  Step 4i: Saved the Gephi object, display top authors and reposters ===\n"
+)
 posts_df <- read_parquet("data/speirgorm_network.parquet")
 top_authors_reposted <- posts_df |>
   group_by(PostedBy) |>
