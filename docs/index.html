@@ -188,9 +188,6 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output cell-output-stderr">
 <pre><code>here() starts at L:/Source/Repos/BlueSkyNetWorks/docs</code></pre>
 </div>
-<div class="cell-output cell-output-stderr">
-<pre><code>knitr root.dir set to: L:\Source\Repos\BlueSkyNetWorks</code></pre>
-</div>
 </div>
 <p>This is a Quarto web site showing an R-based social network analysis project that collects, processes, and analyses interaction data from the&nbsp;<a href="https://bsky.app/">Bluesky</a>&nbsp;social media platform. The project downloads discussions around the&nbsp;<strong>#Speirgorm</strong>&nbsp;hashtag, constructing directed networks of reposts for graph-theoretic analysis, community detection, and NLP-based post analysis.</p>
 <p>A side project was getting RevoScaleR working with SQL 2025 and “R version 4.6.0 (2026-04-24 ucrt)”, the instructions for installing RevoScaleR are to be found <a href="https://learn.microsoft.com/en-us/sql/machine-learning/install/sql-machine-learning-services-windows-install-sql-2022?view=sql-server-ver17" title="Install SQL ML services on SQL 2022">here</a></p>
@@ -228,7 +225,7 @@ ul.task-list li input[type="checkbox"] {
 <pre><code>Graph summary:</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>IGRAPH f0740f3 DNW- 6078 15000 -- 
+<pre><code>IGRAPH d007b0b DNW- 6078 15000 -- 
 + attr: name (v/c), earliestPost (v/c), latestPost (v/c),
 | posts_authored (v/n), reposts_made (v/n), reposts_received (v/n),
 | total_likes_on_posts (v/n), total_replies_on_posts (v/n),
@@ -241,7 +238,7 @@ ul.task-list li input[type="checkbox"] {
 | (e/c), created_at (e/c), like_count (e/n), reply_count (e/n),
 | bookmark_count (e/n), repost_count (e/n), betweenness (e/n), weight
 | (e/n), edgeStarts (e/c), edgeEnds (e/c), text (e/c)
-IGRAPH f0740f3 DNW- 6078 15000 -- 
+IGRAPH d007b0b DNW- 6078 15000 -- 
 + attr: name (v/c), earliestPost (v/c), latestPost (v/c),
 | posts_authored (v/n), reposts_made (v/n), reposts_received (v/n),
 | total_likes_on_posts (v/n), total_replies_on_posts (v/n),
@@ -254,7 +251,7 @@ IGRAPH f0740f3 DNW- 6078 15000 --
 | (e/c), created_at (e/c), like_count (e/n), reply_count (e/n),
 | bookmark_count (e/n), repost_count (e/n), betweenness (e/n), weight
 | (e/n), edgeStarts (e/c), edgeEnds (e/c), text (e/c)
-+ edges from f0740f3 (vertex names):</code></pre>
++ edges from d007b0b (vertex names):</code></pre>
 </div>
 </div>
 </section>
@@ -294,8 +291,8 @@ IGRAPH f0740f3 DNW- 6078 15000 --
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>           used  (Mb) gc trigger   (Mb)  max used   (Mb)
-Ncells  5481315 292.8   24609527 1314.3  26075058 1392.6
-Vcells 48418481 369.5  182359944 1391.3 232550820 1774.3</code></pre>
+Ncells  5481205 292.8   17179537  917.5  21474421 1146.9
+Vcells 48286863 368.4  182238212 1390.4 231415631 1765.6</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>

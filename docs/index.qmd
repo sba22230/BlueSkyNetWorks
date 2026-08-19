@@ -29,10 +29,6 @@ here_parent <- function(...) {
   }
 }
 
-# Always set root.dir to the Quarto project root
-# normalizePath() ensures a clean, absolute path
-workingDir <- normalizePath(here_parent())
-
 # Set global chunk options
 knitr::opts_chunk$set(
   echo = FALSE,
@@ -40,12 +36,9 @@ knitr::opts_chunk$set(
   fig.width = 7,
   message = FALSE,
   warning = FALSE,
-  dpi = 300,
-  root.dir = workingDir
+  dpi = 900
 )
-# Optional: confirm during render
 
-message("knitr root.dir set to: ", opts_chunk$get("root.dir"))
 ```
 
 ---
@@ -80,10 +73,6 @@ The pipeline:
 
 ## **Project Structure**
 
-```{r}
-#| echo: false
-```
-
 ```         
 BlueSkyNetWorks/ 
 ├── master_pipeline.R               # Orchestrates all pipeline stages 
@@ -105,13 +94,10 @@ BlueSkyNetWorks/
 #| label: Load Network Data
 #| include: false
 echo <- FALSE
-setwd(here_parent())
-getwd()
-
-source("0_functions.R")
+source(here_parent("0_functions.R"))
 
 set.seed(22230)
-num_posts <- nrow(read_parquet("./docs/graphs/speirgorm_edges.parquet"))
+num_posts <- nrow(read_parquet(here_parent("docs/graphs", "speirgorm_edges.parquet")))
 num_posts <- 15000
 
 cat("\n=== Step 3a: Build igraph object and plot basic network ===\n")
@@ -523,6 +509,6 @@ Overall Speirgorm Network SentimentTimeline of posts for the communities in Spei
 
 To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
 
-```{r}
+```{r end}
 1 + 1
 ```

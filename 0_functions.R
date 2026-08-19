@@ -93,8 +93,31 @@ library(tidytext)
 library(textdata)
 library(wordcloud2)
 
+#### Path Functions ####
+library(here)
+# Drop-in replacement: always returns parent of here() root
+here_parent <- function(...) {
+  # Get the current here() root
+  root <- here::here()
 
-#### Ble Sky Functions ####
+  # Go one level up
+  parent_root <- normalizePath(
+    file.path(root, ".."),
+    winslash = "/",
+    mustWork = FALSE
+  )
+
+  # Append any extra path components passed in (...)
+  if (nargs() > 0) {
+    return(file.path(parent_root, ...))
+  } else {
+    return(parent_root)
+  }
+}
+
+
+
+#### Blue Sky Functions ####
 orig_plan <- future::plan()
 safe_chr <- function(x, ...) {
   val <- purrr::pluck(x, ..., .default = NA_character_)
@@ -606,8 +629,9 @@ if (v$os != "linux-gnu" && sql_server_available()) {
 #### Graph Function ####
 get_graph_data <- function(num_posts) {
   # Step 1: Load data
-  edges_df <- read_parquet("docs/graphs/speirgorm_edges.parquet")
-  nodes_df <- read_parquet("docs/graphs/speirgorm_nodes.parquet")
+  edges_df <- read_parquet(here_parent("docs", "graphs", "speirgorm_edges.parquet"))
+  nodes_df <- read_parquet(here_parent("docs", "graphs", "speirgorm_nodes.parquet"))
+
 
   # plan(multisession, workers = wrkrs)  ## to be moved closer to its use
   # ============================================================================
