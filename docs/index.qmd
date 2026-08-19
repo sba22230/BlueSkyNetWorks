@@ -5,7 +5,6 @@ editor_options:
 ---
 
 ```{r setup}
-#| label: R Setup
 #| echo: false
 # Load knitr
 library(knitr)
@@ -113,7 +112,7 @@ source("0_functions.R")
 
 set.seed(22230)
 num_posts <- nrow(read_parquet("./docs/graphs/speirgorm_edges.parquet"))
-num_posts <- 5000
+num_posts <- 15000
 
 cat("\n=== Step 3a: Build igraph object and plot basic network ===\n")
 # Step 3: Build igraph object and plot basic network
@@ -323,6 +322,7 @@ datatable(comparison_table)
 \[Out degree vs In degree\]
 
 ```{r}
+#| label: Show Components
 cat(sprintf(
   "Components: %d (largest: %d = %.1f%%)\n",
   bsn_num_components,
@@ -332,6 +332,7 @@ cat(sprintf(
 ```
 
 ```{r}
+#| label: Statnet Metrics
 # ============================================================================
 # SECTION 4: Computing remaining node Metrics using Statnet
 # - igraph is already in the Person table
@@ -414,6 +415,7 @@ nodes_with_metrics <- nodes %>%
 ```
 
 ```{r}
+#| label: Show Node Metrics
 cat(
   "\n=== Step 3o: Node-level metrics compiled into 'nodes_with_metrics' tibble ===\n"
 )
@@ -425,6 +427,7 @@ cat(sprintf(
 ```
 
 ```{r}
+#| label: Show Top influential nodes
 # Top influential nodes (various measures)
 cat("\n  Top 10 nodes by different centrality measures:\n")
 cat("  --- By PageRank ---\n")
@@ -451,6 +454,7 @@ print(
 ```
 
 ```{r}
+#| label: Summary report
 # Summary report
 cat("\n" %+% strrep("=", 70) %+% "\n")
 cat("METRICS COMPUTATION SUMMARY\n")
