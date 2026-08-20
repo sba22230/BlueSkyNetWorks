@@ -26,22 +26,19 @@ The pipeline:
 ## Project Structure
 
 ```         
-BlueSkyNetWorks/
-├── master_pipeline.R               # Orchestrates all pipeline stages
-├── 0_functions.R                   # Libraries, authentication, utility functions
-├── 1_BlueSky_Robust.r              # API data collection and hydration
-├── 2_load network data into SQL.r  # SQL Server ingestion and graph table setup
-├── 3_build_graph_and_metrics.R     # igraph/statnet construction and metrics
-├── 3a_NetworkVisualisation.r       # Layout computation and community colouring
-├── 3b_TSNA_Analysis.r              # Temporal network analysis
-├── 4_visualisation.R               # visNetwork, ggraph, GEXF export
-├── 5_PostNLP_analysis.R            # TidyText NLP and post frequency analysis
-├── 6_TextAnalysis.R                # Sentiment lexicon analysis (Bing, NRC, AFINN)
-├── Model_functions.R               # Sentiment scoring (logistic regression, Naive Bayes)
-├── BluseSkyNetworking.Rmd          # Interactive R Notebook for exploration
-├── SQL/                            # T-SQL schema, stored procedures, views
-├── data/                           # Parquet and CSV data artifacts
-└── graphs/                         # Exported graph files (Parquet, GEXF, GraphML, SVG, HTML)
+BlueSkyNetWorks/ 
+├── master_pipeline.R               # Orchestrates all pipeline stages 
+├── 0_functions.R                   # Libraries, authentication, utility functions 
+├── 1_BlueSky_Robust.r              # API data collection and hydration 
+├── 2_load network data into SQL.r  # SQL Server ingestion and graph table setup 
+├── 3_build_graph_and_metrics.R     # igraph/statnet construction and metrics    
+├── 4_visualisation.R               # visNetwork, ggraph, GEXF export 
+├── 5_Communities.R                 # Community detection and analysis (Louvain) 
+├── 6_NLP_Analysis.R                # Start of Text Analysis 
+├── 7_TextAnalysis.R                # Sentiment, topic modeling, and word clouds
+├── misc/                           # Code experiments, T-SQL schema, stored procedures, views 
+├── data/                           # Parquet and CSV data artifacts 
+├── docs/                           # Quarto website source files, images, and videos
 ```
 
 ------------------------------------------------------------------------
@@ -142,7 +139,7 @@ For interactive exploration, open and knit `BluseSkyNetworking.Rmd`.
 ## Data Artifacts
 
 | File | Size | Description |
-|------------------|------------------|------------------------------------|
+|------------------|------------------|-----------------------------------|
 | `data/speirgorm_posts.parquet` | 5.6 MB | Raw posts matching `#Speirgorm` |
 | `data/speirgorm_reposts.parquet` | 13.3 MB | Repost relationships |
 | `data/speirgorm_threads.parquet` | 1.6 MB | Reply thread data |

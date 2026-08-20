@@ -8,7 +8,7 @@ website:
     left:
       - href: index.qmd
         text: Home
-      - href: network/index.html
+      - href: gephi.qmd
         text: Gephi Graph Visualisation
       - href: SpeirGormWordcloud.html
         text: Speirgorm Word Cloud

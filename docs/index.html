@@ -122,7 +122,7 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Home</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./network/index.html"> 
+    <a class="nav-link" href="./gephi.html"> 
 <span class="menu-text">Gephi Graph Visualisation</span></a>
   </li>  
   <li class="nav-item">
@@ -212,11 +212,12 @@ ul.task-list li input[type="checkbox"] {
 ├── 2_load network data into SQL.r  # SQL Server ingestion and graph table setup 
 ├── 3_build_graph_and_metrics.R     # igraph/statnet construction and metrics    
 ├── 4_visualisation.R               # visNetwork, ggraph, GEXF export 
-├── 5_NLP_analysis.R                # TidyText NLP and post frequency analysis 
-├── 6_TextAnalysis.R                # Sentiment lexicon analysis (Bing, NRC, AFINN) 
-├── SQL/                            # T-SQL schema, stored procedures, views 
+├── 5_Communities.R                 # Community detection and analysis (Louvain) 
+├── 6_NLP_Analysis.R                # Start of Text Analysis 
+├── 7_TextAnalysis.R                # Sentiment, topic modeling, and word clouds
+├── misc/                           # Code experiments, T-SQL schema, stored procedures, views 
 ├── data/                           # Parquet and CSV data artifacts 
-├── graphs/                         # Exported graph files (Parquet, GEXF, GraphML, SVG, HTML)</code></pre>
+├── docs/                           # Quarto website source files, images, and videos</code></pre>
 </section>
 <section id="load-the-network-data" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Load the Network Data</h1>
@@ -225,7 +226,7 @@ ul.task-list li input[type="checkbox"] {
 <pre><code>Graph summary:</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>IGRAPH 675d992 DNW- 6004 15000 -- 
+<pre><code>IGRAPH f33d0a5 DNW- 20049 91639 -- 
 + attr: name (v/c), earliestPost (v/c), latestPost (v/c),
 | posts_authored (v/n), reposts_made (v/n), reposts_received (v/n),
 | total_likes_on_posts (v/n), total_replies_on_posts (v/n),
@@ -238,7 +239,7 @@ ul.task-list li input[type="checkbox"] {
 | (e/c), created_at (e/c), like_count (e/n), reply_count (e/n),
 | bookmark_count (e/n), repost_count (e/n), betweenness (e/n), weight
 | (e/n), edgeStarts (e/c), edgeEnds (e/c), text (e/c)
-IGRAPH 675d992 DNW- 6004 15000 -- 
+IGRAPH f33d0a5 DNW- 20049 91639 -- 
 + attr: name (v/c), earliestPost (v/c), latestPost (v/c),
 | posts_authored (v/n), reposts_made (v/n), reposts_received (v/n),
 | total_likes_on_posts (v/n), total_replies_on_posts (v/n),
@@ -251,7 +252,7 @@ IGRAPH 675d992 DNW- 6004 15000 --
 | (e/c), created_at (e/c), like_count (e/n), reply_count (e/n),
 | bookmark_count (e/n), repost_count (e/n), betweenness (e/n), weight
 | (e/n), edgeStarts (e/c), edgeEnds (e/c), text (e/c)
-+ edges from 675d992 (vertex names):</code></pre>
++ edges from f33d0a5 (vertex names):</code></pre>
 </div>
 </div>
 </section>
@@ -267,8 +268,8 @@ IGRAPH 675d992 DNW- 6004 15000 --
 <h1 data-number="4"><span class="header-section-number">4</span> Display the network metrics</h1>
 <div class="cell">
 <div class="cell-output-display">
-<div class="datatables html-widget html-fill-item" id="htmlwidget-483c9577b0ed808e32ce" style="width:100%;height:auto;"></div>
-<script type="application/json" data-for="htmlwidget-483c9577b0ed808e32ce">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23"],["analysis_timestamp","network_size","edge_count","dyad_count","density","mutual_pairs","asymetric_pairs","isolated_nodes","diameter","avg_path_length","neighbours_average","reciprocity_default","reciprocity_ratio","average_in_degree","average_out_degree","most_replied_to","most_active_replier","num_components","largest_component_size","giant_component_pct","transitivity_val","avg_local_clustering","centralization_in"],["Date that the metrics were generated","Number of nodes (users) in network","Number of directed edges (reposts)","Total number of possible dyadic pairs","Proportion of possible edges present","Number of mutual dyads (both directions present)","Number of asymmetric dyads (one direction only)","Number of pairs with no connection between them","Longest shortest path between any two nodes","Average shortest path across all node pairs","Average number of adjacent nodes per node","Proportion of edges that are reciprocated (edgewise reciprocity)","Proportion of non-null dyads that are mutual (dyadic reciprocity)","Average number of incoming ties per node","Average number of outgoing ties per node","Node with highest in-degree (most replies received)","Node with highest out-degree (most replies/reposts sent)","Number of disconnected components","Nodes in largest connected component","Percentage of nodes in largest component","Global clustering coefficient (transitivity)","Mean of local clustering coefficients","Degree centralization index (in-degree)"],["2026-08-19","6004","15000","18021006","0.000407441182806332","3071","8543","18009392","11","4.14342858666453","3166","0.418249914879128","0.264422249009816","2.44586942038641","2.44586942038641","ciaraioch.bsky.social","sharrow.bsky.social","53","5882","97.9680213191206","0.143869584777834","0.229843892630729","0.206557917309256"],["2026-08-19","6004","15000","18021006","0.00041618098345897","139","11475","18009392","11","0.240537892187721","3166","0.0254681647940075","0.0128983308042489","15.1342438374417","11.9995003331113","ciaraioch.bsky.social","sharrow.bsky.social","53","5882","97.9680213191206","0.0228090126944452","0.229843892630729","1.26410020581179"],["2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19","2026-08-19"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>metric<\/th>\n      <th>description<\/th>\n      <th>network/sna<\/th>\n      <th>igraph<\/th>\n      <th>run_date<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"orderable":false,"targets":0},{"name":" ","targets":0},{"name":"metric","targets":1},{"name":"description","targets":2},{"name":"network/sna","targets":3},{"name":"igraph","targets":4},{"name":"run_date","targets":5}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<div class="datatables html-widget html-fill-item" id="htmlwidget-507f555f9bd9fa62bfa2" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-507f555f9bd9fa62bfa2">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23"],["analysis_timestamp","network_size","edge_count","dyad_count","density","mutual_pairs","asymetric_pairs","isolated_nodes","diameter","avg_path_length","neighbours_average","reciprocity_default","reciprocity_ratio","average_in_degree","average_out_degree","most_reposted","most_active_reposter","num_components","largest_component_size","giant_component_pct","transitivity_val","avg_local_clustering","centralization_in"],["Date that the metrics were generated","Number of nodes (users) in network","Number of directed edges (reposts)","Total number of possible dyadic pairs","Proportion of possible edges present","Number of mutual dyads (both directions present)","Number of asymmetric dyads (one direction only)","Number of pairs with no connection between them","Longest shortest path between any two nodes","Average shortest path across all node pairs","Average number of adjacent nodes per node","Proportion of edges that are reciprocated (edgewise reciprocity)","Proportion of non-null dyads that are mutual (dyadic reciprocity)","Average number of incoming ties per node","Average number of outgoing ties per node","Node with highest in-degree (most reposts received)","Node with highest out-degree (most reposts sent)","Number of disconnected components","Nodes in largest connected component","Percentage of nodes in largest component","Global clustering coefficient (transitivity)","Mean of local clustering coefficients","Degree centralization index (in-degree)"],["2026-08-20","20049","91639","200971176","0.000223430050486444","36680","16446","200918050","9","3.55094546398473","12397","0.816871923924905","0.690434062417649","4.47932565215223","4.47932565215223","ciaraioch.bsky.social","sharrow.bsky.social","14","20021","99.8603421617038","0.313100783693742","0.123684998182338","0.376809370286292"],["2026-08-20","20049","91639","200971176","0.000227990405947567","1147","51979","200918050","9","0.16859224371875","12397","0.0480591497227357","0.0246212121212121","4.57075165843683","4.57075165843683","ciaraioch.bsky.social","sharrow.bsky.social","14","20021","99.8603421617038","0.0286868706440264","0.123684998182338","0.378949875812591"],["2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20","2026-08-20"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>metric<\/th>\n      <th>description<\/th>\n      <th>network/sna<\/th>\n      <th>igraph<\/th>\n      <th>run_date<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"orderable":false,"targets":0},{"name":" ","targets":0},{"name":"metric","targets":1},{"name":"description","targets":2},{"name":"network/sna","targets":3},{"name":"igraph","targets":4},{"name":"run_date","targets":5}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 </div>
 </div>
 <div class="column-page">
@@ -277,43 +278,12 @@ IGRAPH 675d992 DNW- 6004 15000 --
 <p>[Out degree vs In degree]</p>
 <div class="cell">
 <div class="cell-output cell-output-stdout">
-<pre><code>Components: 53 (largest: 5882 = 98.0%)</code></pre>
+<pre><code>Components: 14 (largest: 20021 = 99.9%)</code></pre>
 </div>
 </div>
 <div class="cell">
 <div class="cell-output cell-output-stdout">
-<pre><code>
-=== Step 3j: Betweenness centrality computed ===</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>
-=== Step 3k: Closeness centrality computed ===</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>           used  (Mb) gc trigger   (Mb)  max used   (Mb)
-Ncells  5478575 292.6   24629997 1315.4  26358561 1407.7
-Vcells 47379194 361.5  178105991 1358.9 227579333 1736.3</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>
-=== 3l: Eigenvector centrality computed ===</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>
-=== Step 3m: Degree metrics (in/out/total) computed ===</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>
-=== Step 3n: k-core decomposition computed ===</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>
-=== Step 3o: Node-level metrics compiled into 'nodes_with_metrics' tibble ===</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>  Rows: 6004 nodes | Cols: 27 features</code></pre>
+<pre><code>  Rows: 20049 nodes | Cols: 27 features</code></pre>
 </div>
 </div>
 <div class="cell">
@@ -321,119 +291,35 @@ Vcells 47379194 361.5  178105991 1358.9 227579333 1736.3</code></pre>
 <pre><code>
   Top 10 nodes by different centrality measures:</code></pre>
 </div>
+<div class="cell-output-display">
+<div class="datatables html-widget html-fill-item" id="htmlwidget-09b6dae960b330b9a287" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-09b6dae960b330b9a287">{"x":{"filter":"none","vertical":false,"data":[["ciaraioch.bsky.social","robosullivan.bsky.social","oisinmcgann.bsky.social","eolai.bsky.social","frankoconnor.bsky.social","judesherry.bsky.social","ainekeenan.bsky.social","drmarymcauliffe.bsky.social","bgormley.bsky.social","ellamaillart.bsky.social"],["ciaraioch.bsky.social","robosullivan.bsky.social","oisinmcgann.bsky.social","eolai.bsky.social","frankoconnor.bsky.social","judesherry.bsky.social","ainekeenan.bsky.social","drmarymcauliffe.bsky.social","bgormley.bsky.social","ellamaillart.bsky.social"],[0.1054557992496246,0.03660915253244527,0.02960751706242785,0.02693325216949594,0.01975767270316304,0.01747697102532717,0.01535408562918349,0.01471124761619373,0.01430386689165568,0.01314254061553669],[7601,4608,2812,3247,1458,551,3055,4693,1938,11],[90,665,775,259,138,250,1,65,110,3]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>name<\/th>\n      <th>pagerank<\/th>\n      <th>in_degree<\/th>\n      <th>out_degree<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[2,3,4]},{"orderable":false,"targets":0},{"name":" ","targets":0},{"name":"name","targets":1},{"name":"pagerank","targets":2},{"name":"in_degree","targets":3},{"name":"out_degree","targets":4}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+</div>
 <div class="cell-output cell-output-stdout">
 <pre><code>  --- By PageRank ---</code></pre>
 </div>
-<div class="cell-output cell-output-stdout">
-<pre><code>                                                   name           pagerank
-ciaraioch.bsky.social             ciaraioch.bsky.social 0.1054557992496246
-robosullivan.bsky.social       robosullivan.bsky.social 0.0366091525324453
-oisinmcgann.bsky.social         oisinmcgann.bsky.social 0.0296075170624278
-eolai.bsky.social                     eolai.bsky.social 0.0269332521694959
-frankoconnor.bsky.social       frankoconnor.bsky.social 0.0197576727031630
-judesherry.bsky.social           judesherry.bsky.social 0.0174769710253272
-ainekeenan.bsky.social           ainekeenan.bsky.social 0.0153540856291835
-drmarymcauliffe.bsky.social drmarymcauliffe.bsky.social 0.0147112476161937
-bgormley.bsky.social               bgormley.bsky.social 0.0143038668916557
-ellamaillart.bsky.social       ellamaillart.bsky.social 0.0131425406155367
-                            in_degree out_degree
-ciaraioch.bsky.social            7601         90
-robosullivan.bsky.social         4608        665
-oisinmcgann.bsky.social          2812        775
-eolai.bsky.social                3247        259
-frankoconnor.bsky.social         1458        138
-judesherry.bsky.social            551        250
-ainekeenan.bsky.social           3055          1
-drmarymcauliffe.bsky.social      4693         65
-bgormley.bsky.social             1938        110
-ellamaillart.bsky.social           11          3</code></pre>
+<div class="cell-output-display">
+<div class="datatables html-widget html-fill-item" id="htmlwidget-d5061f0f1b1345037142" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-d5061f0f1b1345037142">{"x":{"filter":"none","vertical":false,"data":[["sharrow.bsky.social","lamhfada.bsky.social","ciaraioch.bsky.social","oisinmcgann.bsky.social","robosullivan.bsky.social","bgormley.bsky.social","drmarymcauliffe.bsky.social","emmadragon.bsky.social","darylfeehely.com","tggleeson.bsky.social"],["sharrow.bsky.social","lamhfada.bsky.social","ciaraioch.bsky.social","oisinmcgann.bsky.social","robosullivan.bsky.social","bgormley.bsky.social","drmarymcauliffe.bsky.social","emmadragon.bsky.social","darylfeehely.com","tggleeson.bsky.social"],[4649747.742554937,3877453.442220451,3536316.279698958,3398731.894857216,2865748.411490799,1917164.462529174,1908097.61670858,1589885.860360797,1262906.703838234,1151697.423948206],[3299,3036,7691,3587,5273,2048,4758,1241,1523,981]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>name<\/th>\n      <th>betweenness<\/th>\n      <th>total_degree<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[2,3]},{"orderable":false,"targets":0},{"name":" ","targets":0},{"name":"name","targets":1},{"name":"betweenness","targets":2},{"name":"total_degree","targets":3}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>  --- By Betweenness ---</code></pre>
 </div>
-<div class="cell-output cell-output-stdout">
-<pre><code>                                                   name      betweenness
-sharrow.bsky.social                 sharrow.bsky.social 937674.288994111
-lamhfada.bsky.social               lamhfada.bsky.social 523997.774852461
-robosullivan.bsky.social       robosullivan.bsky.social 512901.705800052
-corcaighgodeo.bsky.social     corcaighgodeo.bsky.social 427073.599178167
-ciaraioch.bsky.social             ciaraioch.bsky.social 415132.853968192
-oisinmcgann.bsky.social         oisinmcgann.bsky.social 414593.254136395
-drmarymcauliffe.bsky.social drmarymcauliffe.bsky.social 340973.608528612
-emmadragon.bsky.social           emmadragon.bsky.social 260804.092015509
-taryndevere.bsky.social         taryndevere.bsky.social 195437.627574915
-bgormley.bsky.social               bgormley.bsky.social 191540.274180966
-                            total_degree
-sharrow.bsky.social                 3299
-lamhfada.bsky.social                3036
-robosullivan.bsky.social            5273
-corcaighgodeo.bsky.social            241
-ciaraioch.bsky.social               7691
-oisinmcgann.bsky.social             3587
-drmarymcauliffe.bsky.social         4758
-emmadragon.bsky.social              1241
-taryndevere.bsky.social              967
-bgormley.bsky.social                2048</code></pre>
+<div class="cell-output-display">
+<div class="datatables html-widget html-fill-item" id="htmlwidget-c5b8e6afccd4ee93870d" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-c5b8e6afccd4ee93870d">{"x":{"filter":"none","vertical":false,"data":[["robosullivan.bsky.social","oisinmcgann.bsky.social","ciaraioch.bsky.social","shazbear.bsky.social","sharrow.eurosky.social","dailigh.eurosky.social","frankoconnor.bsky.social","taesaveslives.bsky.social","sullydaysleeper.bsky.social","mmdc.bsky.social"],["robosullivan.bsky.social","oisinmcgann.bsky.social","ciaraioch.bsky.social","shazbear.bsky.social","sharrow.eurosky.social","dailigh.eurosky.social","frankoconnor.bsky.social","taesaveslives.bsky.social","sullydaysleeper.bsky.social","mmdc.bsky.social"],[0.6054158360292343,0.5272794979981058,0.3002526572529445,0.2172806812040694,0.1820682738112905,0.1453937240304019,0.1192817826459787,0.1075722810557141,0.103506840030627,0.1009238161123614],[4608,2812,7601,821,584,723,1458,387,499,207],[4610,2810,7639,820,579,726,1491,386,502,200]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>name<\/th>\n      <th>authority_score<\/th>\n      <th>in_degree<\/th>\n      <th>reposts_received<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[2,3,4]},{"orderable":false,"targets":0},{"name":" ","targets":0},{"name":"name","targets":1},{"name":"authority_score","targets":2},{"name":"in_degree","targets":3},{"name":"reposts_received","targets":4}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>  --- By Authority Score (most reposted) ---</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>                                                   name   authority_score
-robosullivan.bsky.social       robosullivan.bsky.social 0.605415836029235
-oisinmcgann.bsky.social         oisinmcgann.bsky.social 0.527279497998105
-ciaraioch.bsky.social             ciaraioch.bsky.social 0.300252657252945
-shazbear.bsky.social               shazbear.bsky.social 0.217280681204069
-sharrow.eurosky.social           sharrow.eurosky.social 0.182068273811291
-dailigh.eurosky.social           dailigh.eurosky.social 0.145393724030402
-frankoconnor.bsky.social       frankoconnor.bsky.social 0.119281782645979
-taesaveslives.bsky.social     taesaveslives.bsky.social 0.107572281055714
-sullydaysleeper.bsky.social sullydaysleeper.bsky.social 0.103506840030627
-mmdc.bsky.social                       mmdc.bsky.social 0.100923816112361
-                            in_degree reposts_received
-robosullivan.bsky.social         4608             4610
-oisinmcgann.bsky.social          2812             2810
-ciaraioch.bsky.social            7601             7639
-shazbear.bsky.social              821              820
-sharrow.eurosky.social            584              579
-dailigh.eurosky.social            723              726
-frankoconnor.bsky.social         1458             1491
-taesaveslives.bsky.social         387              386
-sullydaysleeper.bsky.social       499              502
-mmdc.bsky.social                  207              200</code></pre>
+<pre><code>  --- By Authority Score (important nodes receiving links from important hubs) ---</code></pre>
 </div>
 </div>
 <div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>METRICS COMPUTATION SUMMARY</code></pre>
+<div class="cell-output-display">
+<div class="datatables html-widget html-fill-item" id="htmlwidget-502b13d6649ae02e631f" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-502b13d6649ae02e631f">{"x":{"filter":"none","vertical":false,"data":[["Network Size","Density","Clustering (Global)","Clustering (Local Mean)","Communities","Reciprocity","Path Length (Avg)","Diameter","Centralization (In-degree)","Components","Giant Component"],["20049 nodes, 91639 edges","0.0002 (0.02% of possible edges)","0.0287","0.1237","48 (modularity = 0.4106)","0.0481 (edgewise)","0.17","9.00","0.3789","14","99.9%"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>metric<\/th>\n      <th>value<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","ordering":false,"pageLength":20,"columnDefs":[{"name":"metric","targets":0},{"name":"value","targets":1}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[10,20,25,50,100]}},"evals":[],"jsHooks":[]}</script>
 </div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Network Size:        6004 nodes, 15000 edges</code></pre>
 </div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Density:             0.0004 (0.04% of possible edges)</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Clustering:          Global: 0.0228 | Local mean: 0.2298</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Communities:         38 (Louvain, modularity = 0.5835)</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Reciprocity:         0.0255 (edgewise)</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Path Length:         Avg: 0.24 | Diameter: 11.000000</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Centralization:      1.2641 (in-degree based)</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Components:          53 (giant component: 98.0%)</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>====================================================================== </code></pre>
-</div>
+<div class="cell">
 <div class="cell-output cell-output-stdout">
 <pre><code>
 === Metrics computation complete. Results saved to graphs/ ===</code></pre>

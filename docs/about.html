@@ -132,7 +132,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span class="menu-text">Home</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./network/index.html"> 
+    <a class="nav-link" href="./gephi.html"> 
 <span class="menu-text">Gephi Graph Visualisation</span></a>
   </li>  
   <li class="nav-item">
@@ -229,22 +229,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="project-structure" class="level2">
 <h2 class="anchored" data-anchor-id="project-structure">Project Structure</h2>
-<pre><code>BlueSkyNetWorks/
-├── master_pipeline.R               # Orchestrates all pipeline stages
-├── 0_functions.R                   # Libraries, authentication, utility functions
-├── 1_BlueSky_Robust.r              # API data collection and hydration
-├── 2_load network data into SQL.r  # SQL Server ingestion and graph table setup
-├── 3_build_graph_and_metrics.R     # igraph/statnet construction and metrics
-├── 3a_NetworkVisualisation.r       # Layout computation and community colouring
-├── 3b_TSNA_Analysis.r              # Temporal network analysis
-├── 4_visualisation.R               # visNetwork, ggraph, GEXF export
-├── 5_PostNLP_analysis.R            # TidyText NLP and post frequency analysis
-├── 6_TextAnalysis.R                # Sentiment lexicon analysis (Bing, NRC, AFINN)
-├── Model_functions.R               # Sentiment scoring (logistic regression, Naive Bayes)
-├── BluseSkyNetworking.Rmd          # Interactive R Notebook for exploration
-├── SQL/                            # T-SQL schema, stored procedures, views
-├── data/                           # Parquet and CSV data artifacts
-└── graphs/                         # Exported graph files (Parquet, GEXF, GraphML, SVG, HTML)</code></pre>
+<pre><code>BlueSkyNetWorks/ 
+├── master_pipeline.R               # Orchestrates all pipeline stages 
+├── 0_functions.R                   # Libraries, authentication, utility functions 
+├── 1_BlueSky_Robust.r              # API data collection and hydration 
+├── 2_load network data into SQL.r  # SQL Server ingestion and graph table setup 
+├── 3_build_graph_and_metrics.R     # igraph/statnet construction and metrics    
+├── 4_visualisation.R               # visNetwork, ggraph, GEXF export 
+├── 5_Communities.R                 # Community detection and analysis (Louvain) 
+├── 6_NLP_Analysis.R                # Start of Text Analysis 
+├── 7_TextAnalysis.R                # Sentiment, topic modeling, and word clouds
+├── misc/                           # Code experiments, T-SQL schema, stored procedures, views 
+├── data/                           # Parquet and CSV data artifacts 
+├── docs/                           # Quarto website source files, images, and videos</code></pre>
 <hr>
 </section>
 <section id="pipeline-stages" class="level2">
@@ -349,7 +346,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <colgroup>
 <col style="width: 25%">
 <col style="width: 25%">
-<col style="width: 50%">
+<col style="width: 49%">
 </colgroup>
 <thead>
 <tr class="header">

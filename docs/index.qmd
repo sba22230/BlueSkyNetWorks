@@ -27,7 +27,6 @@ knitr::opts_chunk$set(
   warning = FALSE,
   dpi = 900
 )
-
 ```
 
 ---
@@ -70,11 +69,12 @@ BlueSkyNetWorks/
 ├── 2_load network data into SQL.r  # SQL Server ingestion and graph table setup 
 ├── 3_build_graph_and_metrics.R     # igraph/statnet construction and metrics    
 ├── 4_visualisation.R               # visNetwork, ggraph, GEXF export 
-├── 5_NLP_analysis.R                # TidyText NLP and post frequency analysis 
-├── 6_TextAnalysis.R                # Sentiment lexicon analysis (Bing, NRC, AFINN) 
-├── SQL/                            # T-SQL schema, stored procedures, views 
+├── 5_Communities.R                 # Community detection and analysis (Louvain) 
+├── 6_NLP_Analysis.R                # Start of Text Analysis 
+├── 7_TextAnalysis.R                # Sentiment, topic modeling, and word clouds
+├── misc/                           # Code experiments, T-SQL schema, stored procedures, views 
 ├── data/                           # Parquet and CSV data artifacts 
-├── graphs/                         # Exported graph files (Parquet, GEXF, GraphML, SVG, HTML)
+├── docs/                           # Quarto website source files, images, and videos
 ```
 
 # Load the Network Data
@@ -86,8 +86,12 @@ echo <- FALSE
 source(here_parent("0_functions.R"))
 
 set.seed(22230)
-num_posts <- nrow(read_parquet(here_parent("docs", "graphs", "speirgorm_edges.parquet")))
-num_posts <- 15000
+num_posts <- nrow(read_parquet(here_parent(
+  "docs",
+  "graphs",
+  "speirgorm_edges.parquet"
+)))
+#num_posts <- 1500
 
 cat("\n=== Step 3a: Build igraph object and plot basic network ===\n")
 # Step 3: Build igraph object and plot basic network
@@ -109,7 +113,7 @@ print(summary(g))
 
 ```{r}
 #| label: Igraph Network Stats
-#| include: false
+#| include: true
 #setwd(here_parent())
 #cat("\n=== Step 3b: Build out the metrics using igraph... ===\n")
 
@@ -149,8 +153,8 @@ ig_summary_df <- tibble(
   reciprocity_ratio = reciprocity(g, mode = "ratio"),
   average_in_degree = mean(V(g)$in_degree),
   average_out_degree = mean(V(g)$out_degree),
-  most_replied_to = V(g)$name[which.max(V(g)$in_degree)],
-  most_active_replier = V(g)$name[which.max(V(g)$out_degree)],
+  most_reposted = V(g)$name[which.max(V(g)$in_degree)],
+  most_active_reposter = V(g)$name[which.max(V(g)$out_degree)],
   num_components = ig_num_components,
   largest_component_size = ig_largest_component_size,
   giant_component_pct = ig_giant_component_pct,
@@ -166,7 +170,7 @@ ig_summary_df <- tibble(
 
 ```{r}
 #| label: Statnet Network Stats
-#| include: false
+#| include: true
 library(network)
 bluSkynet <- asNetwork(g)
 bsn_network_size <- network.size(bluSkynet)
@@ -218,8 +222,8 @@ bsn_summary_df <- tibble(
   reciprocity_ratio = grecip(bluSkynet, measure = "dyadic.nonnull"),
   average_in_degree = mean(bsn_ideg),
   average_out_degree = mean(bsn_odeg),
-  most_replied_to = network.vertex.names(bluSkynet)[which.max(bsn_ideg)],
-  most_active_replier = network.vertex.names(bluSkynet)[which.max(bsn_odeg)],
+  most_reposted = network.vertex.names(bluSkynet)[which.max(bsn_ideg)],
+  most_active_reposter = network.vertex.names(bluSkynet)[which.max(bsn_odeg)],
   num_components = bsn_num_components,
   largest_component_size = bsn_largest_component_size,
   giant_component_pct = bsn_largest_component_size_pct,
@@ -253,8 +257,8 @@ desc_df <- tibble(
   reciprocity_ratio = "Proportion of non-null dyads that are mutual (dyadic reciprocity)",
   average_in_degree = "Average number of incoming ties per node",
   average_out_degree = "Average number of outgoing ties per node",
-  most_replied_to = "Node with highest in-degree (most replies received)",
-  most_active_replier = "Node with highest out-degree (most replies/reposts sent)",
+  most_reposted = "Node with highest in-degree (most reposts received)",
+  most_active_reposter = "Node with highest out-degree (most reposts sent)",
   num_components = "Number of disconnected components",
   largest_component_size = "Nodes in largest connected component",
   giant_component_pct = "Percentage of nodes in largest component",
@@ -334,7 +338,7 @@ betweenness_vals <- sna::betweenness(
   diag = FALSE,
   ignore.eval = FALSE
 )
-cat("\n=== Step 3j: Betweenness centrality computed ===\n")
+#cat("\n=== Step 3j: Betweenness centrality computed ===\n")
 
 # Closeness Centrality (suminvdir accounts for directed graphs)
 closeness_vals <- sna::closeness(
@@ -342,18 +346,18 @@ closeness_vals <- sna::closeness(
   cmode = "suminvdir",
   ignore.eval = FALSE
 )
-cat("\n=== Step 3k: Closeness centrality computed ===\n")
-gc()
+#cat("\n=== Step 3k: Closeness centrality computed ===\n")
+#gc()
 
 # Eigenvector Centrality
 eigen_vals <- sna::evcent(bluSkynet, gmode = "digraph", ignore.eval = FALSE)
-cat("\n=== 3l: Eigenvector centrality computed ===\n")
+#cat("\n=== 3l: Eigenvector centrality computed ===\n")
 
 # Degree metrics (already computed but ensuring consistency)
 bsn_ideg <- sna::degree(bluSkynet, cmode = "indegree")
 bsn_odeg <- sna::degree(bluSkynet, cmode = "outdegree")
 total_degree <- bsn_ideg + bsn_odeg
-cat("\n=== Step 3m: Degree metrics (in/out/total) computed ===\n")
+#cat("\n=== Step 3m: Degree metrics (in/out/total) computed ===\n")
 
 ### == these are already computed - no need to do it again == ###
 # PageRank (weighted by influence)
@@ -368,7 +372,7 @@ cat("\n=== Step 3m: Degree metrics (in/out/total) computed ===\n")
 
 # k-Core Decomposition
 kcore_vals <- sna::kcores(bluSkynet)
-cat("\n=== Step 3n: k-core decomposition computed ===\n")
+#cat("\n=== Step 3n: k-core decomposition computed ===\n")
 
 # align numeric vectors to node order
 node_keys <- as.character(V(g)$name)
@@ -391,9 +395,7 @@ nodes_with_metrics <- nodes %>%
 
 ```{r}
 #| label: Show Node Metrics
-cat(
-  "\n=== Step 3o: Node-level metrics compiled into 'nodes_with_metrics' tibble ===\n"
-)
+#cat(   "\n=== Step 3o: Node-level metrics compiled into 'nodes_with_metrics' tibble ===\n")
 cat(sprintf(
   "  Rows: %d nodes | Cols: %d features\n",
   nrow(nodes_with_metrics),
@@ -405,80 +407,92 @@ cat(sprintf(
 #| label: Show Top influential nodes
 # Top influential nodes (various measures)
 cat("\n  Top 10 nodes by different centrality measures:\n")
-cat("  --- By PageRank ---\n")
-print(
+
+datatable(
   nodes_with_metrics %>%
     arrange(desc(pagerank)) %>%
     select(name, pagerank, in_degree, out_degree) %>%
     head(10)
 )
-cat("  --- By Betweenness ---\n")
-print(
+cat("  --- By PageRank ---\n")
+
+datatable(
   nodes_with_metrics %>%
     arrange(desc(betweenness)) %>%
     select(name, betweenness, total_degree) %>%
     head(10)
 )
-cat("  --- By Authority Score (most reposted) ---\n")
-print(
+cat("  --- By Betweenness ---\n")
+
+datatable(
   nodes_with_metrics %>%
     arrange(desc(authority_score)) %>%
     select(name, authority_score, in_degree, reposts_received) %>%
     head(10)
 )
+cat(
+  "  --- By Authority Score (important nodes receiving links from important hubs) ---\n"
+)
 ```
 
 ```{r}
 #| label: Summary report
-# Summary report
-cat("\n" %+% strrep("=", 70) %+% "\n")
-cat("METRICS COMPUTATION SUMMARY\n")
-cat(strrep("=", 70) %+% "\n")
-cat(sprintf(
-  "Network Size:        %d nodes, %d edges\n",
-  ig_summary_df$network_size,
-  ecount(g)
-))
-cat(sprintf(
-  "Density:             %.4f (%.2f%% of possible edges)\n",
-  ig_summary_df$density,
-  ig_summary_df$density * 100
-))
-cat(sprintf(
-  "Clustering:          Global: %.4f | Local mean: %.4f\n",
-  ig_summary_df$transitivity_val,
-  ig_summary_df$avg_local_clustering
-))
-comm_louvain <- igraph::cluster_louvain(as_undirected(g))
-modularity_louvain <- modularity(g, comm_louvain$membership)
-cat(sprintf(
-  "Communities:         %d (Louvain, modularity = %.4f)\n",
-  length(unique(nodes$community)),
-  modularity_louvain
-))
-cat(sprintf(
-  "Reciprocity:         %.4f (edgewise)\n",
-  ig_summary_df$reciprocity_default
-))
-cat(sprintf(
-  "Path Length:         Avg: %.2f | Diameter: %f\n",
-  mean_distance(g, directed = TRUE),
-  bsn_diameter
-))
-cat(sprintf(
-  "Centralization:      %.4f (in-degree based)\n",
-  ig_summary_df$centralization_in
-))
-cat(sprintf(
-  "Components:          %d (giant component: %.1f%%)\n",
-  ig_num_components,
-  ig_giant_component_pct
-))
-cat(strrep("=", 70), "\n")
+# Use the community and modularity already attached to the node table.
+community_count <- dplyr::n_distinct(nodes$community, na.rm = TRUE)
+community_modularity <- nodes$modularity[!is.na(nodes$modularity)]
+community_modularity <- if (length(community_modularity) > 0) {
+  unique(community_modularity)[1]
+} else {
+  NA_real_
+}
 
-cat(
-  "\n=== Metrics computation complete. Results saved to graphs/ ===\n"
+summary_df <- tibble::tibble(
+  metric = c(
+    "Network Size",
+    "Density",
+    "Clustering (Global)",
+    "Clustering (Local Mean)",
+    "Communities",
+    "Reciprocity",
+    "Path Length (Avg)",
+    "Diameter",
+    "Centralization (In-degree)",
+    "Components",
+    "Giant Component"
+  ),
+  value = c(
+    sprintf("%d nodes, %d edges", ig_summary_df$network_size, ecount(g)),
+    sprintf(
+      "%.4f (%.2f%% of possible edges)",
+      ig_summary_df$density,
+      ig_summary_df$density * 100
+    ),
+    sprintf("%.4f", ig_summary_df$transitivity_val),
+    sprintf("%.4f", ig_summary_df$avg_local_clustering),
+    sprintf("%d (modularity = %.4f)", community_count, community_modularity),
+    sprintf("%.4f (edgewise)", ig_summary_df$reciprocity_default),
+    sprintf("%.2f", mean_distance(g, directed = TRUE)),
+    sprintf("%.2f", bsn_diameter),
+    sprintf("%.4f", ig_summary_df$centralization_in),
+    sprintf("%d", ig_num_components),
+    sprintf("%.1f%%", ig_giant_component_pct)
+  )
 )
+
+DT::datatable(
+  summary_df,
+  rownames = FALSE,
+  options = list(
+    dom = "t",
+    ordering = FALSE,
+    pageLength = 20
+  )
+)
+```
+
+```{r}
+#| label: Summary report footer
+cat("\n=== Metrics computation complete. Results saved to graphs/ ===\n")
 cat("  Use nodes_with_metrics for per-user analysis\n")
 cat("  Use network_metrics for global statistics\n")
 cat("  Use community_stats to understand cluster structure\n\n")
