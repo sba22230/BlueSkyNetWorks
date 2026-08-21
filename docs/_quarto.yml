@@ -10,7 +10,7 @@ website:
         text: Home
       - href: gephi.qmd
         text: Gephi Graph Visualisation
-      - href: SpeirGormWordcloud.html
+      - href: wordcloud.html
         text: Speirgorm Word Cloud
       - about.qmd
 

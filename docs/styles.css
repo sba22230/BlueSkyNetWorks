@@ -1,1 +1,19 @@
-/* css styles */
+/* Remove default margins so the viewport is clean */
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Make the main content area at least the full viewport minus navbar */
+main.content {
+  min-height: calc(100vh - var(--quarto-navbar-height));
+  padding: 0 !important;
+}
+
+/* Let the iframe fill that space */
+iframe.fullpage {
+  width: 100%;
+  height: calc(100vh - var(--quarto-navbar-height));
+  border: none;
+  display: block;
+}

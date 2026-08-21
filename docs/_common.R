@@ -1,22 +1,16 @@
 # _common.R
+# Load knitr
 library(knitr)
-# Load the here package
 library(here)
-# Drop-in replacement: always returns parent of here() root
+# Return a path relative to the project root detected by here.
 here_parent <- function(...) {
-  # Get the current here() root
   root <- here::here()
-  
-  # Go one level up
-  parent_root <- normalizePath(file.path(root, ".."), winslash = "/", mustWork = FALSE)
-  
-  # Append any extra path components passed in (...)
-  if (nargs() > 0) {
-    return(file.path(parent_root, ...))
-  } else {
-    return(parent_root)
+  if (!file.exists(file.path(root, "0_functions.R"))) {
+    root <- file.path(root, "..")
   }
+  normalizePath(file.path(root, ...), winslash = "/", mustWork = FALSE)
 }
+
 
 # Always set root.dir to the Quarto project root
 # normalizePath() ensures a clean, absolute path

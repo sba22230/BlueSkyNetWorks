@@ -1,0 +1,12 @@
+---
+title: "Wordcloud"
+format: 
+    html:
+        page-layout: custom
+---
+
+<iframe src="SpeirGormWordcloud.html" width="100%" height="1024px" style="border:none;">
+
+</iframe>
+
+</iframe>
