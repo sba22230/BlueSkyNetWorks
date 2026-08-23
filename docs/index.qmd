@@ -498,6 +498,10 @@ cat("  Use network_metrics for global statistics\n")
 cat("  Use community_stats to understand cluster structure\n\n")
 ```
 
+## View the top Users in the Speirgorm Network
+
+![Top 50 Users](./images/gtn_TopNodes_Speirgorm_Network.svg)
+
 ## Speirgorm Network over the years and months
 
 {{< video ./video/SpeirgormTimeline.mp4 >}}

@@ -657,7 +657,7 @@ save_graph_svg(
     )
   },
   filename = "gtn_TopNodes_Speirgorm_Network.svg",
-  folder = "images"
+  folder = "docs/images"
 )
 # rxWriteObject(
 #   ds_Graphs,
