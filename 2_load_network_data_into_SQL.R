@@ -430,7 +430,12 @@ centrality_df <- rxExec(
     # Extract components
     nm <- comm$names
     mem <- comm$membership
-    mod_mat <- modularity_matrix(g, E(g)$weight)
+    mod_mat <- modularity_matrix(
+      g,
+      weights = E(g)$weight,
+      resolution = 1,
+      directed = TRUE
+    )
     tw <- sum(E(g)$weight)
     same_comm <- outer(mem, mem, "==")
     mod <- rowSums(mod_mat * same_comm) / (tw)

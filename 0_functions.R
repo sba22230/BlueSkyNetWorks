@@ -31,6 +31,7 @@ list.of.packages <- c(
   'RevoScaleR',
   'rgexf',
   'rsample',
+  'rsvg',
   'sna',
   'statnet',
   'stringi',
@@ -80,6 +81,7 @@ library(purrr)
 library(readr)
 library(retry)
 library(RevoScaleR) # RevoScaleR provides RxSqlServerData, rxDataStep, etc.
+library(rsvg)
 library(scales)
 library(sna)
 library(stringi)
