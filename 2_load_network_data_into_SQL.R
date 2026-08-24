@@ -52,7 +52,7 @@ cat("\n=== Step 2b: Write raw CSVs to SQL Server ===\n")
 create_edges_sql <- "--Drop existing edge table if it exists
 IF OBJECT_ID('dbo.Reposted', 'U') IS NULL
 BEGIN
-     --DROP TABLE dbo.Reposted;
+     DROP TABLE dbo.Reposted;
 -- END;
 
 -- 3. Create edge table for repost relationships
@@ -73,11 +73,12 @@ CREATE TABLE dbo.Reposted (
 END;
 "
 dbExecute(odbc_con, create_edges_sql)
+dbExecute(odbc_con, "TRUNCATE TABLE dbo.Reposted;")
 
 create_nodes_sql <- "-- 1. Drop existing graph node table if it exists
 IF OBJECT_ID('dbo.Person', 'U') IS NULL
 BEGIN
-    --DROP TABLE dbo.Person;
+    DROP TABLE dbo.Person;
 --END;
 -- 2. Create graph node table for persons
 CREATE TABLE Person (
@@ -127,6 +128,7 @@ CREATE TABLE Person (
 ) AS NODE;
 END;"
 dbExecute(odbc_con, create_nodes_sql)
+dbExecute(odbc_con, "TRUNCATE TABLE dbo.Person;")
 
 cat("\n=== Step 2c: populate the Nodes and Edges tables ===\n")
 
@@ -412,9 +414,11 @@ centrality_df <- rxExec(
     core_vals <- coreness(g)
     hits <- hits_scores(g, scale = FALSE)
     hits_norm <- hits_scores(g, scale = TRUE)
-    comm <- cluster_louvain(
-      as_undirected(g, mode = 'collapse'),
-      E(as_undirected(g, mode = 'collapse'))$weight,
+    comm <- cluster_leiden(
+      as_undirected(g),
+      objective_function = 'modularity',
+      n_iterations = 90,
+      initial_membership = V(g)$community,
       resolution = 1
     )
     local_clustering <- transitivity(
@@ -426,7 +430,10 @@ centrality_df <- rxExec(
     # Extract components
     nm <- comm$names
     mem <- comm$membership
-    mod <- comm$modularity
+    mod_mat <- modularity_matrix(g, E(g)$weight)
+    tw <- sum(E(g)$weight)
+    same_comm <- outer(mem, mem, "==")
+    mod <- rowSums(mod_mat * same_comm) / (tw)
 
     # Find the longest vector
     n <- max(length(nm), length(mem), length(mod))

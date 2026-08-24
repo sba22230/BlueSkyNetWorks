@@ -17,7 +17,7 @@ source("0_functions.R")
 
 # Load the most recent N posts to build the interaction graph.
 # Increasing num_posts gives a denser, more representative graph but is slower.
-num_posts <- 19531
+num_posts <- 75000
 g <- get_graph_data(num_posts)
 
 
@@ -103,25 +103,21 @@ silhouette_coefficient_batched <- function(
     batch_size = 512
 ) {
   mode <- match.arg(mode)
-
+  
   n <- igraph::vcount(graph)
-  if (length(membership) != n) stop("membership must have length vcount(graph).")
-
-  # Convert membership labels to a compact integer range 1..K
+  if (length(membership) != n)
+    stop("membership must have length vcount(graph).")
+  
+  # Compact cluster labels
   f <- as.factor(membership)
   grp <- as.integer(f)
   K <- nlevels(f)
-
-  if (!requireNamespace("Matrix", quietly = TRUE)) {
-    stop("Please install the Matrix package.")
-  }
-
-  # Build an n×K binary indicator matrix: M[i,k] = 1 if node i is in cluster k.
-  # Stored as a sparse matrix to keep memory usage low.
+  
+  # Sparse membership indicator matrix
   M <- Matrix::sparseMatrix(i = seq_len(n), j = grp, x = 1, dims = c(n, K))
-  sizes <- as.numeric(Matrix::colSums(M))   # number of nodes per cluster
-
-  # Use matrixStats for fast row-wise minimums if available; fall back to apply()
+  sizes <- as.numeric(Matrix::colSums(M))
+  
+  # Fast row-min function
   row_mins <- if (requireNamespace("matrixStats", quietly = TRUE)) {
     function(x) matrixStats::rowMins(x, na.rm = TRUE)
   } else {
@@ -130,64 +126,90 @@ silhouette_coefficient_batched <- function(
       if (length(v) == 0) NA_real_ else min(v)
     })
   }
-
-  s <- numeric(n)
-
-  # Process nodes in batches to cap peak memory at O(batch_size × n)
-  starts <- seq.int(1L, n, by = batch_size)
-  for (st in starts) {
-    en <- min(n, st + batch_size - 1L)
-    src <- st:en
-    b <- length(src)
-
-    # Compute shortest-path distances from this batch to all other nodes
-    D <- igraph::distances(
-      graph,
-      v = src,
-      to = igraph::V(graph),
-      weights = weights,
-      mode = mode,
-      algorithm = "dijkstra"
-    )
-
-    finite <- is.finite(D)
-    D0 <- D
-    D0[!finite] <- 0   # treat Inf distances as 0 for summation; excluded via counts
-
-    # Aggregate total reachable distance and reachable-node count per cluster
-    sum_to <- D0 %*% M    # batch_size × K matrix of distance sums per cluster
-    cnt_to <- (finite * 1) %*% M   # corresponding reachable-node counts
-
-    grp_block <- grp[src]   # cluster assignment for each node in this batch
-
-    # Self-distances (node to itself) are always 0 and must be excluded from a(i)
-    self_dist <- D[cbind(seq_len(b), src)]
-    self_ok <- is.finite(self_dist)
-
-    own_sum <- sum_to[cbind(seq_len(b), grp_block)] - ifelse(self_ok, self_dist, 0)
-    own_cnt <- cnt_to[cbind(seq_len(b), grp_block)] - as.integer(self_ok)
-
-    # a(i): mean intra-community distance
-    a <- numeric(b)
-    ok_a <- (sizes[grp_block] > 1) & (own_cnt > 0)
-    a[ok_a] <- own_sum[ok_a] / own_cnt[ok_a]
-    a[!is.finite(a)] <- 0
-
-    # b(i): mean distance to each other cluster; take the minimum across clusters
-    means <- sum_to / pmax(cnt_to, 1)
-    means[cnt_to == 0] <- NA_real_        # no reachable nodes → undefined
-    means[cbind(seq_len(b), grp_block)] <- NA_real_   # mask own cluster
-
-    bval <- row_mins(as.matrix(means))
-    bval[!is.finite(bval)] <- 0
-
-    den <- pmax(a, bval)
-    s[src] <- ifelse(den == 0, 0, (bval - a) / den)
+  
+  # -------------------------------
+  # Batch function (runs on workers)
+  # -------------------------------
+  silhouette_batch <- function(src, graph, grp, M, sizes, weights, mode) {
+    # Defensive wrapper: catch worker errors
+    tryCatch({
+      
+      b <- length(src)
+      
+      D <- igraph::distances(
+        graph,
+        v = src,
+        to = igraph::V(graph),
+        weights = weights,
+        mode = mode,
+        algorithm = "dijkstra"
+      )
+      
+      finite <- is.finite(D)
+      D0 <- D
+      D0[!finite] <- 0
+      
+      sum_to <- D0 %*% M
+      cnt_to <- (finite * 1) %*% M
+      
+      grp_block <- grp[src]
+      
+      self_dist <- D[cbind(seq_len(b), src)]
+      self_ok <- is.finite(self_dist)
+      
+      own_sum <- sum_to[cbind(seq_len(b), grp_block)] -
+        ifelse(self_ok, self_dist, 0)
+      own_cnt <- cnt_to[cbind(seq_len(b), grp_block)] -
+        as.integer(self_ok)
+      
+      a <- numeric(b)
+      ok_a <- (sizes[grp_block] > 1) & (own_cnt > 0)
+      a[ok_a] <- own_sum[ok_a] / own_cnt[ok_a]
+      a[!is.finite(a)] <- 0
+      
+      means <- sum_to / pmax(cnt_to, 1)
+      means[cnt_to == 0] <- NA_real_
+      means[cbind(seq_len(b), grp_block)] <- NA_real_
+      
+      bval <- row_mins(as.matrix(means))
+      bval[!is.finite(bval)] <- 0
+      
+      den <- pmax(a, bval)
+      ifelse(den == 0, 0, (bval - a) / den)
+      
+    }, error = function(e) {
+      # Worker failure fallback: return NA for this batch
+      rep(NA_real_, length(src))
+    })
   }
-
-  # Return mean silhouette score; range [-1, 1], higher is better
-  mean(s, na.rm = TRUE)
+  
+  # -------------------------------
+  # Build batches
+  # -------------------------------
+  starts <- seq.int(1L, n, by = batch_size)
+  batches <- lapply(starts, function(st) st:min(n, st + batch_size - 1L))
+  
+  # -------------------------------
+  # Parallel execution via rxExec
+  # -------------------------------
+  results <- rxExec(
+    FUN = silhouette_batch,
+    src = rxElemArg(batches),
+    graph = graph,
+    grp = grp,
+    M = M,
+    sizes = sizes,
+    weights = weights,
+    mode = mode,
+    packagesToLoad = c("igraph", "Matrix", "matrixStats")
+  )
+  
+  # -------------------------------
+  # Combine results
+  # -------------------------------
+  mean(unlist(results), na.rm = TRUE)
 }
+
 
 
 # -----------------------------------------------------------------------------
@@ -356,10 +378,15 @@ dens_leiden   <- internal_density(g, membership_leiden)
 
 # Silhouette: node-level cohesion vs. separation, aggregated to algorithm level
 # (higher / less negative is better; batched version used for memory efficiency)
-sil_walktrap <- silhouette_coefficient_batched(g, membership_walktrap, mode = 'all', batch_size = 512)
-sil_louvain  <- silhouette_coefficient_batched(g, membership_louvain,  mode = 'all', batch_size = 512)
-sil_leiden   <- silhouette_coefficient_batched(g, membership_leiden,   mode = 'all', batch_size = 512)
-
+tic()
+sil_walktrap <- silhouette_coefficient_batched(g, membership_walktrap, mode = 'all', batch_size = 1024)
+toc()
+tic()
+sil_louvain  <- silhouette_coefficient_batched(g, membership_louvain,  mode = 'all', batch_size = 1024)
+toc()
+tic()
+sil_leiden   <- silhouette_coefficient_batched(g, membership_leiden,   mode = 'all', batch_size = 1024)
+toc()
 
 # =============================================================================
 # 3. COMPILE RESULTS
