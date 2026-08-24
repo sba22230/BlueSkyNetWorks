@@ -91,17 +91,24 @@
     "text": "0.2 Project Structure\nBlueSkyNetWorks/ \n├── master_pipeline.R               # Orchestrates all pipeline stages \n├── 0_functions.R                   # Libraries, authentication, utility functions \n├── 1_BlueSky_Robust.r              # API data collection and hydration \n├── 2_load network data into SQL.r  # SQL Server ingestion and graph table setup \n├── 3_build_graph_and_metrics.R     # igraph/statnet construction and metrics    \n├── 4_visualisation.R               # visNetwork, ggraph, GEXF export \n├── 5_Communities.R                 # Community detection and analysis (Louvain) \n├── 6_NLP_Analysis.R                # Start of Text Analysis \n├── 7_TextAnalysis.R                # Sentiment, topic modeling, and word clouds\n├── misc/                           # Code experiments, T-SQL schema, stored procedures, views \n├── data/                           # Parquet and CSV data artifacts \n├── docs/                           # Quarto website source files, images, and videos"
   },
   {
+    "objectID": "index.html#view-the-top-users-in-the-speirgorm-network",
+    "href": "index.html#view-the-top-users-in-the-speirgorm-network",
+    "title": "Speirgorm Bluesky Network Analysis",
+    "section": "4.1 View the top Users in the Speirgorm Network",
+    "text": "4.1 View the top Users in the Speirgorm Network\n\n\n\nTop 50 Users"
+  },
+  {
     "objectID": "index.html#speirgorm-network-over-the-years-and-months",
     "href": "index.html#speirgorm-network-over-the-years-and-months",
     "title": "Speirgorm Bluesky Network Analysis",
-    "section": "4.1 Speirgorm Network over the years and months",
-    "text": "4.1 Speirgorm Network over the years and months"
+    "section": "4.2 Speirgorm Network over the years and months",
+    "text": "4.2 Speirgorm Network over the years and months"
   },
   {
     "objectID": "index.html#network-sentiment",
     "href": "index.html#network-sentiment",
     "title": "Speirgorm Bluesky Network Analysis",
-    "section": "4.2 Network sentiment",
-    "text": "4.2 Network sentiment\n\n\n\nOverall Speirgorm Network Sentiment\n\n\nOverall Speirgorm Network SentimentTimeline of posts for the communities in Speirgorm\n\n\n\nPosts timelines in the sub communities\n\n\nTo learn more about Quarto websites visit https://quarto.org/docs/websites.\n\n\n[1] 2"
+    "section": "4.3 Network sentiment",
+    "text": "4.3 Network sentiment\n\n\n\nOverall Speirgorm Network Sentiment\n\n\nOverall Speirgorm Network SentimentTimeline of posts for the communities in Speirgorm\n\n\n\nPosts timelines in the sub communities\n\n\nTo learn more about Quarto websites visit https://quarto.org/docs/websites.\n\n\n[1] 2"
   }
 ]
