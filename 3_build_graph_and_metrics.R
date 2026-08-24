@@ -947,6 +947,22 @@ rxWriteObject(
   overwrite = TRUE
 )
 
+# 1. Load SVGs
+svg_files <- list.files(
+  path = "images",
+  pattern = "^SubGraph_[0-9]{4}-[0-9]{2}\\.svg$",
+  full.names = TRUE
+)
+
+# 2. Convert SVG → PNG
+for (i in seq_along(svg_files)) {
+  png_file <- sprintf("images/frame%04d.png", i)
+  rsvg_png(svg_files[i], png_file, width = 1920, height = 1080)
+}
+
+# 3. Build MP4
+system("ffmpeg -y -framerate 0.5 -i images/frame%04d.png -c:v libx264 -pix_fmt yuv420p docs/video/SpeirgormTimeline.mp4")
+
 cat("Subgraphs created and saved.\n")
 
 # Step 5: Plot enriched network with ggraph
