@@ -125,13 +125,14 @@ plan(orig_plan)
 # in an edge-list-derived graph (all nodes have at least one edge by definition)
 degree_p10 <- quantile(vis_nodes$degree, 0.10, na.rm = TRUE)
 vis_nodes$isolated <- vis_nodes$degree <= degree_p10
-
-rxWriteObject(
-  ds_Graphs,
-  "vis_g_Graph - igraph - community detection",
-  vis_g,
-  overwrite = TRUE
-)
+if (sql_server_available()) {
+  rxWriteObject(
+    ds_Graphs,
+    "vis_g_Graph - igraph - community detection",
+    vis_g,
+    overwrite = TRUE
+  )
+}
 # Build a data frame where each edge is annotated with the community of the
 # source node ("from") and the community of the target node ("to")
 
@@ -515,12 +516,14 @@ htmlwidgets::saveWidget(
   "docs/graphs/visnetwork_tmp.html",
   selfcontained = FALSE
 )
-rxWriteObject(
-  ds_Graphs,
-  "vis_g_Visnetwork - visNetwork - layout_with_lgl",
-  vis_obj,
-  overwrite = TRUE
-)
+if (sql_server_available()) {
+  rxWriteObject(
+    ds_Graphs,
+    "vis_g_Visnetwork - visNetwork - layout_with_lgl",
+    vis_obj,
+    overwrite = TRUE
+  )
+}
 cat(
   "\n===  Step 4h: Saved the Visnetwork object, Export the Visnetwork into GEXF with visual encodings preserved ===\n"
 )
@@ -701,13 +704,14 @@ if (!dir.exists(file_path)) {
 }
 rgexf::write.gexf(gexf_obj, output = file_name)
 plot(gexf_obj)
-
-rxWriteObject(
-  ds_Graphs,
-  "Gephi_Graph - Gephi - GEXF",
-  gexf_obj,
-  overwrite = TRUE
-)
+if (sql_server_available()) {
+  rxWriteObject(
+    ds_Graphs,
+    "Gephi_Graph - Gephi - GEXF",
+    gexf_obj,
+    overwrite = TRUE
+  )
+}
 cat(
   "\n===  Step 4i: Saved the Gephi object, display top authors and reposters ===\n"
 )
@@ -728,9 +732,6 @@ library(DT)
 datatable(top_authors_reposted, caption = "Top 10 Authors by Reposts Received")
 datatable(top_reposters, caption = "Top 10 Accounts by Reposts Made")
 
-### TODO: add the NLP analysis of the top communities  ###
-### TODO: graph the communities according to rules in MISC folder
-### TODO: add scatter to the image of communities
 
 # plot(bsn_ideg, bsn_odeg, type = "n", xlab = "Incoming", ylab = "Outgoing")
 # abline(0, 1, lty = 3)

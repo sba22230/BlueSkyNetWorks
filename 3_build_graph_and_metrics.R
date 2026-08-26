@@ -13,13 +13,14 @@ print(summary(g))
 nodes <- igraph::as_data_frame(g, what = "vertices")
 edges <- igraph::as_data_frame(g, what = "edges")
 # save the graph object for posterity
-rxWriteObject(
-  ds_Graphs,
-  paste0("g igraph object - all data ", nrow(nodes)),
-  g,
-  overwrite = TRUE
-)
-
+if (sql_server_available()) {
+  rxWriteObject(
+    ds_Graphs,
+    paste0("g igraph object - all data ", nrow(nodes)),
+    g,
+    overwrite = TRUE
+  )
+}
 # ============================================================================
 # SECTION 2: Network-LEVEL METRICS
 # ============================================================================
@@ -72,14 +73,15 @@ ig_summary_df <- tibble(
 )
 
 str(ig_summary_df)
-# Write metrics back into network metric table
-ig_sql <- RxSqlServerData(
-  table = "dbo.NetworkLevelMetrics",
-  connectionString = connStr,
-  colInfo = list('analysis_timestamp' = list(type = "Date"))
-)
-rxDataStep(ig_summary_df, ig_sql, append = "rows")
-
+if (sql_server_available()) {
+  # Write metrics back into network metric table
+  ig_sql <- RxSqlServerData(
+    table = "dbo.NetworkLevelMetrics",
+    connectionString = connStr,
+    colInfo = list('analysis_timestamp' = list(type = "Date"))
+  )
+  rxDataStep(ig_summary_df, ig_sql, append = "rows")
+}
 cat(
   "\n=== Step 3c: BlueSkyNetWorks: Computing Network Metrics using StatNet ===\n"
 )
@@ -87,12 +89,14 @@ cat(
 # Convert igraph to statnet
 library(network)
 bluSkynet <- asNetwork(g)
-rxWriteObject(
-  ds_Graphs,
-  paste0("bluSkynet_Graph - network - no posts: ", num_posts),
-  bluSkynet,
-  overwrite = TRUE
-)
+if (sql_server_available()) {
+  rxWriteObject(
+    ds_Graphs,
+    paste0("bluSkynet_Graph - network - no posts: ", num_posts),
+    bluSkynet,
+    overwrite = TRUE
+  )
+}
 
 bsn_network_size <- network.size(bluSkynet)
 bsn_degree <- sna::degree(bluSkynet)
@@ -201,14 +205,15 @@ bsn_summary_df <- tibble(
 )
 
 str(bsn_summary_df)
-# Write metrics back into network metric table
-ig_sql <- RxSqlServerData(
-  table = "dbo.NetworkLevelMetrics",
-  connectionString = connStr,
-  colInfo = list("analysis_timestamp" = list(type = "Date"))
-)
-rxDataStep(bsn_summary_df, ig_sql, append = "rows")
-
+if (sql_server_available()) {
+  # Write metrics back into network metric table
+  ig_sql <- RxSqlServerData(
+    table = "dbo.NetworkLevelMetrics",
+    connectionString = connStr,
+    colInfo = list("analysis_timestamp" = list(type = "Date"))
+  )
+  rxDataStep(bsn_summary_df, ig_sql, append = "rows")
+}
 cat("\n=== Step 3f: Show both Network Metrics in one table ===\n")
 
 desc_df <- tibble(
@@ -476,14 +481,14 @@ print(
     head(10)
 )
 
-# Write node metrics back into node metric table
-nodes_sql <- RxSqlServerData(
-  table = "dbo.SNA_Node_LevelMetrics",
-  connectionString = connStr
-)
-rxDataStep(nodes_with_metrics, nodes_sql, overwrite = TRUE)
-
-
+if (sql_server_available()) {
+  # Write node metrics back into node metric table
+  nodes_sql <- RxSqlServerData(
+    table = "dbo.SNA_Node_LevelMetrics",
+    connectionString = connStr
+  )
+  rxDataStep(nodes_with_metrics, nodes_sql, overwrite = TRUE)
+}
 ### These will be useful for a notebook === FINISH
 rxSetComputeContext("localpar")
 cat(
@@ -520,16 +525,16 @@ res_g <- rxExec(
 )
 
 toc()
+if (sql_server_available()) {
+  rxWriteObject(
+    ds_Graphs,
+    "layout_exec_results",
+    res_g,
+    overwrite = TRUE
+  )
 
-rxWriteObject(
-  ds_Graphs,
-  "layout_exec_results",
-  res_g,
-  overwrite = TRUE
-)
-
-res_g <- rxReadObject(ds_Graphs, "layout_exec_results")
-
+  res_g <- rxReadObject(ds_Graphs, "layout_exec_results")
+}
 # assemble nested list: community_layouts[[i]] = list(id, graph,
 # layouts = named list(layout -> coord_matrix))
 old_par <- par(no.readonly = TRUE)
@@ -864,20 +869,21 @@ process_ym <- function(
   )
 
   dev.off()
-
-  # Each worker writes its own keys — no contention
-  rxWriteObject(
-    ds_Graphs,
-    paste0("subgraph_igraph_", ym),
-    sub_g,
-    overwrite = TRUE
-  )
-  rxWriteObject(
-    ds_Graphs,
-    paste0("subgraph_statnet_", ym),
-    sub_net,
-    overwrite = TRUE
-  )
+  if (sql_server_available()) {
+    # Each worker writes its own keys — no contention
+    rxWriteObject(
+      ds_Graphs,
+      paste0("subgraph_igraph_", ym),
+      sub_g,
+      overwrite = TRUE
+    )
+    rxWriteObject(
+      ds_Graphs,
+      paste0("subgraph_statnet_", ym),
+      sub_net,
+      overwrite = TRUE
+    )
+  }
   list(ym = ym, sub_g = sub_g, sub_net = sub_net)
 }
 
@@ -932,21 +938,21 @@ subgraphs_statnet <- setNames(
   lapply(results, `[[`, "sub_net"),
   sapply(results, `[[`, "ym")
 )
-
-# Save the aggregated lists
-rxWriteObject(
-  ds_Graphs,
-  "subgraphs_igraph_by_ym",
-  subgraphs_igraph,
-  overwrite = TRUE
-)
-rxWriteObject(
-  ds_Graphs,
-  "subgraphs_statnet_by_ym",
-  subgraphs_statnet,
-  overwrite = TRUE
-)
-
+if (sql_server_available()) {
+  # Save the aggregated lists
+  rxWriteObject(
+    ds_Graphs,
+    "subgraphs_igraph_by_ym",
+    subgraphs_igraph,
+    overwrite = TRUE
+  )
+  rxWriteObject(
+    ds_Graphs,
+    "subgraphs_statnet_by_ym",
+    subgraphs_statnet,
+    overwrite = TRUE
+  )
+}
 # 1. Load SVGs
 svg_files <- list.files(
   path = "images",
@@ -961,7 +967,9 @@ for (i in seq_along(svg_files)) {
 }
 
 # 3. Build MP4
-system("ffmpeg -y -framerate 0.5 -i images/frame%04d.png -c:v libx264 -pix_fmt yuv420p docs/video/SpeirgormTimeline.mp4")
+system(
+  "ffmpeg -y -framerate 0.5 -i images/frame%04d.png -c:v libx264 -pix_fmt yuv420p docs/video/SpeirgormTimeline.mp4"
+)
 
 cat("Subgraphs created and saved.\n")
 
@@ -998,13 +1006,14 @@ write_graph(
   "docs/graphs/g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
   format = "graphml"
 )
-rxWriteObject(
-  ds_Graphs,
-  "g_Graph - igraph - layout_with_graphopt",
-  gto,
-  overwrite = TRUE
-)
-
+if (sql_server_available()) {
+  rxWriteObject(
+    ds_Graphs,
+    "g_Graph - igraph - layout_with_graphopt",
+    gto,
+    overwrite = TRUE
+  )
+}
 # ============================================================================
 # SECTION 6: SAVE RESULTS
 # ============================================================================

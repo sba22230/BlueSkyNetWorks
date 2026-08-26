@@ -1,7 +1,9 @@
 # ============================================================================
 # SECTION 5: COMMUNITY STRUCTURE ANALYSIS
 # ============================================================================
-
+### TODO: add the NLP analysis of the top communities  ###
+### TODO: graph the communities according to rules in MISC folder
+### TODO: add scatter to the image of communities
 cat("\n=== Step 5a: Computing community structure... ===\n")
 # Re-compute if necessary
 #comm_louvain <- igraph::cluster_louvain(as_undirected(g)) #-- computed in SQL
@@ -146,19 +148,27 @@ rxExec(
   save_graph_svg = save_graph_svg,
   packagesToLoad = c("igraph", "viridis")
 )
-
-# Write the Community Layouts to SQL (sequential — shared resource)
-rxWriteObject(
-  ds_Graphs,
-  "Top 12 Sub Graphs",
-  community_layouts,
-  overwrite = TRUE
-)
+if (sql_server_available()) {
+  # Write the Community Layouts to SQL (sequential — shared resource)
+  rxWriteObject(
+    ds_Graphs,
+    "Top 12 Sub Graphs",
+    community_layouts,
+    overwrite = TRUE
+  )
+}
 par(old_par)
 
 # Name them for easy reference
 names(community_graphs) <- paste0("Community_", top_10_ids)
-rxWriteObject(ds_Graphs, "Community Graphs", community_graphs, overwrite = TRUE)
+if (sql_server_available()) {
+  rxWriteObject(
+    ds_Graphs,
+    "Community Graphs",
+    community_graphs,
+    overwrite = TRUE
+  )
+}
 
 cat(
   "\n=== Step 5f: Analyze Internal Structure, 
