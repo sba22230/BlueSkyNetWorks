@@ -700,7 +700,8 @@ process_ym <- function(
   save_graph_svg,
   save_network_svg,
   plot_word_comparison_date,
-  render_word_comparison_date
+  render_word_comparison_date,
+  sql_server_available
 ) {
   library(dplyr)
   library(stringr)
@@ -902,12 +903,14 @@ results <- rxExec(
   save_network_svg = save_network_svg,
   plot_word_comparison_date = plot_word_comparison_date,
   render_word_comparison_date = render_word_comparison_date,
+  sql_server_available = sql_server_available,
   execObjects = c(
     "save_graph_svg",
     "save_network_svg",
     "plot_word_comparison_date",
     "render_word_comparison_date",
     "subgraph_from_edges",
+    "sql_server_available",
     "ds_Graphs"
   ),
 

@@ -4,6 +4,21 @@
 ### TODO: add the NLP analysis of the top communities  ###
 ### TODO: graph the communities according to rules in MISC folder
 ### TODO: add scatter to the image of communities
+
+source("0_functions.R")
+
+cat("\n=== Step 3a: Build igraph object and plot basic network ===\n")
+set.seed(22230)
+num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
+if (!exists("num_posts") || is.null(num_posts)) {
+  num_posts <- 5000
+}
+# Step 3: Build igraph object and plot basic network
+g <- get_graph_data(num_posts)
+cat("Graph summary:\n")
+print(summary(g))
+nodes <- igraph::as_data_frame(g, what = "vertices")
+edges <- igraph::as_data_frame(g, what = "edges")
 cat("\n=== Step 5a: Computing community structure... ===\n")
 # Re-compute if necessary
 #comm_louvain <- igraph::cluster_louvain(as_undirected(g)) #-- computed in SQL

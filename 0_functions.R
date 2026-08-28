@@ -105,7 +105,7 @@ here_parent <- function(...) {
   }
   normalizePath(file.path(root, ...), winslash = "/", mustWork = FALSE)
 }
-
+old_par <- par(no.readonly = TRUE)
 
 #### Blue Sky Functions ####
 orig_plan <- future::plan()
