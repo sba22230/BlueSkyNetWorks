@@ -204,7 +204,7 @@ preflight_pipeline <- function(
   }
   invisible(TRUE)
 }
-
+old_par <- par(no.readonly = TRUE)
 
 #### Blue Sky Functions ####
 orig_plan <- future::plan()
