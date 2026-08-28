@@ -27,4 +27,4 @@ misc/~$reamlineTheProcess.docx
 **/*.quarto_ipynb
 .vs/*
 docs/network/.vs/*
-
+README_files/*
