@@ -68,9 +68,11 @@ graphs_arg <- lapply(graph_idx_rep, function(ii) community_graphs[[ii]])
 # run layout_exec in parallel across the cluster once
 res_all <- rxExec(
   layout_exec,
+  edges_data = NULL,
+  nodes_data = NULL,
   graph = rxElemArg(graphs_arg),
   layout_type = rxElemArg(layout_rep),
-  execObjects = c("connStr", "layout_exec")
+  execObjects = c("connStr", "layout_exec", "project_path")
 )
 
 # Load the res_all object to SQL

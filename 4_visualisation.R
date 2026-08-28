@@ -1,4 +1,4 @@
-source("0_functions.R")
+source(here::here("0_functions.R"))
 
 set.seed(22230)
 if (!exists("num_posts") || is.null(num_posts)) {
@@ -194,7 +194,7 @@ plotobj <- levelplot(
 save_graph_svg(
   plotobj,
   filename = "Cross_Community_interaction.svg",
-  folder = "docs/images"
+  folder = project_path("docs", "images")
 )
 
 # ========================================================================
@@ -513,7 +513,7 @@ vis_obj <- visNetwork(
 # a headless Chrome/Chromium)
 htmlwidgets::saveWidget(
   vis_obj,
-  "docs/graphs/visnetwork_tmp.html",
+  project_path("docs", "graphs", "visnetwork_tmp.html"),
   selfcontained = FALSE
 )
 if (sql_server_available()) {
@@ -697,7 +697,7 @@ gexf_obj <- write.gexf(
 
 # Save to file
 home_dir <- here::here()
-file_path <- file.path(home_dir, "docs/graphs")
+file_path <- project_path("docs", "graphs")
 file_name <- file.path(file_path, "vis_g visnetwork_export.gexf")
 if (!dir.exists(file_path)) {
   dir.create(file_path, recursive = TRUE)
@@ -715,7 +715,7 @@ if (sql_server_available()) {
 cat(
   "\n===  Step 4i: Saved the Gephi object, display top authors and reposters ===\n"
 )
-posts_df <- read_parquet("data/speirgorm_network.parquet")
+posts_df <- read_parquet(project_path("data", "speirgorm_network.parquet"))
 top_authors_reposted <- posts_df |>
   group_by(PostedBy) |>
   summarise(total_reposts = sum(repost_count, na.rm = TRUE)) |>

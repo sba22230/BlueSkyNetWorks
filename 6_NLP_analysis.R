@@ -1,5 +1,5 @@
 # NLP of posts using TidyText
-source("0_functions.R")
+source(here::here("0_functions.R"))
 set.seed(22230)
 if (!exists("num_posts") || is.null(num_posts)) {
   num_posts <- 1000
@@ -201,7 +201,7 @@ save_graph_svg(
     plot_community_timelines(all_posts)
   },
   filename = out_file,
-  folder = "docs/images",
+  folder = project_path("docs", "images"),
   width = 16,
   height = 12
 )
@@ -381,7 +381,7 @@ library(readr)
 
 
 sentimentdataset <- read_csv(
-  "data/sentimentdataset.csv",
+  project_path("data", "sentimentdataset.csv"),
   col_types = cols(
     `Unnamed: 0` = col_skip(),
     User = col_skip(),
@@ -456,7 +456,7 @@ cat(
 library(fastNaiveBayes)
 nb_model <- fnb.multinomial(x_nb, y = y, sparse = TRUE, laplace = 1)
 stopImplicitCluster()
-source("Model_functions.R")
+source(project_path("Model_functions.R"))
 scored_posts <- score_sentiment(posts, cvfit, vectorizer, tfidf)
 
 sentiment_props <- scored_posts |>
