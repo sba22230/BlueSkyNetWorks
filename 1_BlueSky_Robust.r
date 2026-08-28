@@ -1,10 +1,15 @@
 # 1_bluesky_ingest.R
-source("0_functions.R")
+source(here::here("0_functions.R"))
 
 # Connect to bluesky
 bs_user <- bs_get_user()
 bs_pass <- bs_get_pass()
 bs_auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
+
+# Set TRUE once to enrich historical repost rows with record.value.createdAt.
+# This is intentionally opt-in because it scans each known reposter's public
+# repost records. Leave FALSE for normal incremental collection runs.
+enrich_historical_repost_events <- FALSE
 
 
 plan(multisession, workers = wrkrs)
@@ -16,7 +21,7 @@ posts_df <- deep_search_posts(
   "Speirgorm",
   hard_limit = 100000,
   chunk_limit = 100,
-  checkpoint_path = "data/speirgorm_posts.parquet"
+  checkpoint_path = project_path("data", "speirgorm_posts.parquet")
 )
 
 
@@ -25,21 +30,48 @@ cat(
   "\n=== Step 1b: Loading existing reposts and threads ===\n"
 )
 reposts_df <- tryCatch(
-  arrow::read_parquet("data/speirgorm_reposts.parquet"),
-  error = function(e) tibble(original_uri = character())
+  arrow::read_parquet(project_path("data", "speirgorm_reposts.parquet")),
+  error = function(e) {
+    tibble(
+      original_uri = character(),
+      did = character(),
+      handle = character(),
+      uri = character(),
+      repost_created_at = character()
+    )
+  }
 )
 threads_df <- tryCatch(
-  arrow::read_parquet("data/speirgorm_threads.parquet"),
-  error = function(e) tibble(original_uri = character())
+  arrow::read_parquet(project_path("data", "speirgorm_threads.parquet")),
+  error = function(e) {
+    tibble(
+      original_uri = character(),
+      author = character(),
+      uri = character()
+    )
+  }
 )
+validate_schema(reposts_df, "reposts", "reposts_df")
+validate_schema(threads_df, "threads", "threads_df")
+
+if (isTRUE(enrich_historical_repost_events)) {
+  message("Enriching existing repost rows with repost record timestamps...")
+  reposts_df <- enrich_existing_repost_events(reposts_df)
+}
 
 # Filter to only hydrate new posts
 posts_to_hydrate <- posts_df %>%
   filter(!(uri %in% c(reposts_df$original_uri, threads_df$original_uri)))
 
 # Check for partial hydration checkpoints and load if available
-hydrated_reposts_checkpoint <- "data/speirgorm_hydrated_reposts.parquet"
-hydrated_threads_checkpoint <- "data/speirgorm_hydrated_threads.parquet"
+hydrated_reposts_checkpoint <- project_path(
+  "data",
+  "speirgorm_hydrated_reposts.parquet"
+)
+hydrated_threads_checkpoint <- project_path(
+  "data",
+  "speirgorm_hydrated_threads.parquet"
+)
 
 if (file.exists(hydrated_reposts_checkpoint)) {
   message("Found existing hydrated reposts checkpoint; loading...")
@@ -80,8 +112,10 @@ hydrated <- tryCatch(
     list(
       reposts_df = tibble(
         original_uri = character(),
+        did = character(),
         handle = character(),
-        uri = character()
+        uri = character(),
+        repost_created_at = character()
       ),
       threads_df = tibble(
         original_uri = character(),
@@ -102,9 +136,15 @@ plan(orig_plan)
 cat(
   "\n=== Step 1c: Write out posts, reposts and threads into parquet ===\n"
 )
-arrow::write_parquet(posts_df, "data/speirgorm_posts.parquet")
-arrow::write_parquet(reposts_df, "data/speirgorm_reposts.parquet")
-arrow::write_parquet(threads_df, "data/speirgorm_threads.parquet")
+arrow::write_parquet(posts_df, project_path("data", "speirgorm_posts.parquet"))
+arrow::write_parquet(
+  reposts_df,
+  project_path("data", "speirgorm_reposts.parquet")
+)
+arrow::write_parquet(
+  threads_df,
+  project_path("data", "speirgorm_threads.parquet")
+)
 
 cat("\n=== Step 1d Clean up of temporary objects ===\n")
 

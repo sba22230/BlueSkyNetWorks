@@ -19,18 +19,18 @@ The pipeline:
 
 ## Project Structure
 
-```
+``` text
 BlueSkyNetWorks/
 ├── master_pipeline.R               # Orchestrates all pipeline stages
 ├── 0_functions.R                   # Libraries, authentication, utility functions
 ├── 1_BlueSky_Robust.r              # API data collection and hydration
-├── 2_load network data into SQL.r  # SQL Server ingestion and graph table setup
+├── 2_load_network_data_into_SQL.R  # SQL Server ingestion and graph table setup
 ├── 3_build_graph_and_metrics.R     # igraph/statnet construction and metrics
-├── 3a_NetworkVisualisation.r       # Layout computation and community colouring
-├── 3b_TSNA_Analysis.r              # Temporal network analysis
 ├── 4_visualisation.R               # visNetwork, ggraph, GEXF export
-├── 5_PostNLP_analysis.R            # TidyText NLP and post frequency analysis
-├── 6_TextAnalysis.R                # Sentiment lexicon analysis (Bing, NRC, AFINN)
+├── 5_Communities.R                 # Community subgraphs and layouts
+├── 5 NLP Analysis Functions.r      # Reusable text and model helpers
+├── 6_NLP_analysis.R                # NLP orchestration and sentiment models
+├── 7_TextAnalysis.R                # Lexicon sentiment and topic analysis
 ├── Model_functions.R               # Sentiment scoring (logistic regression, Naive Bayes)
 ├── BluseSkyNetworking.Rmd          # Interactive R Notebook for exploration
 ├── SQL/                            # T-SQL schema, stored procedures, views
@@ -49,7 +49,7 @@ BlueSkyNetWorks/
 - Hydrates posts in parallel batches to retrieve repost and thread data
 - Outputs: `speirgorm_posts.parquet`, `speirgorm_reposts.parquet`, `speirgorm_threads.parquet`
 
-### Stage 2 — SQL Ingestion (`2_load network data into SQL.r`)
+### Stage 2 — SQL Ingestion (`2_load_network_data_into_SQL.R`)
 
 - Loads parquet data into a SQL Server database (`BlueSkyNet`)
 - Creates SQL Server graph tables: `Person` (nodes) and `Reposted` (edges)
@@ -69,11 +69,28 @@ BlueSkyNetWorks/
 - Generates static plots with **ggraph** (Fruchterman-Reingold, Kamada-Kawai layouts)
 - Exports to GEXF (Gephi), GraphML, SVG, and HTML formats
 
-### Stage 5 — NLP Analysis (`5_PostNLP_analysis.R`, `6_TextAnalysis.R`)
+### Stage 5 — Community Analysis (`5_Communities.R`)
+
+- Extracts community subgraphs and computes community-level summaries
+
+### Stage 6 — NLP Analysis (`5 NLP Analysis Functions.r`, `6_NLP_analysis.R`, `7_TextAnalysis.R`)
 
 - Tokenises post text and computes word frequencies per community
 - Runs sentiment analysis using Bing, NRC, and AFINN lexicons
 - Analyses posting frequency and temporal dynamics
+
+### Data Contracts
+
+Pipeline scripts use repository-root paths, so they can be run from any working
+directory. Boundary tables have documented required columns: posts (`uri`,
+`text`), reposts (`original_uri`, `handle`, `uri`), threads (`original_uri`,
+`author`, `uri`), nodes (`name`, `community`), edges (`from`, `to`, `text`,
+`created_at`), communities (`name`, `community`), and layouts (`name`, `x`,
+`y`). Additional columns are allowed.
+
+Edges are directed as follows: `from` is the user who reposted, and `to` is the
+author of the original post. Shared preflight checks validate required files,
+packages, SQL Server connectivity, and input columns before a stage runs.
 
 ---
 
@@ -123,10 +140,12 @@ Or run individual stages:
 ```r
 source("0_functions.R")                      # Always source first
 source("1_BlueSky_Robust.r")                 # Collect data
-source("2_load network data into SQL.r")     # Ingest to SQL
+source("2_load_network_data_into_SQL.R")    # Ingest to SQL
 source("3_build_graph_and_metrics.R")        # Build graph & metrics
 source("4_visualisation.R")                  # Export visualisations
-source("5_PostNLP_analysis.R")               # NLP analysis
+source("5 NLP Analysis Functions.r")         # Reusable NLP helpers
+source("6_NLP_analysis.R")                   # NLP analysis
+source("7_TextAnalysis.R")                   # Text analysis
 ```
 
 For interactive exploration, open and knit `BluseSkyNetworking.Rmd`.
@@ -136,7 +155,7 @@ For interactive exploration, open and knit `BluseSkyNetworking.Rmd`.
 ## Data Artifacts
 
 | File | Size | Description |
-|------|------|-------------|
+| ------ | ------ | ------------- |
 | `data/speirgorm_posts.parquet` | 5.6 MB | Raw posts matching `#Speirgorm` |
 | `data/speirgorm_reposts.parquet` | 13.3 MB | Repost relationships |
 | `data/speirgorm_threads.parquet` | 1.6 MB | Reply thread data |
@@ -152,7 +171,7 @@ For interactive exploration, open and knit `BluseSkyNetworking.Rmd`.
 The `SQL/` directory contains T-SQL scripts for the `BlueSkyNet` database:
 
 | File | Purpose |
-|------|---------|
+| ------ | --------- |
 | `Tables.sql` | Creates `posts_raw`, `reposts_raw`, `Person`, `Reposted` graph tables |
 | `StoredProcedures.sql` | Procedures for graph metric computation |
 | `GraphMetrics.sql` | SQL-level centrality calculations |
@@ -187,7 +206,7 @@ The `SQL/` directory contains T-SQL scripts for the `BlueSkyNet` database:
 ## Naming Conventions
 
 | Context | Convention | Example |
-|---------|-----------|---------|
+| --------- | ----------- | --------- |
 | Database / graph fields | PascalCase | `PostedBy`, `RepostedOn` |
 | Bluesky API fields | camelCase | `uri`, `indexedAt` |
 | Computed metrics | snake_case | `reposts_received`, `betweenness_centrality` |

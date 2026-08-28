@@ -1,8 +1,12 @@
-source("0_functions.R")
+source(here::here("0_functions.R"))
 
 cat("\n=== Step 3a: Build igraph object and plot basic network ===\n")
 set.seed(22230)
-num_posts <- nrow(read_parquet("docs/graphs/speirgorm_edges.parquet"))
+num_posts <- nrow(read_parquet(project_path(
+  "docs",
+  "graphs",
+  "speirgorm_edges.parquet"
+)))
 if (!exists("num_posts") || is.null(num_posts)) {
   num_posts <- 5000
 }
@@ -117,7 +121,7 @@ save_graph_svg(
       col = 2
     )
   },
-  folder = "docs/images",
+  folder = project_path("docs", "images"),
   filename = "degree_scatter.svg"
 )
 
@@ -519,6 +523,8 @@ tic()
 # run layout_exec in parallel across the cluster once
 res_g <- rxExec(
   layout_exec,
+  edges_data = NULL,
+  nodes_data = NULL,
   graph = rxElemArg(graphs_arg),
   layout_type = rxElemArg(layout_rep),
   execObjects = c("connStr", "layout_exec")
@@ -662,7 +668,7 @@ save_graph_svg(
     )
   },
   filename = "gtn_TopNodes_Speirgorm_Network.svg",
-  folder = "docs/images"
+  folder = project_path("docs", "images")
 )
 # rxWriteObject(
 #   ds_Graphs,
@@ -700,6 +706,7 @@ process_ym <- function(
   save_graph_svg,
   save_network_svg,
   plot_word_comparison_date,
+  sql_server_available,
   render_word_comparison_date
 ) {
   library(dplyr)
@@ -796,19 +803,20 @@ process_ym <- function(
 
   # build a grid layout for the plots: 3 rows, 2 columns
   grid_matrix <- matrix(c(1, 2, 1, 3, 1, 4), nrow = 3, byrow = TRUE)
+  net_size <- vcount(sub_g)
 
   # plot creation
   cat(
     "Created subgraph for",
     ym,
     "with",
-    vcount(sub_g),
+    net_size,
     "nodes and",
     ecount(sub_g),
     "edges\n"
   )
 
-  main_title <- paste0("Sub Graph ", vcount(sub_g), " nodes\n(", ym, ")")
+  main_title <- paste0("Sub Graph ", net_size, " nodes\n(", ym, ")")
 
   # Precompute vertex aesthetics (bug fix: subg -> sub_g)
   vsize <- if (!is.null(V(sub_g)$pagerank)) {
@@ -826,12 +834,29 @@ process_ym <- function(
   svg(out_file, width = 20, height = 12)
   layout(grid_matrix)
 
+  # Igraph layout
+  if (net_size > 1500) {
+    coords <- layout_with_drl(sub_g, options = list(simmer.attraction = 0))
+  } else if (net_size >= 1000) {
+    coords <- layout_nicely(sub_g, dim = 2)
+  } else {
+    coords <- layout_with_fr(
+      sub_g,
+      dim = 2,
+      niter = list(...)$niter %||% (net_size / 3),
+      start.temp = sqrt(net_size),
+      weights = E(sub_g)$weight %||% rep(1, ecount(sub_g))
+    )
+  }
+
   # Plot the subgraph using igraph
   plot.igraph(
     sub_g,
-    layout = layout_nicely(sub_g, dim = 2),
+    layout = coords,
     main = main_title,
     vertex.size = vsize,
+    vertex.label.dist = 1.5,
+    vertex.label.degree = -pi / 2,
     vertex.label.cex = 0.9,
     edge.arrow.size = 0.3,
     vertex.color = vcol
@@ -901,11 +926,13 @@ results <- rxExec(
   save_graph_svg = save_graph_svg,
   save_network_svg = save_network_svg,
   plot_word_comparison_date = plot_word_comparison_date,
+  sql_server_available = sql_server_available,
   render_word_comparison_date = render_word_comparison_date,
   execObjects = c(
     "save_graph_svg",
     "save_network_svg",
     "plot_word_comparison_date",
+    "sql_server_available",
     "render_word_comparison_date",
     "subgraph_from_edges",
     "ds_Graphs"
@@ -962,7 +989,7 @@ svg_files <- list.files(
 
 # 2. Convert SVG → PNG
 for (i in seq_along(svg_files)) {
-  png_file <- sprintf("images/frame%04d.png", i)
+  png_file <- project_path("images", sprintf("frame%04d.png", i))
   rsvg_png(svg_files[i], png_file, width = 1920, height = 1080)
 }
 
@@ -1003,7 +1030,11 @@ gto <- ggraph(
 
 write_graph(
   g,
-  "docs/graphs/g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml",
+  project_path(
+    "docs",
+    "graphs",
+    "g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml"
+  ),
   format = "graphml"
 )
 if (sql_server_available()) {

@@ -1,20 +1,31 @@
 # Rewritten to load network data into SQL Server (BlueSkyNet) and run calculations on the server
 # Requires: RevoScaleR, DBI/odbc (optional for direct checks), igraph/ggraph for local plotting
 
-source("0_functions.R")
+source(here::here("0_functions.R"))
+
+preflight_pipeline(
+  required_files = c(
+    project_path("data", "speirgorm_posts.parquet"),
+    project_path("data", "speirgorm_reposts.parquet")
+  ),
+  required_packages = c("arrow", "DBI", "dplyr", "odbc", "RevoScaleR"),
+  check_sql = TRUE
+)
 
 # ---------------------------
 # Step 0: Read raw data Parquet files locally
 # ---------------------------
 posts_local <- read_parquet(
-  "./data/speirgorm_posts.parquet",
+  project_path("data", "speirgorm_posts.parquet"),
   stringsAsFactors = FALSE
 )
 reposts_local <- arrow::read_parquet(
-  "./data/speirgorm_reposts.parquet",
+  project_path("data", "speirgorm_reposts.parquet"),
 
   stringsAsFactors = FALSE
 )
+validate_schema(posts_local, "posts", "posts_local")
+validate_schema(reposts_local, "reposts", "reposts_local")
 cat("\n=== Step 2a: Read Parquet files locally ===\n")
 # ---------------------------
 # Step 1: Write raw data to SQL Server
@@ -40,7 +51,7 @@ post_src <- RxSqlServerData(
 posts_df <- rxImport(post_src)
 
 # save the network data frame for possible later use
-write_parquet(posts_df, "data/speirgorm_network.parquet")
+write_parquet(posts_df, project_path("data", "speirgorm_network.parquet"))
 cat("\n=== Step 2b: Write raw CSVs to SQL Server ===\n")
 # ---------------------------
 # Step 2: Create deduplicated edges table on server
@@ -50,7 +61,7 @@ cat("\n=== Step 2b: Write raw CSVs to SQL Server ===\n")
 # raw to get author_handle)
 # ---------------------------
 create_edges_sql <- "--Drop existing edge table if it exists
-IF OBJECT_ID('dbo.Reposted', 'U') IS NULL
+IF OBJECT_ID('dbo.Reposted', 'U') IS NOT NULL
 BEGIN
      DROP TABLE dbo.Reposted;
 -- END;
@@ -76,7 +87,7 @@ dbExecute(odbc_con, create_edges_sql)
 dbExecute(odbc_con, "TRUNCATE TABLE dbo.Reposted;")
 
 create_nodes_sql <- "-- 1. Drop existing graph node table if it exists
-IF OBJECT_ID('dbo.Person', 'U') IS NULL
+IF OBJECT_ID('dbo.Person', 'U') IS NOT NULL
 BEGIN
     DROP TABLE dbo.Person;
 --END;
@@ -132,8 +143,7 @@ dbExecute(odbc_con, "TRUNCATE TABLE dbo.Person;")
 
 cat("\n=== Step 2c: populate the Nodes and Edges tables ===\n")
 
-populate_person_sql <- "TRUNCATE TABLE dbo.Person;
-INSERT INTO dbo.Person (
+populate_person_sql <- "INSERT INTO dbo.Person (
     handle,
     first_seen,
     last_seen,
@@ -183,9 +193,7 @@ dbExecute(odbc_con, populate_person_sql)
 
 cat("\n=== Step 2d: Populate Reposted edge table ===\n")
 
-populate_reposted_sql <- "TRUNCATE TABLE dbo.Reposted;
-
-WITH NetDF AS (
+populate_reposted_sql <- "WITH NetDF AS (
     SELECT  
         P.uri AS Post,
         P.author_handle AS PostedBy,
@@ -573,7 +581,7 @@ nodes <- nodes %>%
     ~ gsub("[[:cntrl:]]", "", .)
   ))
 
-write_parquet(nodes, "docs/graphs/speirgorm_nodes.parquet")
+write_parquet(nodes, project_path("docs", "graphs", "speirgorm_nodes.parquet"))
 
 edges <- dbGetQuery(
   odbc_con,
@@ -608,7 +616,7 @@ edges <- edges %>%
   ))
 names(edges)
 
-write_parquet(edges, "docs/graphs/speirgorm_edges.parquet")
+write_parquet(edges, project_path("docs", "graphs", "speirgorm_edges.parquet"))
 cat(
   "\n=== Step 2m: Created edges and nodes csv files for later ===\n"
 )

@@ -61,7 +61,14 @@ if (v$major == '4') {
   library(rgexf)
   library(statnet)
   library(tidytext)
-  wrkrs <- max(1, floor(availableCores(constraints = "connections-16") * 0.7))
+  detected_workers <- floor(
+    availableCores(constraints = "connections-16") * 0.7
+  )
+  wrkrs <- min(
+    4L,
+    max(1L, detected_workers)
+  )
+  message("Using ", wrkrs, " parallel worker(s) for API hydration.")
 }
 library(aricode)
 library(arrow)
@@ -97,13 +104,105 @@ library(wordcloud2)
 
 #### Path Functions ####
 library(here)
-# Return a path relative to the project root detected by here.
-here_parent <- function(...) {
+# Return the repository root detected by here.
+project_root <- function() {
   root <- here::here()
   if (!file.exists(file.path(root, "0_functions.R"))) {
     root <- file.path(root, "..")
   }
-  normalizePath(file.path(root, ...), winslash = "/", mustWork = FALSE)
+  normalizePath(root, winslash = "/", mustWork = FALSE)
+}
+
+# Return a path relative to the repository root.
+project_path <- function(...) {
+  normalizePath(
+    file.path(project_root(), ...),
+    winslash = "/",
+    mustWork = FALSE
+  )
+}
+
+# Backwards-compatible alias used by existing graph and SQL helpers.
+here_parent <- function(...) {
+  project_path(...)
+}
+
+# Required fields at each pipeline boundary. Additional fields may be present.
+pipeline_schema <- list(
+  posts = c("uri", "text"),
+  reposts = c("original_uri", "handle", "uri"),
+  threads = c("original_uri", "author", "uri"),
+  nodes = c("name", "community"),
+  edges = c("from", "to", "text", "created_at"),
+  communities = c("name", "community"),
+  layouts = c("name", "x", "y")
+)
+
+validate_schema <- function(data, schema_name, object_name = schema_name) {
+  required <- pipeline_schema[[schema_name]]
+  if (is.null(required)) {
+    stop("Unknown pipeline schema: ", schema_name, call. = FALSE)
+  }
+  missing <- setdiff(required, names(data))
+  if (length(missing)) {
+    stop(
+      object_name,
+      " does not satisfy the ",
+      schema_name,
+      " schema. Missing columns: ",
+      paste(missing, collapse = ", "),
+      call. = FALSE
+    )
+  }
+  invisible(data)
+}
+
+preflight_pipeline <- function(
+  required_files = character(),
+  required_packages = list.of.packages,
+  check_sql = FALSE,
+  data_objects = list()
+) {
+  missing_packages <- required_packages[
+    !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+  ]
+  if (length(missing_packages)) {
+    stop(
+      "Missing required R packages: ",
+      paste(missing_packages, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  missing_files <- required_files[!file.exists(required_files)]
+  if (length(missing_files)) {
+    stop(
+      "Missing required pipeline files: ",
+      paste(missing_files, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  if (check_sql && !exists("sql_server_available", mode = "function")) {
+    stop("SQL availability checks are not initialized.", call. = FALSE)
+  }
+  if (check_sql && !sql_server_available()) {
+    stop(
+      "SQL Server is not available for the configured pipeline database.",
+      call. = FALSE
+    )
+  }
+
+  if (length(data_objects)) {
+    for (object_name in names(data_objects)) {
+      object <- data_objects[[object_name]]
+      schema_name <- attr(object, "pipeline_schema")
+      if (!is.null(schema_name)) {
+        validate_schema(object, schema_name, object_name)
+      }
+    }
+  }
+  invisible(TRUE)
 }
 
 
@@ -168,7 +267,7 @@ deep_search_posts <- function(
   query,
   hard_limit = 50000,
   chunk_limit = 100,
-  checkpoint_path = "data/speirgorm_posts.parquet"
+  checkpoint_path = project_path("data", "speirgorm_posts.parquet")
 ) {
   all_rows <- list()
   cursor <- NULL
@@ -283,50 +382,188 @@ deep_search_posts <- function(
   bind_rows(all_rows) %>% distinct(uri, .keep_all = TRUE)
 }
 
+empty_reposts <- function(uri) {
+  tibble(
+    original_uri = character(),
+    did = character(),
+    handle = character(),
+    uri = character(),
+    repost_created_at = character()
+  )
+}
+
+get_repost_records_for_actor <- function(did, target_uris = NULL) {
+  records <- retry(
+    bs_list_records(
+      repo = did,
+      collection = "app.bsky.feed.repost",
+      limit = NULL,
+      auth = bs_auth,
+      clean = FALSE
+    ),
+    when = "error",
+    max_tries = 4,
+    interval = runif(1, 0.8, 1.8)
+  )
+
+  records <- if (!is.null(records$records)) records$records else records
+  if (!is.list(records) || length(records) == 0) {
+    return(tibble())
+  }
+
+  records <- tibble(
+    did = did,
+    uri = map_chr(records, ~ safe_chr(.x, "uri")),
+    subject_uri = map_chr(
+      records,
+      ~ safe_chr(.x, "value", "subject", "uri")
+    ),
+    repost_created_at = map_chr(
+      records,
+      ~ safe_chr(.x, "value", "createdAt")
+    )
+  )
+  if (!is.null(target_uris)) {
+    records <- records |> filter(subject_uri %in% target_uris)
+  }
+  records
+}
+
 get_reposts_df <- function(uri) {
   Sys.sleep(runif(1, 0.2, 1.1))
-  reposts <- tryCatch(
-    {
-      retry(
-        bs_get_reposts(uri, limit = 500, auth = bs_auth, clean = TRUE),
-        when = "error",
-        max_tries = 4,
-        interval = runif(1, 0.8, 1.8)
-      )
-    },
+  actors <- tryCatch(
+    retry(
+      bs_get_reposts(uri, limit = NULL, auth = bs_auth, clean = TRUE),
+      when = "error",
+      max_tries = 4,
+      interval = runif(1, 0.8, 1.8)
+    ),
     error = function(e) {
-      msg <- conditionMessage(e)
-      if (grepl("400", msg)) {
-        message("Skipping invalid/missing repost: ", uri, " (Bad Request)")
-        return(tibble(
-          original_uri = uri,
-          handle = character(),
-          uri = character()
-        ))
-      } else if (grepl("502", msg)) {
-        message("Temporary gateway error for ", uri, "; will retry later.")
-        return(tibble(
-          original_uri = uri,
-          handle = character(),
-          uri = character()
-        ))
-      } else {
-        message("Failed to get reposts for ", uri, ": ", msg)
-        return(tibble(
-          original_uri = uri,
-          handle = character(),
-          uri = character()
-        ))
-      }
+      message(
+        "Failed to get reposting accounts for ",
+        uri,
+        ": ",
+        conditionMessage(e)
+      )
+      NULL
     }
   )
-  if (
-    is.null(reposts) || !inherits(reposts, "data.frame") || nrow(reposts) == 0
-  ) {
-    return(tibble(original_uri = uri, handle = character(), uri = character()))
+
+  if (is.null(actors) || !inherits(actors, "data.frame") || nrow(actors) == 0) {
+    return(empty_reposts(uri))
   }
-  reposts$original_uri <- uri
-  tibble::as_tibble(reposts)
+
+  records <- lapply(seq_len(nrow(actors)), function(i) {
+    actor_records <- tryCatch(
+      get_repost_records_for_actor(actors$did[i], uri),
+      error = function(e) {
+        message(
+          "Failed to list repost records for ",
+          actors$handle[i],
+          ": ",
+          conditionMessage(e)
+        )
+        tibble()
+      }
+    )
+    if (nrow(actor_records) == 0) {
+      return(tibble())
+    }
+    actor_records$handle <- actors$handle[i]
+    actor_records
+  }) |>
+    bind_rows()
+
+  if (nrow(records) == 0) {
+    return(empty_reposts(uri))
+  }
+
+  records |>
+    mutate(original_uri = subject_uri) |>
+    select(original_uri, did, handle, uri, repost_created_at)
+}
+
+enrich_existing_repost_events <- function(reposts_df, cores = wrkrs) {
+  if (nrow(reposts_df) == 0 || !"original_uri" %in% names(reposts_df)) {
+    return(reposts_df)
+  }
+
+  actor_map <- reposts_df |>
+    filter(!is.na(handle), handle != "") |>
+    distinct(handle)
+  if ("did" %in% names(reposts_df)) {
+    actor_map <- reposts_df |>
+      filter(!is.na(handle), handle != "") |>
+      distinct(did, handle)
+  } else {
+    actor_map$did <- NA_character_
+  }
+
+  missing_did <- !"did" %in% names(actor_map) ||
+    any(is.na(actor_map$did) | actor_map$did == "")
+  if (missing_did) {
+    profiles <- bs_get_profile(
+      actors = unique(actor_map$handle[
+        is.na(actor_map$did) | actor_map$did == ""
+      ]),
+      auth = bs_auth,
+      clean = TRUE
+    )
+    actor_map <- actor_map |>
+      left_join(
+        profiles |> select(did, handle),
+        by = "handle",
+        suffix = c("", ".profile")
+      ) |>
+      mutate(did = coalesce(did, did.profile)) |>
+      select(-any_of("did.profile"))
+  }
+
+  actor_map <- actor_map |> filter(!is.na(did), did != "")
+  target_uris <- unique(reposts_df$original_uri)
+  old_plan <- future::plan()
+  future::plan(future::multisession, workers = cores)
+  on.exit(future::plan(old_plan), add = TRUE)
+
+  refreshed <- furrr::future_map_dfr(
+    seq_len(nrow(actor_map)),
+    function(i) {
+      tryCatch(
+        get_repost_records_for_actor(actor_map$did[i], target_uris),
+        error = function(e) {
+          message(
+            "Failed historical repost lookup for ",
+            actor_map$handle[i],
+            ": ",
+            conditionMessage(e)
+          )
+          tibble()
+        }
+      ) |>
+        mutate(handle = actor_map$handle[i])
+    },
+    .options = furrr::furrr_options(seed = 22230)
+  )
+
+  if (nrow(refreshed) == 0) {
+    return(reposts_df)
+  }
+
+  reposts_df |>
+    left_join(
+      refreshed |>
+        select(original_uri = subject_uri, handle, repost_created_at) |>
+        distinct(original_uri, handle, .keep_all = TRUE),
+      by = c("original_uri", "handle"),
+      suffix = c("", ".new")
+    ) |>
+    mutate(
+      repost_created_at = coalesce(
+        repost_created_at.new,
+        repost_created_at
+      )
+    ) |>
+    select(-any_of("repost_created_at.new"))
 }
 
 get_thread_df <- function(uri) {
@@ -388,7 +625,6 @@ get_thread_df <- function(uri) {
 
 # Chunking helper
 chunk_vec <- function(x, size) split(x, ceiling(seq_along(x) / size))
-plan(multisession, workers = wrkrs)
 hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
   uris_reposts <- posts_df %>%
     filter(repost_count > 0) %>%
@@ -406,8 +642,14 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
   all_threads <- list()
 
   # Load existing partial results if resuming
-  reposts_checkpoint_path <- sprintf("data/%s_hydrated_reposts.parquet", tag)
-  threads_checkpoint_path <- sprintf("data/%s_hydrated_threads.parquet", tag)
+  reposts_checkpoint_path <- project_path(
+    "data",
+    sprintf("%s_hydrated_reposts.parquet", tag)
+  )
+  threads_checkpoint_path <- project_path(
+    "data",
+    sprintf("%s_hydrated_threads.parquet", tag)
+  )
 
   if (file.exists(reposts_checkpoint_path)) {
     all_reposts <- list(arrow::read_parquet(reposts_checkpoint_path))
@@ -438,7 +680,7 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
       {
         readr::write_csv(
           part,
-          sprintf("data/reposts_batch_%s_%03d.csv", tag, i)
+          project_path("data", sprintf("reposts_batch_%s_%03d.csv", tag, i))
         )
       },
       error = function(e) message("Failed to write reposts batch: ", e$message)
@@ -477,7 +719,7 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
       {
         readr::write_csv(
           part,
-          sprintf("data/threads_batch_%s_%03d.csv", tag, i)
+          project_path("data", sprintf("threads_batch_%s_%03d.csv", tag, i))
         )
       },
       error = function(e) message("Failed to write threads batch: ", e$message)
@@ -505,14 +747,17 @@ hydrate_in_batches <- function(posts_df, batch_size = 400, tag = "speirgorm") {
 }
 
 #### SQL Functions ####
-sql_server_available <- function() {
+sql_server_available <- function(
+  server = "localhost",
+  database = "BlueSkyNet"
+) {
   tryCatch(
     {
       con <- dbConnect(
         odbc(),
         Driver = "SQL Server",
-        Server = "localhost",
-        Database = "master",
+        Server = server,
+        Database = database,
         Trusted_Connection = "Yes",
         Port = 1433
       )
@@ -629,6 +874,8 @@ get_graph_data <- function(num_posts) {
     "graphs",
     "speirgorm_nodes.parquet"
   ))
+  validate_schema(edges_df, "edges", "speirgorm_edges.parquet")
+  validate_schema(nodes_df, "nodes", "speirgorm_nodes.parquet")
 
   # plan(multisession, workers = wrkrs)  ## to be moved closer to its use
   # ============================================================================

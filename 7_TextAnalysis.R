@@ -5,7 +5,7 @@
 # =============================================================================
 # Load shared packages, helper functions, graph-loading logic, and connection
 # settings used throughout the analysis.
-source("0_functions.R")
+source(here::here("0_functions.R"))
 # =============================================================================
 # 1. DATA PREPARATION
 # Convert graph data into a text-analysis corpus while preserving the community
@@ -155,7 +155,7 @@ save_graph_svg(
     )
   },
   filename = "nrcsentiment.svg",
-  folder = "docs/images"
+  folder = project_path("docs", "images")
 )
 
 # --- AFINN: numeric sentiment score ------------------------------------------
@@ -215,7 +215,7 @@ speirgormWordcloud <- wordcloud2(
 # Export the interactive widget and its supporting files for browser viewing.
 saveWidget(
   speirgormWordcloud,
-  "docs/SpeirGormWordcloud.html",
+  project_path("docs", "SpeirGormWordcloud.html"),
   selfcontained = FALSE
 )
 # =============================================================================

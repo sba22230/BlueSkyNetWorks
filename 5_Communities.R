@@ -4,6 +4,7 @@
 ### TODO: add the NLP analysis of the top communities  ###
 ### TODO: graph the communities according to rules in MISC folder
 ### TODO: add scatter to the image of communities
+source(here::here("0_functions.R"))
 cat("\n=== Step 5a: Computing community structure... ===\n")
 # Re-compute if necessary
 #comm_louvain <- igraph::cluster_louvain(as_undirected(g)) #-- computed in SQL
@@ -53,9 +54,11 @@ graphs_arg <- lapply(graph_idx_rep, function(ii) community_graphs[[ii]])
 # run layout_exec in parallel across the cluster once
 res_all <- rxExec(
   layout_exec,
+  edges_data = NULL,
+  nodes_data = NULL,
   graph = rxElemArg(graphs_arg),
   layout_type = rxElemArg(layout_rep),
-  execObjects = c("connStr", "layout_exec")
+  execObjects = c("connStr", "layout_exec", "project_path")
 )
 
 # Load the res_all object to SQL

@@ -2,6 +2,8 @@
 # All functions accept an igraph graph object `g` and return results explicitly.
 # Libraries are loaded via 0_functions.R; additional packages listed below must
 # also be present: rsample, glmnet, doParallel, broom, forcats, text2vec, lattice.
+# Edge contract: from is the reposter; to is the original post author.
+# Edge contract: from is the reposter; to is the original post author.
 #
 # Module-level text-cleaning constants. Also consumed by plot_word_comparison_date()
 # in 0_functions.R, so they must remain in scope when that helper is called.
@@ -375,7 +377,7 @@ build_community_classifier <- function(g, target_community = "1", cores = 16) {
 #   $tfidf         — fitted TfIdf transformer
 # ---------------------------------------------------------------------------
 build_sentiment_models <- function(
-  sentiment_path = "data/sentimentdataset.csv",
+  sentiment_path = project_path("data", "sentimentdataset.csv"),
   cores = 16
 ) {
   sentimentdataset <- readr::read_csv(
