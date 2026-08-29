@@ -382,188 +382,50 @@ deep_search_posts <- function(
   bind_rows(all_rows) %>% distinct(uri, .keep_all = TRUE)
 }
 
-empty_reposts <- function(uri) {
-  tibble(
-    original_uri = character(),
-    did = character(),
-    handle = character(),
-    uri = character(),
-    repost_created_at = character()
-  )
-}
-
-get_repost_records_for_actor <- function(did, target_uris = NULL) {
-  records <- retry(
-    bs_list_records(
-      repo = did,
-      collection = "app.bsky.feed.repost",
-      limit = NULL,
-      auth = bs_auth,
-      clean = FALSE
-    ),
-    when = "error",
-    max_tries = 4,
-    interval = runif(1, 0.8, 1.8)
-  )
-
-  records <- if (!is.null(records$records)) records$records else records
-  if (!is.list(records) || length(records) == 0) {
-    return(tibble())
-  }
-
-  records <- tibble(
-    did = did,
-    uri = map_chr(records, ~ safe_chr(.x, "uri")),
-    subject_uri = map_chr(
-      records,
-      ~ safe_chr(.x, "value", "subject", "uri")
-    ),
-    repost_created_at = map_chr(
-      records,
-      ~ safe_chr(.x, "value", "createdAt")
-    )
-  )
-  if (!is.null(target_uris)) {
-    records <- records |> filter(subject_uri %in% target_uris)
-  }
-  records
-}
-
 get_reposts_df <- function(uri) {
   Sys.sleep(runif(1, 0.2, 1.1))
-  actors <- tryCatch(
-    retry(
-      bs_get_reposts(uri, limit = NULL, auth = bs_auth, clean = TRUE),
-      when = "error",
-      max_tries = 4,
-      interval = runif(1, 0.8, 1.8)
-    ),
-    error = function(e) {
-      message(
-        "Failed to get reposting accounts for ",
-        uri,
-        ": ",
-        conditionMessage(e)
+  reposts <- tryCatch(
+    {
+      retry(
+        bs_get_reposts(uri, limit = 500, auth = bs_auth, clean = TRUE),
+        when = "error",
+        max_tries = 4,
+        interval = runif(1, 0.8, 1.8)
       )
-      NULL
-    }
-  )
-
-  if (is.null(actors) || !inherits(actors, "data.frame") || nrow(actors) == 0) {
-    return(empty_reposts(uri))
-  }
-
-  records <- lapply(seq_len(nrow(actors)), function(i) {
-    actor_records <- tryCatch(
-      get_repost_records_for_actor(actors$did[i], uri),
-      error = function(e) {
-        message(
-          "Failed to list repost records for ",
-          actors$handle[i],
-          ": ",
-          conditionMessage(e)
-        )
-        tibble()
-      }
-    )
-    if (nrow(actor_records) == 0) {
-      return(tibble())
-    }
-    actor_records$handle <- actors$handle[i]
-    actor_records
-  }) |>
-    bind_rows()
-
-  if (nrow(records) == 0) {
-    return(empty_reposts(uri))
-  }
-
-  records |>
-    mutate(original_uri = subject_uri) |>
-    select(original_uri, did, handle, uri, repost_created_at)
-}
-
-enrich_existing_repost_events <- function(reposts_df, cores = wrkrs) {
-  if (nrow(reposts_df) == 0 || !"original_uri" %in% names(reposts_df)) {
-    return(reposts_df)
-  }
-
-  actor_map <- reposts_df |>
-    filter(!is.na(handle), handle != "") |>
-    distinct(handle)
-  if ("did" %in% names(reposts_df)) {
-    actor_map <- reposts_df |>
-      filter(!is.na(handle), handle != "") |>
-      distinct(did, handle)
-  } else {
-    actor_map$did <- NA_character_
-  }
-
-  missing_did <- !"did" %in% names(actor_map) ||
-    any(is.na(actor_map$did) | actor_map$did == "")
-  if (missing_did) {
-    profiles <- bs_get_profile(
-      actors = unique(actor_map$handle[
-        is.na(actor_map$did) | actor_map$did == ""
-      ]),
-      auth = bs_auth,
-      clean = TRUE
-    )
-    actor_map <- actor_map |>
-      left_join(
-        profiles |> select(did, handle),
-        by = "handle",
-        suffix = c("", ".profile")
-      ) |>
-      mutate(did = coalesce(did, did.profile)) |>
-      select(-any_of("did.profile"))
-  }
-
-  actor_map <- actor_map |> filter(!is.na(did), did != "")
-  target_uris <- unique(reposts_df$original_uri)
-  old_plan <- future::plan()
-  future::plan(future::multisession, workers = cores)
-  on.exit(future::plan(old_plan), add = TRUE)
-
-  refreshed <- furrr::future_map_dfr(
-    seq_len(nrow(actor_map)),
-    function(i) {
-      tryCatch(
-        get_repost_records_for_actor(actor_map$did[i], target_uris),
-        error = function(e) {
-          message(
-            "Failed historical repost lookup for ",
-            actor_map$handle[i],
-            ": ",
-            conditionMessage(e)
-          )
-          tibble()
-        }
-      ) |>
-        mutate(handle = actor_map$handle[i])
     },
-    .options = furrr::furrr_options(seed = 22230)
+    error = function(e) {
+      msg <- conditionMessage(e)
+      if (grepl("400", msg)) {
+        message("Skipping invalid/missing repost: ", uri, " (Bad Request)")
+        return(tibble(
+          original_uri = uri,
+          handle = character(),
+          uri = character()
+        ))
+      } else if (grepl("502", msg)) {
+        message("Temporary gateway error for ", uri, "; will retry later.")
+        return(tibble(
+          original_uri = uri,
+          handle = character(),
+          uri = character()
+        ))
+      } else {
+        message("Failed to get reposts for ", uri, ": ", msg)
+        return(tibble(
+          original_uri = uri,
+          handle = character(),
+          uri = character()
+        ))
+      }
+    }
   )
-
-  if (nrow(refreshed) == 0) {
-    return(reposts_df)
+  if (
+    is.null(reposts) || !inherits(reposts, "data.frame") || nrow(reposts) == 0
+  ) {
+    return(tibble(original_uri = uri, handle = character(), uri = character()))
   }
-
-  reposts_df |>
-    left_join(
-      refreshed |>
-        select(original_uri = subject_uri, handle, repost_created_at) |>
-        distinct(original_uri, handle, .keep_all = TRUE),
-      by = c("original_uri", "handle"),
-      suffix = c("", ".new")
-    ) |>
-    mutate(
-      repost_created_at = coalesce(
-        repost_created_at.new,
-        repost_created_at
-      )
-    ) |>
-    select(-any_of("repost_created_at.new"))
+  reposts$original_uri <- uri
+  tibble::as_tibble(reposts)
 }
 
 get_thread_df <- function(uri) {

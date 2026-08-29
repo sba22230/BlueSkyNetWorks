@@ -9,7 +9,7 @@ bs_auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
 # Set TRUE once to enrich historical repost rows with record.value.createdAt.
 # This is intentionally opt-in because it scans each known reposter's public
 # repost records. Leave FALSE for normal incremental collection runs.
-enrich_historical_repost_events <- FALSE
+enrich_historical_repost_events <- TRUE
 
 
 plan(multisession, workers = wrkrs)
