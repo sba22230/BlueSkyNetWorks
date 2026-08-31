@@ -718,6 +718,7 @@ process_ym <- function(
   library(sna)
   library(network)
   library(RColorBrewer)
+  library(tidyr)
 
   # date preparation - build the sub graphs
   eids <- which(year_month == ym)
@@ -855,7 +856,7 @@ process_ym <- function(
     layout = coords,
     main = main_title,
     vertex.size = vsize,
-    vertex.label.dist = 1.5,
+    vertex.label.dist = 0.5,
     vertex.label.degree = -pi / 2,
     vertex.label.cex = 0.9,
     edge.arrow.size = 0.3,
@@ -928,7 +929,7 @@ results <- rxExec(
   plot_word_comparison_date = plot_word_comparison_date,
   sql_server_available = sql_server_available,
   render_word_comparison_date = render_word_comparison_date,
-  sql_server_available = sql_server_available,
+
   execObjects = c(
     "save_graph_svg",
     "save_network_svg",
@@ -936,7 +937,7 @@ results <- rxExec(
     "sql_server_available",
     "render_word_comparison_date",
     "subgraph_from_edges",
-    "sql_server_available",
+
     "ds_Graphs"
   ),
 
@@ -950,6 +951,7 @@ results <- rxExec(
     "magrittr",
     "network",
     "stringr",
+    "tidyr",
     "tidytext"
   )
 )
