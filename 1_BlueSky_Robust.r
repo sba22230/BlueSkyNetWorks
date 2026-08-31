@@ -6,12 +6,6 @@ bs_user <- bs_get_user()
 bs_pass <- bs_get_pass()
 bs_auth <- bs_auth(bs_user, bs_pass, save_auth = TRUE)
 
-# Set TRUE once to enrich historical repost rows with record.value.createdAt.
-# This is intentionally opt-in because it scans each known reposter's public
-# repost records. Leave FALSE for normal incremental collection runs.
-enrich_historical_repost_events <- TRUE
-
-
 plan(multisession, workers = wrkrs)
 cat(
   "\n=== Step 1a: Deep search for posts ===\n"
@@ -53,11 +47,6 @@ threads_df <- tryCatch(
 )
 validate_schema(reposts_df, "reposts", "reposts_df")
 validate_schema(threads_df, "threads", "threads_df")
-
-if (isTRUE(enrich_historical_repost_events)) {
-  message("Enriching existing repost rows with repost record timestamps...")
-  reposts_df <- enrich_existing_repost_events(reposts_df)
-}
 
 # Filter to only hydrate new posts
 posts_to_hydrate <- posts_df %>%

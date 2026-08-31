@@ -65,7 +65,7 @@ if (v$major == '4') {
     availableCores(constraints = "connections-16") * 0.7
   )
   wrkrs <- min(
-    4L,
+    10L,
     max(1L, detected_workers)
   )
   message("Using ", wrkrs, " parallel worker(s) for API hydration.")
