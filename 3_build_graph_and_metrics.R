@@ -957,7 +957,7 @@ results <- rxExec(
 )
 
 # Restore original compute context
-rxSetComputeContext(origComputeContext)
+rxSetComputeContext(RxLocalParallel())
 
 # Filter out any NULL results and collect into named lists
 results <- Filter(Negate(is.null), results)
