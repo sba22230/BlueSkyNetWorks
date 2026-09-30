@@ -306,7 +306,7 @@ top6_comms <- tidy_posts |>
   distinct(community, document) |>
   count(community, sort = TRUE) |>
   filter(community %in% valid_communities) |>
-  slice_head(n = 6) |>
+  slice_head(n = 12) |>
   pull(community)
 
 # For each community, choose the highest-beta term for each topic, while
