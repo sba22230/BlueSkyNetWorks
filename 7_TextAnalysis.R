@@ -270,7 +270,7 @@ lda_models <- valid_communities |>
       count(document, word) |>
       build_dtm()
     # Fit five topics and use a fixed seed for reproducible model initialization.
-    LDA(dtm, k = 5, control = list(seed = 7843))
+    LDA(dtm, k = 5, method = "Gibbs", control = list(seed = 22230))
   })
 
 # Extract beta values from each model. Beta is the estimated probability of a
@@ -358,6 +358,8 @@ community_topics |>
   ) +
   theme_minimal()
 
+if (sql_server_available()) {
+  
 community_sql <- RxSqlServerData(
   table = "communityTopics",
   connectionString = connStr
@@ -365,7 +367,7 @@ community_sql <- RxSqlServerData(
 # Export the complete top-term table, including communities and terms not shown
 # in the six-community heatmap, to the SQL Server table.
 rxDataStep(community_topics, community_sql, overwrite = TRUE)
-
+}
 # --- Gamma: mean document-topic proportion per community ---------------------
 # Gamma is the proportion of each document assigned to each topic. This section
 # averages those document-level proportions to create a topic profile per
