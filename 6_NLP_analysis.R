@@ -59,6 +59,7 @@ cat(
   "\n=== Step 6b: Plot the frequency comparison of top 2 authors ===\n"
 )
 library(scales)
+save_graph_svg(
 ggplot(
   frequency,
   aes(x = .data[[cols[1]]], y = .data[[cols[2]]])
@@ -72,8 +73,8 @@ ggplot(
     x = paste0("Frequency by ", name1),
     y = paste0("Frequency by ", name2)
   ) +
-  theme_minimal()
-
+  theme_minimal() , "frequency_comparison.svg", "images"
+)
 cat(
   "\n=== Step 6c: Examining community posts ===\n"
 )
@@ -128,12 +129,17 @@ totals <- counts_long |>
 counts <- counts_long |>
   pivot_wider(names_from = community, values_from = n, values_fill = 0)
 
-ViewCommunityContrastedByWords(totals, counts, tidy_posts, comm_1, comm_2)
+save_graph_svg(
+ViewCommunityContrastedByWords(totals, counts, tidy_posts, comm_1, comm_2),
+"Word_FreqComparison.svg", "images")
 
 cat(
   "\n=== Step 6d: Examining community posts timelines ===\n"
 )
-community_graphs <- rxReadObject(ds_Graphs, "Community Graphs")
+if (sql_server_available()) {
+  community_graphs <- rxReadObject(ds_Graphs, "Community Graphs")  
+}
+
 #community_graphs <- comm
 n_comm <- length(community_graphs)
 # for each sub graph plot the post timeline
@@ -359,6 +365,7 @@ coefs <- model$glmnet.fit %>%
   filter(lambda == model$lambda.1se)
 
 library(forcats)
+save_graph_svg( 
 coefs %>%
   group_by(estimate > 0) %>%
   top_n(10, abs(estimate)) %>%
@@ -369,7 +376,7 @@ coefs %>%
   labs(
     x = NULL,
     title = "Coefficients that increase/decrease probability the most"
-  )
+  ),"Coefficients_probability.svg", "images")
 
 # GLM Model building
 
@@ -483,13 +490,12 @@ barchart(
     )
   )
 )
-
 posts_nb <- score_sentiment_nb(posts, nb_model, vectorizer_nb)
 
 sentiment_nb_props <- posts_nb |>
   count(sentiment_nb) |>
   mutate(prop = n / sum(n))
-
+save_graph_svg(  
 barchart(
   prop ~ sentiment_nb,
   data = sentiment_nb_props |> arrange(desc(prop)),
@@ -502,4 +508,5 @@ barchart(
       labels = paste0(seq(0, 100, by = 10), "%")
     )
   )
+), "Sentiment_distribution.svg", "images"
 )
