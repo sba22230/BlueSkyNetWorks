@@ -75,8 +75,9 @@ res_all <- rxExec(
   execObjects = c("connStr", "layout_exec", "project_path")
 )
 
+if(sql_server_available()){
 # Load the res_all object to SQL
-rxWriteObject(ds_Graphs, "Res All", res_all, overwrite = TRUE)
+rxWriteObject(ds_Graphs, "Res All", res_all, overwrite = TRUE)}
 
 # assemble nested list: community_layouts[[i]] = list(id, graph, layouts = named list(layout -> coord_matrix))
 community_layouts <- vector("list", n_comm)
@@ -262,3 +263,4 @@ cat(sprintf(" Community analysis complete:\n"))
 datatable(community_stats)
 
 cat("Interactive visualization ready with precomputed layout.\n")
+
