@@ -1,0 +1,23 @@
+Version: 1.0
+
+RestoreWorkspace: No
+SaveWorkspace: No
+AlwaysSaveHistory: Yes
+
+EnableCodeIndexing: Yes
+UseSpacesForTab: Yes
+NumSpacesForTab: 2
+Encoding: UTF-8
+
+RnwWeave: Sweave
+LaTeX: pdfLaTeX
+
+UseNativePipeOperator: Yes
+
+QuitChildProcessesOnExit: Yes
+
+PythonType: system
+PythonVersion: 3.14.0
+PythonPath: C:/Users/steha/AppData/Local/Python/bin/python.exe
+
+SpellingDictionary: en_GB
