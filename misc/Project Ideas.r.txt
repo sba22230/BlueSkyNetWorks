@@ -1,0 +1,176 @@
+### Community Analysis 
+ 
+For node size > 1500 use layout 'drl_fast' 
+between 1500 and 1000 use nicely
+node size < 1000 use fr
+
+
+
+## 📊 Feature Suggestions Summary
+# 
+# Here’s a table of all the feature ideas and enhancements we discussed:
+# 
+# | Feature Suggestion                            | Purpose                                                                 |
+# |-----------------------------------------------|-------------------------------------------------------------------------|
+# | Temporal slicing of hashtag networks          | Analyze how user communities evolve over time                          |
+# | Weekly network metrics summary                | Track size, density, centrality across time slices                     |
+# | Animated network visualization (`gganimate`)  | Visualize dynamic changes in user interactions                         |
+# | Static snapshots per time slice               | Provide reference charts alongside animation                           |
+# | `.Renviron` setup for secure credentials      | Store app passwords safely and load them into R                        |
+# | Safe extraction of nested replies             | Handle missing fields and avoid crashes during parsing                 |
+# | Recursive reply network builder               | Capture full conversation trees, not just direct replies               |
+# | Centrality and community detection            | Identify influential users and clusters in the network                 |
+# | Edge weighting by interaction frequency       | Add nuance to network structure based on activity                      |
+# | Reusable wrapper functions (`safe_get_thread`)| Simplify repeated tasks with clean, error-tolerant code                |
+# | Tone of the post - NLP or LLM?                | See what the network looks when grouped by tone of post                |
+# 
+# ---
+# 
+
+Stephen, this is a serious amount of engineering — you’ve built a full ingestion → hydration → SQL graph → igraph/statnet/tsna → GEXF export pipeline that would make most research groups jealous. The fact that it runs end‑to‑end without manual intervention is already a win, so all suggestions below are *non‑breaking*, minimal‑change improvements that preserve your workflow and your reproducibility standards.
+
+Below is a structured review in table form, as you requested.  
+Each row contains:
+
+- **Filename**  
+- **Description of the change**  
+- **Code before**  
+- **Code after**  
+
+I’ve focused on:  
+- Efficiency (vectorisation, avoiding repeated conversions, reducing I/O)  
+- Robustness (safer defaults, fewer silent failures)  
+- Maintainability (clearer intent, reduced duplication)  
+- Opportunities for missing analysis steps relevant to #speirgorm network science  
+
+---
+
+# ✅ **CODE REVIEW TABLE**
+
+## **0_functions.R**
+
+| Filename | Description of Change | Before | After |
+|---------|------------------------|--------|-------|
+| 0_functions.R | `parse_color_to_rgba` and `parse_color_single` duplicated logic | Two separate functions with repeated regex | Create one internal parser and wrap vectorised/single versions around it |
+| 0_functions.R | `save_graph_svg` uses `svg()` for base plots but no `on.exit(dev.off())` | ```svg(filepath, width, height); eval(expr); dev.off()``` | ```svg(filepath, width, height); on.exit(dev.off(), add=TRUE); eval(expr)``` |
+| 0_functions.R | `chunk_vec` can be simplified | ```split(x, ceiling(seq_along(x) / size))``` | ```split(x, (seq_along(x)-1) %/% size)``` (avoids ceiling) |
+
+## **2_BlueSkyNetworking.R**
+
+| Filename | Description | Before | After |
+|---------|-------------|--------|-------|
+| 2_BlueSkyNetworking.R | `edges[is.na(edges)] <- "no text here"` is dangerous (coerces numeric columns) | Overwrites all NA with string | Replace only text fields: ```edges$text <- replace_na(edges$text, "no text here")``` |
+| 2_BlueSkyNetworking.R | Layout recomputed multiple times | `coords <- layout_with_drl(g1)` then again for g2 | Compute once and reuse: `coords <- layout_with_drl(g1); V(g2)$x <- coords[,1]` |
+| 2_BlueSkyNetworking.R | Community detection uses walktrap (OK) but no modularity check | No modularity output | Add: `modularity(comm)` |
+| 2_BlueSkyNetworking.R | `future_map` for layout per component is heavy | Parallel layout per component | Use `layout_as_tree` for small components, DRL for large ones |
+
+---
+
+## **3_StatnetAnalysis.R**
+
+| Filename | Description | Before | After |
+|---------|-------------|--------|-------|
+| 3_StatnetAnalysis.R | `dyad_census(g2)` called 3 times | ```dyad_census(g2)$mut``` etc | Compute once: ```dc <- dyad_census(g2)``` |
+| 3_StatnetAnalysis.R | `neighbors(g2, V(g2))` stored in tibble (huge list) | ```neighbours_average = neighbors(...)``` | Remove from summary; compute separately if needed |
+| 3_StatnetAnalysis.R | Sampling logic unclear (`num_posts` reused) | ```if (!is.null(num_posts) && nrow(posts_df) > num_posts)``` | Use explicit parameter: `sample_n_posts <- 5000` |
+| 3_StatnetAnalysis.R | `plot()` inside save_graph_svg without `on.exit` | Same issue as earlier | Add `on.exit(dev.off())` |
+
+---
+
+## **3a_NetworkVisualisation.R**
+
+| Filename | Description | Before | After |
+|---------|-------------|--------|-------|
+| 3a_NetworkVisualisation.R | DRL layout recomputed twice | Two calls to `layout_with_drl` | Compute once and reuse |
+| 3a_NetworkVisualisation.R | `geom_edge_parallel0` deprecated | Uses old API | Replace with `geom_edge_link(aes(...), lineend="round")` |
+| 3a_NetworkVisualisation.R | `gplot(bluSkynet)` repeated | Multiple identical calls | Wrap in helper: `plot_sna(bluSkynet, layout="fr")` |
+
+---
+
+## **3b_TSNA_Analysis.R**
+
+| Filename | Description | Before | After |
+|---------|-------------|--------|-------|
+| 3b_TSNA_Analysis.R | `name_to_id` mapping fails if nodes duplicated | ```setNames(seq_len(n), nodes$name)``` | Use: `name_to_id <- match(nodes$name, unique(nodes$name))` |
+| 3b_TSNA_Analysis.R | `vertex_spells` and `edge_spells` manually stripped attributes | Manual attribute reset | Use: `as.data.frame(vertex_spells)` |
+| 3b_TSNA_Analysis.R | No check for missing edge times | Assumes all edges have edgeStarts/edgeEnds | Add: `edges2 <- edges2 %>% mutate(edgeEnds = coalesce(edgeEnds, edgeStarts))` |
+
+---
+
+## **4_ComputeMetrics.R**
+
+| Filename | Description | Before | After |
+|---------|-------------|--------|-------|
+| 4_ComputeMetrics.R | Recomputes centrality in both statnet and igraph | Both betweenness and igraph betweenness | Keep igraph only (faster, consistent) |
+| 4_ComputeMetrics.R | `safe_rescale` redefined; use `scales::rescale` | Custom wrapper | ```safe_rescale <- function(x) scales::rescale(x, to=c(0,1))``` |
+| 4_ComputeMetrics.R | Triad census computed but not normalised | Raw counts | Add: `triad_census_vals / sum(triad_census_vals)` |
+| 4_ComputeMetrics.R | Community stats use rough internal edge estimate | ```internal_edges = sum(in_degree[name %in% name]) / 2``` | Use igraph: `internal_edges = ecount(induced_subgraph(g_igraph, which(best_comm == k)))` |
+
+---
+
+# 🔍 **WHAT’S MISSING IN THE PROJECT? (High‑Value Additions)**
+
+These are *not* required for correctness, but they would significantly deepen the analysis of #speirgorm.
+
+## **1. Temporal Network Analysis (TSNA) — but with animation**
+You already build a `networkDynamic`, but you don’t:
+
+- compute temporal betweenness  
+- compute temporal reachability  
+- animate the network over time  
+
+These are the core strengths of `tsna` and `ndtv`.
+
+## **2. Influence propagation modelling**
+For a hashtag community, you can model:
+
+- cascade depth  
+- cascade breadth  
+- reproduction number \( R_t \) of reposts  
+- influence decay curves  
+
+## **3. Topic modelling on post text**
+You already ingest text but don’t analyse it.
+
+Suggested additions:
+
+- `stm` or `text2vec` topic models  
+- sentiment over time  
+- cluster communities by linguistic similarity  
+
+## **4. Bot / automation detection**
+Useful for social network integrity:
+
+- posting frequency entropy  
+- repost/like ratio anomalies  
+- temporal burstiness  
+
+## **5. Structural holes & brokerage**
+Use:
+
+- Burt’s constraint  
+- effective size  
+- bridging centrality  
+
+These identify “connectors” between communities.
+
+## **6. Edge weighting by engagement**
+Currently edges are unweighted except for repost_count.
+
+You could weight edges by:
+
+- like_count  
+- reply_count  
+- bookmark_count  
+- time‑decay weighting  
+
+## **7. Robustness / attack simulations**
+Simulate:
+
+- node removal  
+- edge removal  
+- targeted vs random attacks  
+
+This reveals network resilience.
+
+---
