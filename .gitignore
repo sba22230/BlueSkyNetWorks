@@ -1,1 +1,7 @@
 Readme_files/*
+.Rhistory
+.Rproj.user/*
+.vs/*
+.posit/*
+docs/.Rproj.user/*
+docs/network/.vs/*
