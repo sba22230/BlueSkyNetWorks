@@ -1,0 +1,53 @@
+{
+  "type": "network",
+  "version": "1.0",
+  "data": "data.json",
+  "logo": {
+    "file": "https://sba22230.github.io/BlueSkyNetWorks/network/images/rainbow.png",
+    "link": "https://sba22230.github.io/BlueSkyNetWorks/",
+    "text": "sba22230"
+  },
+  "text": {
+    "more": "The project downloads discussions around the #Speirgorm hashtag, constructing directed networks of reposts for graph-theoretic analysis, community detection, and NLP-based post analysis.",
+    "intro": "Speirgorm Network: ",
+    "title": "Speirgorm  Network"
+  },
+  "legend": {
+    "edgeLabel": "Edges",
+    "colorLabel": "community",
+    "nodeLabel": "Nodes"
+  },
+  "features": {
+    "search": true,
+    "groupSelectorAttribute": "community",
+    "hoverBehavior": "dim"
+  },
+  "informationPanel": {
+    "groupByEdgeDirection": true,
+    "imageAttribute": "Id"
+  },
+  "sigma": {
+    "drawingProperties": {
+      "defaultEdgeType": "curve",
+      "defaultHoverLabelBGColor": "#002147",
+      "defaultLabelBGColor": "#ddd",
+      "activeFontStyle": "bold",
+      "defaultLabelColor": "#000",
+      "labelThreshold": 10,
+      "defaultLabelHoverColor": "#fff",
+      "fontStyle": "bold",
+      "hoverFontStyle": "bold",
+      "defaultLabelSize": 14
+    },
+    "graphProperties": {
+      "maxEdgeSize": 0.5,
+      "minEdgeSize": 0.2,
+      "minNodeSize": 1,
+      "maxNodeSize": 7
+    },
+    "mouseProperties": {
+      "maxRatio": 20,
+      "minRatio": 0.75
+    }
+  }
+}

@@ -1,0 +1,25 @@
+project:
+  type: website
+  output-dir: .
+
+website:
+  title: "Report"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: gephi.qmd
+        text: Gephi Graph Visualisation
+      - href: wordcloud.html
+        text: Speirgorm Word Cloud
+      - about.qmd
+
+format:
+  html:
+    theme:
+      - cosmo
+      - brand
+    css: styles.css
+    toc: true
+
+editor: visual
