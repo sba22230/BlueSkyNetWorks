@@ -9,7 +9,7 @@
   },
   "text": {
     "more": "The project downloads discussions around the #Speirgorm hashtag, constructing directed networks of reposts for graph-theoretic analysis, community detection, and NLP-based post analysis.",
-    "intro": "Speirgorm Network: ",
+    "intro": "Speirgorm Network: visualised using the Yifan Hu layout",
     "title": "Speirgorm  Network"
   },
   "legend": {
@@ -24,7 +24,7 @@
   },
   "informationPanel": {
     "groupByEdgeDirection": true,
-    "imageAttribute": "Id"
+    "imageAttribute": false
   },
   "sigma": {
     "drawingProperties": {
