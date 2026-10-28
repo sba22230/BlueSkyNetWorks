@@ -1,7 +1,32 @@
+.Rproj.user/*
+BlueSkyNetWorks.Rproj
+BluseSkyNetworking.nb.html
+.Rproj.user
+.vs/VSWorkspaceState.json
+.vs/BlueSkyNetWorks/v17/.wsuo
+.vs/BlueSkyNetWorks/v17/DocumentLayout.json
+BluseSkyNetworking.html
+reposts_batch_speirgorm_*.csv
+threads_batch_speirgorm_*.csv
+.Rhistory
+graphs/visnetwork_tmp.html
+graphs/visnetwork_tmp.html
+graphs/visnetwork_tmp_files/vis-9.1.0/vis-network.min.js
+graphs/visnetwork_tmp_files/visNetwork-binding-2.1.4/visNetwork.js
+graphs/g_bluesky enriched Speirgorm Network.graphml
+images/*
+graphs/g2 bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml
+graphs/g3 visnetwork_export.gexf
+.vs/slnx.sqlite
+
 Readme_files/*
 .Rhistory
+misc/~$reamlineTheProcess.docx
 .Rproj.user/*
 .vs/*
+.posit/assistant
+/.quarto/
+**/*.quarto_ipynb
 .posit/*
 docs/.Rproj.user/*
 docs/network/.vs/*
@@ -9,3 +34,4 @@ docs/graphs/g bluesky Speirgorm Network RepostsMade vs RepostsReceived.graphml
 images/MainGraph_drl_fast.svg
 images/MainGraph_nicely.svg
 docs/graphs/vis_g visnetwork_export.gexf
+.Rproj.user
