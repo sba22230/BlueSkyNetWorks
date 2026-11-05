@@ -411,6 +411,8 @@ centrality_df <- rxExec(
       vertices = nodes_df,
       directed = TRUE
     )
+    # Simplify the graph before calculating metrics
+    g <- igraph::simplify(g, remove.multiple = TRUE, remove.loops = TRUE, edge.attr.comb = list("first") )
 
     pr <- page_rank(g, directed = TRUE)$vector
     bet <- betweenness(g, directed = TRUE)
