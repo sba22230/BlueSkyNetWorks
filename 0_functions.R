@@ -790,6 +790,8 @@ get_graph_data <- function(num_posts) {
   print("Number of NAs per column:")
   print(na_per_column)
   g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+  # Simplify the graph before returning to the 
+  g <- igraph::simplify(g, remove.multiple = TRUE, remove.loops = TRUE, edge.attr.comb = list("first") )
   return(g)
 }
 
