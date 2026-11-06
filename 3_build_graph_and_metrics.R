@@ -655,6 +655,10 @@ rxExec(
 
 par(old_par)
 # Select top N nodes to label (e.g., top 50 by degree)
+# the network view and any companion panels.
+coords_drl <- res_g[[1]]
+# Convert layout to numeric matrix
+xy <- as.matrix(coords_drl[, c("x", "y")])
 metrics <- list(
   pagerank    = setNames(nodes$pagerank, nodes$name),
   eigenvector_centrality = setNames(nodes$eigenvector_centrality, nodes$name),
