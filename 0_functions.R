@@ -1639,6 +1639,224 @@ plot_top_nodes <- function(
   )
 }
 
+# Worker function: processes one year-month slice
+process_ym <- function(
+    ym,
+    year_month,
+    g,
+    pal,
+    ds_Graphs,
+    save_graph_svg,
+    save_network_svg,
+    plot_word_comparison_date,
+    sql_server_available,
+    render_word_comparison_date
+) {
+  library(dplyr)
+  library(stringr)
+  library(tidytext)
+  library(lubridate)
+  library(igraph)
+  library(wordcloud)
+  library(sna)
+  library(network)
+  library(RColorBrewer)
+  library(tidyr)
+  
+  # date preparation - build the sub graphs
+  eids <- which(year_month == ym)
+  if (length(eids) == 0) {
+    return(NULL)
+  }
+  
+  nrc <- get_sentiments("nrc")
+  sub_g <- igraph::subgraph.edges(g, eids, delete.vertices = TRUE)
+  sub_net <- asNetwork(sub_g)
+  bsn_ideg <- sna::degree(sub_net, cmode = "indegree")
+  bsn_odeg <- sna::degree(sub_net, cmode = "outdegree")
+  # Extract edge-level posts and attach community membership from the graph object
+  nodes <- igraph::as_data_frame(sub_g, what = "vertices")
+  edges <- igraph::as_data_frame(sub_g, what = "edges")
+  
+  posts <- data.frame(
+    name = edges$from,
+    text = edges$text,
+    created_at = lubridate::ymd(edges$created_at),
+    document = seq_len(nrow(edges))
+  ) |>
+    merge(nodes[, c("name", "community")], by = "name", all.x = TRUE)
+  
+  # Tokenise, clean, and remove stop words.
+  # Returns one row per (document, word) with community membership preserved.
+  build_tidy_posts <- function(df) {
+    # "ireland" / "irish" are corpus-wide ubiquitous (this is an Irish Bluesky
+    # community) and are not discriminative for LDA; treat them like stop words.
+    custom_stops <- tibble::tibble(
+      word = c(
+        "speirgorm",
+        "spéirgorm",
+        "speirghorm",
+        "spéirghorm",
+        "ireland",
+        "irish"
+      )
+    )
+    
+    df |>
+      dplyr::filter(!stringr::str_detect(text, "^RT")) |>
+      dplyr::mutate(
+        text = stringr::str_to_lower(text),
+        text = stringr::str_replace_all(text, "https?://\\S+|www\\.\\S+", " "),
+        text = stringr::str_replace_all(text, "[#@]", " "),
+        text = stringr::str_replace_all(text, "&amp;|&lt;|&gt;", " ")
+      ) |>
+      tidytext::unnest_tokens(word, text, token = "words") |>
+      dplyr::filter(
+        !word %in% stop_words$word,
+        !word %in% stringr::str_remove_all(stop_words$word, "'"),
+        !word %in% custom_stops$word,
+        nchar(word) > 1
+      ) |>
+      dplyr::mutate(document = as.integer(document))
+  }
+  
+  tidy_posts <- build_tidy_posts(posts)
+  
+  sentiment_analysis <- tidy_posts |>
+    inner_join(nrc, by = "word", relationship = "many-to-many")
+  
+  sentiment_summary <- sentiment_analysis |>
+    count(sentiment, sort = TRUE)
+  
+  counts <- sentiment_summary$n
+  names(counts) <- sentiment_summary$sentiment
+  counts <- counts[order(counts)]
+  global_freq <- tidy_posts |>
+    count(word, sort = TRUE)
+  
+  make_wordcloud_base <- function(freq_df) {
+    wordcloud(
+      words = freq_df$word,
+      freq = freq_df$n,
+      max.words = 200,
+      random.order = FALSE,
+      rot.per = 0.35,
+      colors = RColorBrewer::brewer.pal(8, "Dark2")
+    )
+  }
+  
+  # build a grid layout for the plots: 3 rows, 2 columns
+  grid_matrix <- matrix(c(1, 2, 1, 3, 1, 4), nrow = 3, byrow = TRUE)
+  net_size <- vcount(sub_g)
+  
+  # plot creation
+  cat(
+    "Created subgraph for",
+    ym,
+    "with",
+    net_size,
+    "nodes and",
+    ecount(sub_g),
+    "edges\n"
+  )
+  
+  main_title <- paste0("Sub Graph ", net_size, " nodes\n(", ym, ")")
+  
+  # Precompute vertex aesthetics (bug fix: subg -> sub_g)
+  vsize <- if (!is.null(V(sub_g)$pagerank)) {
+    V(sub_g)$pagerank + 1
+  } else {
+    rep(6, vcount(sub_g))
+  }
+  vcol <- if (!is.null(V(sub_g)$kcore)) {
+    pal[as.integer(V(sub_g)$kcore) + 1]
+  } else {
+    "steelblue"
+  }
+  
+  out_file <- paste0("images/SubGraph_", ym, ".svg")
+  svg(out_file, width = 20, height = 12)
+  layout(grid_matrix)
+  
+  # Igraph layout
+  if (net_size > 1500) {
+    coords <- layout_with_drl(sub_g, options = list(simmer.attraction = 0))
+  } else if (net_size >= 1000) {
+    coords <- layout_nicely(sub_g, dim = 2)
+  } else {
+    coords <- layout_with_fr(
+      sub_g,
+      dim = 2,
+      niter = list(...)$niter %||% (net_size / 3),
+      start.temp = sqrt(net_size),
+      weights = E(sub_g)$weight %||% rep(1, ecount(sub_g))
+    )
+  }
+  
+  # Plot the subgraph using igraph
+  plot.igraph(
+    sub_g,
+    layout = coords,
+    main = main_title,
+    vertex.size = vsize,
+    vertex.label.dist = 0.5,
+    vertex.label.degree = -pi / 2,
+    vertex.label.cex = 0.9,
+    edge.arrow.size = 0.3,
+    vertex.color = vcol
+  )
+  
+  # Plot 2 the sentiment barplot
+  barplot(
+    counts,
+    horiz = TRUE,
+    col = grDevices::rainbow(length(counts), alpha = 0.7),
+    border = NA,
+    main = "Sentiment Analysis Using NRC Lexicon",
+    xlab = "Count",
+    las = 1
+  )
+  
+  # Plot 3 the word cloud
+  make_wordcloud_base(global_freq) # row 2 col 2
+  
+  # Plot 4 the degree scatter plot
+  plot(
+    bsn_ideg,
+    bsn_odeg,
+    type = "n",
+    xlab = "Re-posts received",
+    ylab = "Re-posts made"
+  )
+  abline(0, 1, lty = 3)
+  text(
+    jitter(bsn_ideg, factor = 0.5, amount = 0.5),
+    jitter(bsn_odeg, factor = 0.5, amount = 0.5),
+    labels = network.vertex.names(sub_net),
+    cex = 0.9,
+    col = 2
+  )
+  
+  dev.off()
+  if (sql_server_available()) {
+    # Each worker writes its own keys — no contention
+    rxWriteObject(
+      ds_Graphs,
+      paste0("subgraph_igraph_", ym),
+      sub_g,
+      overwrite = TRUE
+    )
+    rxWriteObject(
+      ds_Graphs,
+      paste0("subgraph_statnet_", ym),
+      sub_net,
+      overwrite = TRUE
+    )
+  }
+  list(ym = ym, sub_g = sub_g, sub_net = sub_net)
+}
+
+
 plan(orig_plan)
 gc()
 
