@@ -1,24 +1,24 @@
-metric,description,network/sna,igraph,run_date
-analysis_timestamp,Date that the metrics were generated,2026-11-06,2026-11-06,2026-11-06
-network_size,Number of nodes (users) in network,21209,21209,2026-11-06
-edge_count,Number of directed edges (reposts),58835,58835,2026-11-06
-dyad_count,Total number of possible dyadic pairs,224900236,224900236,2026-11-06
-density,Proportion of possible edges present,0.000130802441665735,0.000130802441665735,2026-11-06
-mutual_pairs,Number of mutual dyads (both directions present),1280,1280,2026-11-06
-asymetric_pairs,Number of asymmetric dyads (one direction only),56275,56275,2026-11-06
-isolated_nodes,Number of dyads with no connection,224842681,224842681,2026-11-06
-diameter,Longest shortest path between any two nodes,9,9,2026-11-06
-avg_path_length,Average shortest path across all node pairs,3.5292392054569,235979553082162907440206,2026-11-06
-neighbours_average,Average number of adjacent nodes per node,13125,13125,2026-11-06
-reciprocity_default,Proportion of edges that are reciprocated (edgewise reciprocity),0.0435115152545254,0.0435115152545254,2026-11-06
-reciprocity_ratio,Proportion of non-null dyads that are mutual (dyadic reciprocity),0.0222395969073061,0.0222395969073061,2026-11-06
-average_in_degree,Average number of incoming ties per node,2.7740581828469,4.74633410344665,2026-11-06
-average_out_degree,Average number of outgoing ties per node,2.7740581828469,4.74633410344665,2026-11-06
-most_replied_to,Node with highest in-degree (most replies received),ciaraioch.bsky.social,ciaraioch.bsky.social,2026-11-06
-most_active_replier,Node with highest out-degree (most replies/reposts sent),sharrow.bsky.social,sharrow.bsky.social,2026-11-06
-num_components,Number of disconnected components,17,17,2026-11-06
-largest_component_size,Nodes in largest connected component,21176,21176,2026-11-06
-giant_component_pct,Percentage of nodes in largest component,99.8444056768353,99.8444056768353,2026-11-06
-transitivity_val,Global clustering coefficient (transitivity),0.0941437935726482,0.0374523595686068,2026-11-06
-avg_local_clustering,Mean of local clustering coefficients,0.124821775819521,0.124821775819521,2026-11-06
-centralization_in,Degree centralization index (in-degree),0.17005686719706,0.389288580080487,2026-11-06
+metric;description;network/sna;igraph;run_date
+analysis_timestamp;Date that the metrics were generated;2026-11-06;2026-11-06;2026-11-06
+network_size;Number of nodes (users) in network;21209;21209;2026-11-06
+edge_count;Number of directed edges (reposts);58835;58835;2026-11-06
+dyad_count;Total number of possible dyadic pairs;224900236;224900236;2026-11-06
+density;Proportion of possible edges present;0.000130802441665735;0.000130802441665735;2026-11-06
+mutual_pairs;Number of mutual dyads (both directions present);1280;1280;2026-11-06
+asymetric_pairs;Number of asymmetric dyads (one direction only);56275;56275;2026-11-06
+isolated_nodes;Number of dyads with no connection;224842681;224842681;2026-11-06
+diameter;Longest shortest path between any two nodes;9;9;2026-11-06
+avg_path_length;Average shortest path across all node pairs;3.5292392054569;235979553082162907440206;2026-11-06
+neighbours_average;Average number of adjacent nodes per node;13125;13125;2026-11-06
+reciprocity_default;Proportion of edges that are reciprocated (edgewise reciprocity);0.0435115152545254;0.0435115152545254;2026-11-06
+reciprocity_ratio;Proportion of non-null dyads that are mutual (dyadic reciprocity);0.0222395969073061;0.0222395969073061;2026-11-06
+average_in_degree;Average number of incoming ties per node;2.7740581828469;4.74633410344665;2026-11-06
+average_out_degree;Average number of outgoing ties per node;2.7740581828469;4.74633410344665;2026-11-06
+most_replied_to;Node with highest in-degree (most replies received);ciaraioch.bsky.social;ciaraioch.bsky.social;2026-11-06
+most_active_replier;Node with highest out-degree (most replies/reposts sent);sharrow.bsky.social;sharrow.bsky.social;2026-11-06
+num_components;Number of disconnected components;17;17;2026-11-06
+largest_component_size;Nodes in largest connected component;21176;21176;2026-11-06
+giant_component_pct;Percentage of nodes in largest component;99.8444056768353;99.8444056768353;2026-11-06
+transitivity_val;Global clustering coefficient (transitivity);0.0941437935726482;0.0374523595686068;2026-11-06
+avg_local_clustering;Mean of local clustering coefficients;0.124821775819521;0.124821775819521;2026-11-06
+centralization_in;Degree centralization index (in-degree);0.17005686719706;0.389288580080487;2026-11-06
