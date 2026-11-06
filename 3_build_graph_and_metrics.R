@@ -655,35 +655,37 @@ rxExec(
 
 par(old_par)
 # Select top N nodes to label (e.g., top 50 by degree)
-# deg <- degree(g, mode = "all")
-deg <- nodes$eigenvector_centrality
-names(deg) <- nodes$name
-
-top_nodes <- names(sort(deg, decreasing = TRUE))[1:50]
-# Use a base-R network plot so the same SVG writer can be reused for
-# the network view and any companion panels.
-coords_drl <- res_g[[1]]
-# Convert layout to numeric matrix
-xy <- as.matrix(coords_drl[, c("x", "y")])
-
-save_graph_svg(
-  plot_or_expr = function() {
-    par(mar = c(1, 1, 2, 1))
-    g_top <- induced_subgraph(g, vids = top_nodes)
-    xy_top <- xy[match(top_nodes, V(g)$name), ]
-    plot.igraph(
-      g_top,
-      layout = xy_top,
-      main = "Speirgorm network (top degree nodes)",
-      vertex.size = 4,
-      vertex.label.cex = 0.25,
-      edge.arrow.size = 0.3,
-      vertex.color = adjustcolor("tomato", alpha.f = 0.6)
-    )
-  },
-  filename = "gtn_TopNodes_Speirgorm_Network.svg",
-  folder = project_path("docs", "images")
+metrics <- list(
+  pagerank    = setNames(nodes$pagerank, nodes$name),
+  eigenvector_centrality = setNames(nodes$eigenvector_centrality, nodes$name),
+  hub_score = setNames(nodes$hub_score, nodes$name),
+  authority_score = setNames(nodes$authority_score, nodes$name),
+  local_clustering = setNames(nodes$local_clustering, nodes$name),
+  kcore     = setNames(nodes$kcore, nodes$name),
+  modularity = setNames(nodes$modularity, nodes$name),
+  influence_score = setNames(nodes$influence_score, nodes$name),
+  in_degree      = setNames(nodes$in_degree, nodes$name),
+  out_degree     = setNames(nodes$out_degree, nodes$name),
+  total_degree   = setNames(nodes$total_degree, nodes$name),
+  betweenness = setNames(nodes$betweenness, nodes$name),
+  closeness   = setNames(nodes$closeness, nodes$name),
+  reposts_made = setNames(nodes$reposts_made, nodes$name),
+  reposts_received = setNames(nodes$reposts_received, nodes$name),
+  total_likes_on_posts = setNames(nodes$total_likes_on_posts, nodes$name)
 )
+
+for (metric_name in names(metrics)) {
+  
+  plot_top_nodes(
+    g = g,
+    scores = metrics[[metric_name]],
+    xy = xy,
+    top_n = 50,
+    title = paste("Top", metric_name, "nodes"),
+    filename = paste0("TopNodes_", metric_name, ".svg")
+  )
+  
+}
 # rxWriteObject(
 #   ds_Graphs,
 #   "gtn_Graph - ggraph - layout_with_drl",

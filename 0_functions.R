@@ -1589,6 +1589,56 @@ ViewCommunityContrastedByWords <- function(
     )
 }
 
+plot_top_nodes <- function(
+    g,
+    scores,
+    xy,
+    top_n = 50,
+    title = NULL,
+    filename
+) {
+  
+  top_nodes <- names(sort(scores, decreasing = TRUE))[seq_len(top_n)]
+  
+  save_graph_svg(
+    plot_or_expr = function() {
+      
+      g_top <- induced_subgraph(g, vids = top_nodes)
+      comms <- as.factor(V(g_top)$community)
+      community_cols <- setNames(
+        rainbow(length(levels(comms))),
+        levels(comms)
+      )
+      vertex_cols <- adjustcolor(
+        community_cols[as.character(comms)],
+        alpha.f = 0.6
+      )
+      xy_top <- xy[match(top_nodes, V(g)$name), ]
+      
+      plot.igraph(
+        g_top,
+        layout = xy_top,
+        main = title,
+        vertex.size = 4,
+        vertex.label.cex = 0.25,
+        edge.arrow.size = 0.9,
+        vertex.color = vertex_cols
+      )
+      legend(
+        "topright",
+        legend = names(community_cols),
+        col = community_cols,
+        pch = 16,
+        pt.cex = 1.2,
+        bty = "n",
+        title = "Community"
+      )
+    },
+    filename = filename,
+    folder = project_path("docs", "images")
+  )
+}
+
 plan(orig_plan)
 gc()
 
