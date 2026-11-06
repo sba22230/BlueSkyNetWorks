@@ -118,7 +118,7 @@ save_graph_svg(
       jitter(bsn_odeg),
       labels = network.vertex.names(bluSkynet),
       cex = 0.5,
-      col = 2
+      col = 4
     )
   },
   folder = project_path("docs", "images"),
@@ -268,6 +268,12 @@ comparison_table <- bind_rows(
   ) %>%
   mutate(run_date = Sys.Date())
 datatable(comparison_table)
+
+write_csv2(
+  comparison_table,
+  file = project_path("docs/data", "network_metrics_comparison.csv")
+)
+
 
 # ============================================================================
 # SECTION 3: Ploting Network - Components, islands of nodes in the overall network
@@ -493,6 +499,12 @@ if (sql_server_available()) {
   )
   rxDataStep(nodes_with_metrics, nodes_sql, overwrite = TRUE)
 }
+
+write_csv2(
+  nodes_with_metrics,
+  file = project_path("docs/data", "node_metrics.csv")
+)
+
 ### These will be useful for a notebook === FINISH
 rxSetComputeContext("localpar")
 cat(
@@ -643,7 +655,9 @@ rxExec(
 
 par(old_par)
 # Select top N nodes to label (e.g., top 50 by degree)
-deg <- degree(g, mode = "all")
+# deg <- degree(g, mode = "all")
+deg <- nodes$eigenvector_centrality
+names(deg) <- nodes$name
 
 top_nodes <- names(sort(deg, decreasing = TRUE))[1:50]
 # Use a base-R network plot so the same SVG writer can be reused for
