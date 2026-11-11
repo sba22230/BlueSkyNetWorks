@@ -94,7 +94,7 @@ cat(
 
 # Convert igraph to statnet
 library(network)
-bluSkynet <- asNetwork(g)
+bluSkynet <- asNetwork(g1)
 if (sql_server_available()) {
   rxWriteObject(
     ds_Graphs,
@@ -340,44 +340,44 @@ cat(sprintf(
   bsn_largest_component_size_pct
 ))
 
-# Identify small components (all except the largest)
-bsn_small_ids <- which(bsn_comp$csize < max(bsn_comp$csize))
-
-# Work out a sensible grid layout
-if (length(bsn_small_ids) > 6) {
-  n <- 6
-} else {
-  n <- length(bsn_small_ids)
-}
-
-save_graph_svg(
-  plot_or_expr = function() {
-    old_par <- par(no.readonly = TRUE)
-    nrow <- ceiling(sqrt(n))
-    ncol <- ceiling(n / nrow)
-    par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
-
-    for (idx in seq_len(n)) {
-      comp_id <- bsn_small_ids[idx]
-      verts <- which(bsn_comp$membership == comp_id)
-      subg <- get.inducedSubgraph(bluSkynet, verts)
-
-      gplot(
-        subg,
-        gmode = "digraph",
-        mode = "fruchtermanreingold",
-        main = paste("Component", comp_id, "-", length(verts), "nodes"),
-        vertex.cex = 1.2,
-        label.cex = 0.7,
-        arrowhead.cex = 0.3
-      )
-    }
-
-    par(old_par)
-  },
-  folder = "images",
-  filename = "sna_small_components.svg"
-)
+# # Identify small components (all except the largest)
+# bsn_small_ids <- which(bsn_comp$csize < max(bsn_comp$csize))
+# 
+# # Work out a sensible grid layout
+# if (length(bsn_small_ids) > 6) {
+#   n <- 6
+# } else {
+#   n <- length(bsn_small_ids)
+# }
+# 
+# save_graph_svg(
+#   plot_or_expr = function() {
+#     old_par <- par(no.readonly = TRUE)
+#     nrow <- ceiling(sqrt(n))
+#     ncol <- ceiling(n / nrow)
+#     par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
+# 
+#     for (idx in seq_len(n)) {
+#       comp_id <- bsn_small_ids[idx]
+#       verts <- which(bsn_comp$membership == comp_id)
+#       subg <- get.inducedSubgraph(bluSkynet, verts)
+# 
+#       gplot(
+#         subg,
+#         gmode = "digraph",
+#         mode = "fruchtermanreingold",
+#         main = paste("Component", comp_id, "-", length(verts), "nodes"),
+#         vertex.cex = 1.2,
+#         label.cex = 0.7,
+#         arrowhead.cex = 0.3
+#       )
+#     }
+# 
+#     par(old_par)
+#   },
+#   folder = "images",
+#   filename = "sna_small_components.svg"
+# )
 
 # ============================================================================
 # SECTION 4: Computing remaining node Metrics using Statnet
@@ -443,9 +443,12 @@ kcore_vals <- sna::kcores(bluSkynet)
 cat("\n=== Step 3n: k-core decomposition computed ===\n")
 
 # align numeric vectors to node order
-node_keys <- as.character(V(g)$name)
+node_keys <- as.character(V(g1)$name)
+nodes_df <- as_tbl_graph(g1) %>%
+  activate(nodes) %>%
+  as_tibble()
 
-nodes_with_metrics <- nodes %>%
+nodes_with_metrics <- nodes_df %>%
   dplyr::mutate(
     betweenness = betweenness_vals,
     closeness = closeness_vals,
