@@ -36,6 +36,9 @@ ig_num_components <- ig_comp$no
 ig_largest_component_size <- max(ig_comp$csize)
 ig_giant_component_pct <- (ig_largest_component_size / ig_network_size) *
   100
+g1_v <- ig_comp$membership == 1
+g1 <- induced_subgraph(g, g1_v)
+
 # Average local clustering
 ig_avg_local_clustering <- mean(V(g)$local_clustering, na.rm = TRUE)
 # Centralization (degree based)
