@@ -31,8 +31,7 @@ if (sql_server_available()) {
 cat("\n=== Step 3b: Build out the metrics using igraph... ===\n")
 
 ig_network_size <- vcount(g)
-ig_comp <- igraph::components(g)
-# Connected components
+ig_comp <- igraph::components(g) # Connected components
 ig_num_components <- ig_comp$no
 ig_largest_component_size <- max(ig_comp$csize)
 ig_giant_component_pct <- (ig_largest_component_size / ig_network_size) *
