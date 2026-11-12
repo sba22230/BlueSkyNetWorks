@@ -14,6 +14,7 @@
 # =============================================================================
 
 source("0_functions.R")
+library(tictoc) 
 
 # Load the most recent N posts to build the interaction graph.
 # Increasing num_posts gives a denser, more representative graph but is slower.
