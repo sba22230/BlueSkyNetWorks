@@ -444,6 +444,7 @@ cat("\n=== Step 3n: k-core decomposition computed ===\n")
 
 # align numeric vectors to node order
 node_keys <- as.character(V(g1)$name)
+library(tidygraph)
 nodes_df <- as_tbl_graph(g1) %>%
   activate(nodes) %>%
   as_tibble()
