@@ -1,4 +1,4 @@
- # =============================================================================
+# =============================================================================
 # COMMUNITY DETECTION EXPERIMENTS
 # =============================================================================
 # Purpose: Identify clusters of users (communities) in the BlueSky interaction
@@ -14,7 +14,7 @@
 # =============================================================================
 
 source("0_functions.R")
-library(tictoc) 
+library(tictoc)
 
 # Load the most recent N posts to build the interaction graph.
 # Increasing num_posts gives a denser, more representative graph but is slower.
@@ -29,7 +29,6 @@ g <- get_graph_data(num_posts)
 # and conductance require custom implementations. These four metrics together
 # give a rounded picture of community quality — no single metric is sufficient
 # on its own.
-
 
 # -----------------------------------------------------------------------------
 # SILHOUETTE COEFFICIENT (reference / small-graph implementation)
@@ -75,7 +74,9 @@ silhouette_coefficient <- function(graph, membership, weights = NULL) {
       if (!is.nan(b_mean)) b <- min(b, b_mean)
     }
 
-    if (!is.finite(b)) b <- 0
+    if (!is.finite(b)) {
+      b <- 0
+    }
     den <- max(a, b)
     s[node] <- if (den == 0) 0 else (b - a) / den
   }
@@ -99,97 +100,103 @@ silhouette_coefficient <- function(graph, membership, weights = NULL) {
 #   - matrixStats::rowMins() replaces an apply() loop for finding b(i)
 #   - Dijkstra's algorithm is explicitly requested (efficient on sparse graphs)
 silhouette_coefficient_batched <- function(
-    graph, membership, weights = NULL,
-    mode = c("out", "in", "all"),
-    batch_size = 512
+  graph,
+  membership,
+  weights = NULL,
+  mode = c("out", "in", "all"),
+  batch_size = 512
 ) {
   mode <- match.arg(mode)
-  
+
   n <- igraph::vcount(graph)
-  if (length(membership) != n)
+  if (length(membership) != n) {
     stop("membership must have length vcount(graph).")
-  
+  }
+
   # Compact cluster labels
   f <- as.factor(membership)
   grp <- as.integer(f)
   K <- nlevels(f)
-  
+
   # Sparse membership indicator matrix
   M <- Matrix::sparseMatrix(i = seq_len(n), j = grp, x = 1, dims = c(n, K))
   sizes <- as.numeric(Matrix::colSums(M))
-  
+
   # Fast row-min function
   row_mins <- if (requireNamespace("matrixStats", quietly = TRUE)) {
     function(x) matrixStats::rowMins(x, na.rm = TRUE)
   } else {
-    function(x) apply(x, 1, function(v) {
-      v <- v[is.finite(v)]
-      if (length(v) == 0) NA_real_ else min(v)
-    })
+    function(x) {
+      apply(x, 1, function(v) {
+        v <- v[is.finite(v)]
+        if (length(v) == 0) NA_real_ else min(v)
+      })
+    }
   }
-  
+
   # -------------------------------
   # Batch function (runs on workers)
   # -------------------------------
   silhouette_batch <- function(src, graph, grp, M, sizes, weights, mode) {
     # Defensive wrapper: catch worker errors
-    tryCatch({
-      
-      b <- length(src)
-      
-      D <- igraph::distances(
-        graph,
-        v = src,
-        to = igraph::V(graph),
-        weights = weights,
-        mode = mode,
-        algorithm = "dijkstra"
-      )
-      
-      finite <- is.finite(D)
-      D0 <- D
-      D0[!finite] <- 0
-      
-      sum_to <- D0 %*% M
-      cnt_to <- (finite * 1) %*% M
-      
-      grp_block <- grp[src]
-      
-      self_dist <- D[cbind(seq_len(b), src)]
-      self_ok <- is.finite(self_dist)
-      
-      own_sum <- sum_to[cbind(seq_len(b), grp_block)] -
-        ifelse(self_ok, self_dist, 0)
-      own_cnt <- cnt_to[cbind(seq_len(b), grp_block)] -
-        as.integer(self_ok)
-      
-      a <- numeric(b)
-      ok_a <- (sizes[grp_block] > 1) & (own_cnt > 0)
-      a[ok_a] <- own_sum[ok_a] / own_cnt[ok_a]
-      a[!is.finite(a)] <- 0
-      
-      means <- sum_to / pmax(cnt_to, 1)
-      means[cnt_to == 0] <- NA_real_
-      means[cbind(seq_len(b), grp_block)] <- NA_real_
-      
-      bval <- row_mins(as.matrix(means))
-      bval[!is.finite(bval)] <- 0
-      
-      den <- pmax(a, bval)
-      ifelse(den == 0, 0, (bval - a) / den)
-      
-    }, error = function(e) {
-      # Worker failure fallback: return NA for this batch
-      rep(NA_real_, length(src))
-    })
+    tryCatch(
+      {
+        b <- length(src)
+
+        D <- igraph::distances(
+          graph,
+          v = src,
+          to = igraph::V(graph),
+          weights = weights,
+          mode = mode,
+          algorithm = "dijkstra"
+        )
+
+        finite <- is.finite(D)
+        D0 <- D
+        D0[!finite] <- 0
+
+        sum_to <- D0 %*% M
+        cnt_to <- (finite * 1) %*% M
+
+        grp_block <- grp[src]
+
+        self_dist <- D[cbind(seq_len(b), src)]
+        self_ok <- is.finite(self_dist)
+
+        own_sum <- sum_to[cbind(seq_len(b), grp_block)] -
+          ifelse(self_ok, self_dist, 0)
+        own_cnt <- cnt_to[cbind(seq_len(b), grp_block)] -
+          as.integer(self_ok)
+
+        a <- numeric(b)
+        ok_a <- (sizes[grp_block] > 1) & (own_cnt > 0)
+        a[ok_a] <- own_sum[ok_a] / own_cnt[ok_a]
+        a[!is.finite(a)] <- 0
+
+        means <- sum_to / pmax(cnt_to, 1)
+        means[cnt_to == 0] <- NA_real_
+        means[cbind(seq_len(b), grp_block)] <- NA_real_
+
+        bval <- row_mins(as.matrix(means))
+        bval[!is.finite(bval)] <- 0
+
+        den <- pmax(a, bval)
+        ifelse(den == 0, 0, (bval - a) / den)
+      },
+      error = function(e) {
+        # Worker failure fallback: return NA for this batch
+        rep(NA_real_, length(src))
+      }
+    )
   }
-  
+
   # -------------------------------
   # Build batches
   # -------------------------------
   starts <- seq.int(1L, n, by = batch_size)
   batches <- lapply(starts, function(st) st:min(n, st + batch_size - 1L))
-  
+
   # -------------------------------
   # Parallel execution via rxExec
   # -------------------------------
@@ -204,13 +211,12 @@ silhouette_coefficient_batched <- function(
     mode = mode,
     packagesToLoad = c("igraph", "Matrix", "matrixStats")
   )
-  
+
   # -------------------------------
   # Combine results
   # -------------------------------
   mean(unlist(results), na.rm = TRUE)
 }
-
 
 
 # -----------------------------------------------------------------------------
@@ -240,7 +246,11 @@ internal_density <- function(graph, membership) {
     n <- length(members)
 
     # Maximum possible edges differs for directed vs. undirected graphs
-    possible_edges <- if (igraph::is_directed(graph)) n * (n - 1) else (n * (n - 1)) / 2
+    possible_edges <- if (igraph::is_directed(graph)) {
+      n * (n - 1)
+    } else {
+      (n * (n - 1)) / 2
+    }
 
     density_scores[i] <- internal_edges / possible_edges
   }
@@ -309,7 +319,14 @@ conductance <- function(graph, membership) {
 # --- Walktrap ---
 # steps = 6 gives a balance between short (local) and long (global) random walks.
 # Longer walks merge more communities; shorter walks fragment more.
-community_walktrap <- cluster_walktrap(g, weights = E(g)$weight, steps = 6, merges = TRUE, modularity = TRUE, membership = TRUE)
+community_walktrap <- cluster_walktrap(
+  g,
+  weights = E(g)$weight,
+  steps = 9,
+  merges = TRUE,
+  modularity = TRUE,
+  membership = TRUE
+)
 membership_walktrap <- membership(community_walktrap)
 
 # --- Louvain ---
@@ -364,28 +381,28 @@ membership_leiden <- membership(community_leiden)
 # Modularity: measures strength of community structure vs. a random null model
 # (higher is better; range -0.5 to 1)
 mod_walktrap <- modularity(g, membership_walktrap)
-mod_louvain  <- modularity(g_undir, membership_louvain)  # must use the undirected graph Louvain ran on
-mod_leiden   <- modularity(as_undirected(g), membership_leiden)
+mod_louvain <- modularity(g_undir, membership_louvain) # must use the undirected graph Louvain ran on
+mod_leiden <- modularity(as_undirected(g), membership_leiden)
 
 # Conductance: fraction of edge flow leaving each community (lower is better)
 cond_walktrap <- conductance(g, membership_walktrap)
-cond_louvain  <- conductance(g_undir, membership_louvain)
-cond_leiden   <- conductance(as_undirected(g), membership_leiden)
+cond_louvain <- conductance(g_undir, membership_louvain)
+cond_leiden <- conductance(as_undirected(g), membership_leiden)
 
 # Internal density: how tightly connected each community is internally (higher is better)
 dens_walktrap <- internal_density(g, membership_walktrap)
-dens_louvain  <- internal_density(g, membership_louvain)
-dens_leiden   <- internal_density(g, membership_leiden)
+dens_louvain <- internal_density(g, membership_louvain)
+dens_leiden <- internal_density(g, membership_leiden)
 
 # Silhouette: node-level cohesion vs. separation, aggregated to algorithm level
 # (higher / less negative is better; batched version used for memory efficiency)
 tic()
 #sil_walktrap <- silhouette_coefficient_batched(g, membership_walktrap, mode = 'all', batch_size = 1024)
-sil_walktrap <- silhouette_coefficient(g, membership_walktrap, E(g)$weight)  # small enough to run the naive version)
+sil_walktrap <- silhouette_coefficient(g, membership_walktrap, E(g)$weight) # small enough to run the naive version)
 toc()
 tic()
 #sil_louvain  <- silhouette_coefficient_batched(g, membership_louvain,  mode = 'all', batch_size = 1024)
-sil_louvain <- silhouette_coefficient(g, membership_louvain, E(g)$weight)  # small enough to run the naive version)
+sil_louvain <- silhouette_coefficient(g, membership_louvain, E(g)$weight) # small enough to run the naive version)
 toc()
 tic()
 #sil_leiden   <- silhouette_coefficient_batched(g, membership_leiden,   mode = 'all', batch_size = 1024)
@@ -397,12 +414,12 @@ toc()
 # =============================================================================
 
 results <- data.frame(
-  Algorithm        = c('Walktrap', 'Louvain', 'Leiden'),
-  Modularity       = c(mod_walktrap,  mod_louvain,  mod_leiden),
-  Conductance      = c(cond_walktrap, cond_louvain, cond_leiden),
+  Algorithm = c('Walktrap', 'Louvain', 'Leiden'),
+  Modularity = c(mod_walktrap, mod_louvain, mod_leiden),
+  Conductance = c(cond_walktrap, cond_louvain, cond_leiden),
   Internal_Density = c(dens_walktrap, dens_louvain, dens_leiden),
-  Silhouette       = c(sil_walktrap,  sil_louvain,  sil_leiden),
-  Num_Communities  = c(
+  Silhouette = c(sil_walktrap, sil_louvain, sil_leiden),
+  Num_Communities = c(
     length(unique(membership_walktrap)),
     length(unique(membership_louvain)),
     length(unique(membership_leiden))
@@ -422,7 +439,6 @@ datatable(results)
 #   Num_Communities  = c(5468, 44, 24)
 # )
 
-
 # =============================================================================
 # 4. RANK ALGORITHMS
 # =============================================================================
@@ -438,32 +454,44 @@ datatable(results)
 # matters more; for user-segmentation, silhouette may be more relevant).
 # =============================================================================
 
-rank_results <- function(results,
-                         weights = c(Modularity       = 0.25,
-                                     Conductance      = 0.25,
-                                     Internal_Density = 0.25,
-                                     Silhouette       = 0.25),
-                         ties.method = "average") {
-
+rank_results <- function(
+  results,
+  weights = c(
+    Modularity = 0.25,
+    Conductance = 0.25,
+    Internal_Density = 0.25,
+    Silhouette = 0.25
+  ),
+  ties.method = "average"
+) {
   ranked <- results
 
   # Assign per-metric ranks: rank() returns 1 for the best value
   # Negate metrics where higher is better so rank() still gives 1 to the best
-  ranked$Rank_Modularity       <- rank(-ranked$Modularity,        ties.method = ties.method)
-  ranked$Rank_Conductance      <- rank( ranked$Conductance,        ties.method = ties.method)  # lower is better
-  ranked$Rank_Internal_Density <- rank(-ranked$Internal_Density,  ties.method = ties.method)
-  ranked$Rank_Silhouette       <- rank(-ranked$Silhouette,         ties.method = ties.method)  # higher (less negative) is better
+  ranked$Rank_Modularity <- rank(-ranked$Modularity, ties.method = ties.method)
+  ranked$Rank_Conductance <- rank(ranked$Conductance, ties.method = ties.method) # lower is better
+  ranked$Rank_Internal_Density <- rank(
+    -ranked$Internal_Density,
+    ties.method = ties.method
+  )
+  ranked$Rank_Silhouette <- rank(-ranked$Silhouette, ties.method = ties.method) # higher (less negative) is better
 
   # Normalise weights to sum to 1 in case the caller passes unnormalised values
-  weights <- weights[c("Modularity", "Conductance", "Internal_Density", "Silhouette")]
+  weights <- weights[c(
+    "Modularity",
+    "Conductance",
+    "Internal_Density",
+    "Silhouette"
+  )]
   weights <- weights / sum(weights)
 
   # Weighted composite rank score — lower total score → better overall algorithm
   ranked$Total_Rank_Score <-
-    weights["Modularity"]       * ranked$Rank_Modularity +
-    weights["Conductance"]      * ranked$Rank_Conductance +
+    weights["Modularity"] *
+    ranked$Rank_Modularity +
+    weights["Conductance"] * ranked$Rank_Conductance +
     weights["Internal_Density"] * ranked$Rank_Internal_Density +
-    weights["Silhouette"]       * ranked$Rank_Silhouette
+    weights["Silhouette"] * ranked$Rank_Silhouette
 
   # Translate composite score into a final ordinal rank (1 = best overall)
   ranked$Final_Rank <- rank(ranked$Total_Rank_Score, ties.method = ties.method)
@@ -481,7 +509,12 @@ datatable(ranked_table)
 # distinct from each other (e.g., for targeted content or audience segmentation).
 ranked_table_weighted <- rank_results(
   results,
-  weights = c(Modularity = 0.20, Conductance = 0.35, Internal_Density = 0.15, Silhouette = 0.30)
+  weights = c(
+    Modularity = 0.20,
+    Conductance = 0.35,
+    Internal_Density = 0.15,
+    Silhouette = 0.30
+  )
 )
 datatable(ranked_table_weighted)
 
@@ -495,10 +528,9 @@ datatable(ranked_table_weighted)
 output_path <- "misc/ranked_table_weighted.csv"
 write.table(
   ranked_table_weighted,
-  file      = output_path,
-  sep       = ",",
-  col.names = !file.exists(output_path),  # write header only if file is new
+  file = output_path,
+  sep = ",",
+  col.names = !file.exists(output_path), # write header only if file is new
   row.names = FALSE,
-  append    = TRUE
+  append = TRUE
 )
-
