@@ -21,6 +21,10 @@ if (!exists("num_posts") || is.null(num_posts)) {
 }
 # Load the graph and separate its vertex and edge attributes into data frames.
 g <- get_graph_data(num_posts)
+ig_comp <- igraph::components(g) # Connected components
+g1_v <- ig_comp$membership == 1
+g1 <- induced_subgraph(g, g1_v)
+g <- g1
 nodes <- igraph::as_data_frame(g, what = "vertices")
 edges <- igraph::as_data_frame(g, what = "edges")
 
