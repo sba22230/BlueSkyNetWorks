@@ -421,6 +421,7 @@ centrality_df <- rxExec(
     ig_comp <- igraph::components(g) # Connected components
     g1_v <- ig_comp$membership == 1
     g1 <- induced_subgraph(g, g1_v)
+    g <- g1
 
     pr <- page_rank(g, directed = TRUE)$vector
     bet <- betweenness(g, directed = TRUE)
@@ -433,10 +434,10 @@ centrality_df <- rxExec(
     hits <- hits_scores(g, scale = FALSE)
     hits_norm <- hits_scores(g, scale = TRUE)
     comm <- cluster_leiden(
-      as_undirected(g1),
+      as_undirected(g),
       objective_function = 'modularity',
       n_iterations = 90,
-      initial_membership = V(g1)$community,
+      initial_membership = V(g)$community,
       resolution = 1
     )
     local_clustering <- transitivity(
