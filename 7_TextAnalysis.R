@@ -490,7 +490,7 @@ global_dtm <- tidy_posts |>
 
 # Fit a reproducible five-topic global LDA model. The seed ensures that repeated
 # runs use the same random starting state when the input data are unchanged.
-global_lda <- LDA(global_dtm, k = 5, control = list(seed = 7843))
+global_lda <- LDA(global_dtm, k = 5, control = list(seed = 22230))
 
 # Create a lookup from each document ID to its community. The LDA gamma output
 # is keyed by document, so this lookup is needed to aggregate topic proportions
