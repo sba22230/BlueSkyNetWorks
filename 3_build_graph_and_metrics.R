@@ -613,11 +613,50 @@ for (i in seq_len(n_comm)) {
 }
 
 # ── 4. Worker: renders and saves one SVG ─────────────────────────────────────
+ensure_valid_igraph_layout <- function(coords, graph, layout_name) {
+  is_valid <- function(candidate) {
+    is.matrix(candidate) &&
+      is.numeric(candidate) &&
+      nrow(candidate) == igraph::vcount(graph) &&
+      nrow(candidate) > 0L &&
+      ncol(candidate) == 2L &&
+      all(is.finite(candidate))
+  }
+
+  if (!is_valid(coords)) {
+    coords <- tryCatch(
+      igraph::layout_nicely(graph, dim = 2),
+      error = function(e) {
+        stop(
+          sprintf(
+            "Unable to compute valid coordinates for igraph layout '%s': %s",
+            layout_name,
+            conditionMessage(e)
+          ),
+          call. = FALSE
+        )
+      }
+    )
+  }
+
+  if (!is_valid(coords)) {
+    stop(
+      sprintf(
+        "Unable to compute valid coordinates for igraph layout '%s': layout_nicely returned invalid coordinates.",
+        layout_name
+      ),
+      call. = FALSE
+    )
+  }
+
+  coords
+}
+
 render_one_graph <- function(task) {
   library(igraph)
   subg <- task$subg
-  coords <- task$coords
   layout_name <- task$layout_name
+  coords <- ensure_valid_igraph_layout(task$coords, subg, layout_name)
   vsize <- task$vsize
   vcol <- task$vcol
 
@@ -654,7 +693,7 @@ render_one_graph <- function(task) {
 rxExec(
   render_one_graph,
   task = rxElemArg(render_tasks),
-  execObjects = "save_graph_svg",
+  execObjects = c("save_graph_svg", "ensure_valid_igraph_layout"),
   packagesToLoad = c("igraph", "viridis")
 )
 
