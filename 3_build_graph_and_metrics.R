@@ -36,8 +36,8 @@ ig_num_components <- ig_comp$no
 ig_largest_component_size <- max(ig_comp$csize)
 ig_giant_component_pct <- (ig_largest_component_size / ig_network_size) *
   100
-g1_v <- ig_comp$membership == 1
-g1 <- induced_subgraph(g, g1_v)
+#g1_v <- ig_comp$membership == 1
+#g1 <- induced_subgraph(g, g1_v)
 
 # Average local clustering
 ig_avg_local_clustering <- mean(V(g)$local_clustering, na.rm = TRUE)
@@ -94,7 +94,7 @@ cat(
 
 # Convert igraph to statnet
 library(network)
-bluSkynet <- asNetwork(g1)
+bluSkynet <- asNetwork(g)
 if (sql_server_available()) {
   rxWriteObject(
     ds_Graphs,
@@ -341,43 +341,43 @@ cat(sprintf(
 ))
 
 # # Identify small components (all except the largest)
-# bsn_small_ids <- which(bsn_comp$csize < max(bsn_comp$csize))
-# 
+bsn_small_ids <- which(bsn_comp$csize < max(bsn_comp$csize))
+#
 # # Work out a sensible grid layout
-# if (length(bsn_small_ids) > 6) {
-#   n <- 6
-# } else {
-#   n <- length(bsn_small_ids)
-# }
-# 
-# save_graph_svg(
-#   plot_or_expr = function() {
-#     old_par <- par(no.readonly = TRUE)
-#     nrow <- ceiling(sqrt(n))
-#     ncol <- ceiling(n / nrow)
-#     par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
-# 
-#     for (idx in seq_len(n)) {
-#       comp_id <- bsn_small_ids[idx]
-#       verts <- which(bsn_comp$membership == comp_id)
-#       subg <- get.inducedSubgraph(bluSkynet, verts)
-# 
-#       gplot(
-#         subg,
-#         gmode = "digraph",
-#         mode = "fruchtermanreingold",
-#         main = paste("Component", comp_id, "-", length(verts), "nodes"),
-#         vertex.cex = 1.2,
-#         label.cex = 0.7,
-#         arrowhead.cex = 0.3
-#       )
-#     }
-# 
-#     par(old_par)
-#   },
-#   folder = "images",
-#   filename = "sna_small_components.svg"
-# )
+if (length(bsn_small_ids) > 6) {
+  n <- 6
+} else {
+  n <- length(bsn_small_ids)
+}
+#
+save_graph_svg(
+  plot_or_expr = function() {
+    old_par <- par(no.readonly = TRUE)
+    nrow <- ceiling(sqrt(n))
+    ncol <- ceiling(n / nrow)
+    par(mfrow = c(nrow, ncol), mar = c(1, 1, 2, 1))
+
+    for (idx in seq_len(n)) {
+      comp_id <- bsn_small_ids[idx]
+      verts <- which(bsn_comp$membership == comp_id)
+      subg <- get.inducedSubgraph(bluSkynet, verts)
+      #
+      gplot(
+        subg,
+        gmode = "digraph",
+        mode = "fruchtermanreingold",
+        main = paste("Component", comp_id, "-", length(verts), "nodes"),
+        vertex.cex = 1.2,
+        label.cex = 0.7,
+        arrowhead.cex = 0.3
+      )
+    }
+    #
+    par(old_par)
+  },
+  folder = "images",
+  filename = "sna_small_components.svg"
+)
 
 # ============================================================================
 # SECTION 4: Computing remaining node Metrics using Statnet
@@ -443,9 +443,9 @@ kcore_vals <- sna::kcores(bluSkynet)
 cat("\n=== Step 3n: k-core decomposition computed ===\n")
 
 # align numeric vectors to node order
-node_keys <- as.character(V(g1)$name)
+node_keys <- as.character(V(g)$name)
 library(tidygraph)
-nodes_df <- as_tbl_graph(g1) %>%
+nodes_df <- as_tbl_graph(g) %>%
   activate(nodes) %>%
   as_tibble()
 
@@ -666,26 +666,25 @@ coords_drl <- res_g[[1]]
 # Convert layout to numeric matrix
 xy <- as.matrix(coords_drl[, c("x", "y")])
 metrics <- list(
-  pagerank    = setNames(nodes$pagerank, nodes$name),
+  pagerank = setNames(nodes$pagerank, nodes$name),
   eigenvector_centrality = setNames(nodes$eigenvector_centrality, nodes$name),
   hub_score = setNames(nodes$hub_score, nodes$name),
   authority_score = setNames(nodes$authority_score, nodes$name),
   local_clustering = setNames(nodes$local_clustering, nodes$name),
-  kcore     = setNames(nodes$kcore, nodes$name),
+  kcore = setNames(nodes$kcore, nodes$name),
   modularity = setNames(nodes$modularity, nodes$name),
   influence_score = setNames(nodes$influence_score, nodes$name),
-  in_degree      = setNames(nodes$in_degree, nodes$name),
-  out_degree     = setNames(nodes$out_degree, nodes$name),
-  total_degree   = setNames(nodes$total_degree, nodes$name),
+  in_degree = setNames(nodes$in_degree, nodes$name),
+  out_degree = setNames(nodes$out_degree, nodes$name),
+  total_degree = setNames(nodes$total_degree, nodes$name),
   betweenness = setNames(nodes$betweenness, nodes$name),
-  closeness   = setNames(nodes$closeness, nodes$name),
+  closeness = setNames(nodes$closeness, nodes$name),
   reposts_made = setNames(nodes$reposts_made, nodes$name),
   reposts_received = setNames(nodes$reposts_received, nodes$name),
   total_likes_on_posts = setNames(nodes$total_likes_on_posts, nodes$name)
 )
 
 for (metric_name in names(metrics)) {
-  
   plot_top_nodes(
     g = g,
     scores = metrics[[metric_name]],
@@ -694,7 +693,6 @@ for (metric_name in names(metrics)) {
     title = paste("Top", metric_name, "nodes"),
     filename = paste0("TopNodes_", metric_name, ".svg")
   )
-  
 }
 # rxWriteObject(
 #   ds_Graphs,
@@ -934,4 +932,3 @@ tobermvd <- c(
 )
 rm(list = tobermvd)
 gc()
-
