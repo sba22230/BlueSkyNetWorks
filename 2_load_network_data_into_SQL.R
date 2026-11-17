@@ -418,10 +418,10 @@ centrality_df <- rxExec(
       remove.loops = TRUE,
       edge.attr.comb = list("first")
     )
-    ig_comp <- igraph::components(g) # Connected components
-    g1_v <- ig_comp$membership == 1
-    g1 <- induced_subgraph(g, g1_v)
-    g <- g1
+    #ig_comp <- igraph::components(g) # Connected components
+    #g1_v <- ig_comp$membership == 1
+    #g1 <- induced_subgraph(g, g1_v)
+    #g <- g1
 
     pr <- page_rank(g, directed = TRUE)$vector
     bet <- betweenness(g, directed = TRUE)
