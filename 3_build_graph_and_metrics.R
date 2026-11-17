@@ -512,20 +512,19 @@ write_csv2(
 )
 
 ### These will be useful for a notebook === FINISH
-rxSetComputeContext("localpar")
 cat(
   "\n=== Step 3p: igraph layouts: Computing different layouts for igraph ===\n"
 )
 
 layout_types <- c(
-  "drl_fast",
+  "drl_fast"#,
   #,"drl"
   #,"fr"
   #"graphopt",
   #,"lgl"
   #,"kk"
   #,"mds"
-  "nicely"
+  #"nicely"
   #,"tree"
 )
 
