@@ -14,6 +14,11 @@ source(here::here("0_functions.R"))
 
 # Set a reproducible seed for any sampling performed while loading the graph.
 set.seed(22230)
+num_posts <- nrow(read_parquet(project_path(
+  "docs",
+  "graphs",
+  "speirgorm_edges.parquet"
+)))
 # Use 1,000 posts by default, while allowing a previously defined `num_posts`
 # value to control the analysis when the script is run interactively.
 if (!exists("num_posts") || is.null(num_posts)) {
@@ -385,7 +390,7 @@ community_topics |>
   scale_fill_gradient(low = "white", high = "steelblue") +
   labs(
     title = "Dominant term per LDA topic by community",
-    subtitle = "Top 6 communities by document count — one unique term per topic",
+    subtitle = "Top 6 communities by document count — unique term per topic",
     x = NULL,
     y = NULL,
     fill = "Beta"
@@ -393,14 +398,13 @@ community_topics |>
   theme_minimal()
 
 if (sql_server_available()) {
-  
-community_sql <- RxSqlServerData(
-  table = "communityTopics",
-  connectionString = connStr
-)
-# Export the complete top-term table, including communities and terms not shown
-# in the six-community heatmap, to the SQL Server table.
-rxDataStep(community_topics, community_sql, overwrite = TRUE)
+  community_sql <- RxSqlServerData(
+    table = "communityTopics",
+    connectionString = connStr
+  )
+  # Export the full top-term table, including communities and terms not shown
+  # in the six-community heatmap, to the SQL Server table.
+  rxDataStep(community_topics, community_sql, overwrite = TRUE)
 }
 # --- Gamma: mean document-topic proportion per community ---------------------
 # Gamma is the proportion of each document assigned to each topic. This section
@@ -494,7 +498,11 @@ community_gamma |>
   ) +
   labs(
     title = "Community-level topic concentration (gamma)",
-    subtitle = "Mean document-topic proportion — topics labelled by dominant terms\n(Note: topics fitted independently per community; labels are approximate)",
+    subtitle = paste(
+      "Mean document-topic proportion — topics labelled by dominant terms",
+      "(Note: topics fitted independently per community; labels are approximate)",
+      sep = "\n"
+    ),
     x = NULL,
     y = "Community",
     fill = "Mean γ"
@@ -584,7 +592,9 @@ global_gamma |>
   ) +
   labs(
     title = "Community-level topic concentration — global LDA",
-    subtitle = "Mean document-topic proportion (gamma) from a single corpus-wide model",
+    subtitle = paste(
+      "Mean document-topic proportion (gamma) from a single corpus-wide model"
+    ),
     x = NULL,
     y = "Community",
     fill = "Mean γ"
@@ -851,7 +861,10 @@ ggplot(comparison, aes(x = cosine, y = inter_density)) +
   labs(
     title = "Topic similarity vs. inter-community edge density",
     subtitle = sprintf(
-      "Top 30 communities by size · Spearman ρ = %.3f (all pairs), %.3f (edges only)",
+      paste0(
+        "Top 30 communities by size · Spearman ρ = %.3f (all pairs), ",
+        "%.3f (edges only)"
+      ),
       cor_all,
       cor_edge
     ),
@@ -941,4 +954,3 @@ p_edge <- ggplot(
 
 # Stack the two heatmaps vertically for visual comparison using patchwork.
 p_cos / p_edge
-
