@@ -261,19 +261,49 @@ build_dtm <- function(word_counts, max_df = 0.3) {
     tidytext::cast_dtm(document, word, n)
 }
 
-# Fit one five-topic model per valid community. Each model receives only that
-# community's documents, so its topics describe within-community vocabulary.
-lda_models <- valid_communities |>
-  # Preserve community IDs as names on the resulting list of models.
+# Build each community's filtered DTM before fitting. Document-frequency
+# filtering can leave a community with too few documents or terms for five topics.
+community_dtms <- valid_communities |>
+  # Preserve community IDs as names on the resulting list of matrices.
   set_names() |>
   map(\(comm) {
-    # Count words within documents belonging to the current community, then
-    # apply the same document-frequency filtering used by every model.
-    dtm <- tidy_posts |>
+    tidy_posts |>
       filter(community == comm) |>
       count(document, word) |>
       build_dtm()
-    # Fit five topics and use a fixed seed for reproducible model initialization.
+  })
+
+# Preserve the original ten-document minimum after filtering and require at
+# least one term per requested topic.
+has_valid_dtm <- map_lgl(
+  community_dtms,
+  \(dtm) nrow(dtm) >= 10L && ncol(dtm) >= 5L
+)
+skipped_communities <- names(community_dtms)[!has_valid_dtm]
+if (length(skipped_communities)) {
+  message(
+    "Skipping communities with fewer than 10 retained documents or 5 terms ",
+    "after document-frequency filtering: ",
+    paste(skipped_communities, collapse = ", ")
+  )
+}
+community_dtms <- community_dtms[has_valid_dtm]
+# Keep downstream community summaries aligned with the models that were fitted.
+valid_communities <- valid_communities[has_valid_dtm]
+if (!length(community_dtms)) {
+  stop(
+    paste(
+      "No communities have at least 10 retained documents and 5 terms",
+      "after document-frequency filtering."
+    ),
+    call. = FALSE
+  )
+}
+
+# Fit one five-topic model per viable community using its filtered DTM.
+lda_models <- community_dtms |>
+  map(\(dtm) {
+    # Fit five topics with a fixed seed for reproducibility.
     LDA(dtm, k = 5, method = "Gibbs", control = list(seed = 22230))
   })
 
