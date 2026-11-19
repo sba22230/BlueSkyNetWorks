@@ -372,30 +372,34 @@ pick_unique_terms <- function(df) {
 # community, and reshape labels for plotting. Each tile represents one topic
 # within one community; the text shows that topic's selected representative
 # term and the fill shows its beta value.
-community_topics |>
-  filter(community %in% top6_comms) |>
-  group_by(community) |>
-  # `group_modify()` calls the helper independently for each community.
-  group_modify(~ pick_unique_terms(.x)) |>
-  ungroup() |>
-  mutate(
-    community = factor(paste("Comm", community)),
-    topic = paste("Topic", topic)
-  ) |>
-  # Draw one tile per community-topic combination and print the representative
-  # term on top of the tile.
-  ggplot(aes(x = topic, y = community, fill = beta)) +
-  geom_tile(color = "white") +
-  geom_text(aes(label = term), size = 3) +
-  scale_fill_gradient(low = "white", high = "steelblue") +
-  labs(
-    title = "Dominant term per LDA topic by community",
-    subtitle = "Top 6 communities by document count — unique term per topic",
-    x = NULL,
-    y = NULL,
-    fill = "Beta"
-  ) +
-  theme_minimal()
+save_graph_svg(
+  plot_or_expr = community_topics |>
+    filter(community %in% top6_comms) |>
+    group_by(community) |>
+    # `group_modify()` calls the helper independently for each community.
+    group_modify(~ pick_unique_terms(.x)) |>
+    ungroup() |>
+    mutate(
+      community = factor(paste("Comm", community)),
+      topic = paste("Topic", topic)
+    ) |>
+    # Draw one tile per community-topic combination and print the representative
+    # term on top of the tile.
+    ggplot(aes(x = topic, y = community, fill = beta)) +
+    geom_tile(color = "white") +
+    geom_text(aes(label = term), size = 3) +
+    scale_fill_gradient(low = "white", high = "steelblue") +
+    labs(
+      title = "Dominant term per LDA topic by community",
+      subtitle = "Top 6 communities by document count — unique term per topic",
+      x = NULL,
+      y = NULL,
+      fill = "Beta"
+    ) +
+    theme_minimal(),
+  filename = "community_topics.svg",
+  folder = "images"
+)
 
 if (sql_server_available()) {
   community_sql <- RxSqlServerData(
@@ -654,26 +658,27 @@ community_sentiment_nrc_wide <- tidy_posts |>
 # Define the individual NRC emotions used in the profile plot. The aggregate
 # positive and negative categories are deliberately left out.
 emotions <- c(
-  "anger",
-  "anticipation",
-  "disgust",
-  "fear",
+  "trust",
   "joy",
-  "sadness",
+  "anticipation",
   "surprise",
-  "trust"
+  "sadness",
+  "fear",
+  "disgust",
+  "anger"
 )
+
 
 # Use a stable, named color for each emotion so the meaning is consistent across
 # the plot and any later visualisations that reuse this palette.
 emotion_palette <- c(
   anger = "#d62728",
-  anticipation = "#ff7f0e",
   disgust = "#8c564b",
   fear = "#9467bd",
-  joy = "#2ca02c",
   sadness = "#1f77b4",
   surprise = "#17becf",
+  anticipation = "#ff7f0e",
+  joy = "#2ca02c",
   trust = "#bcbd22"
 )
 
@@ -756,7 +761,7 @@ top_comms_focal <- comm_sizes_tbl |>
   filter(community %in% shared_comms) |>
   # Focus the comparison on the 30 largest eligible communities so the plot
   # remains interpretable and is less dominated by very small groups.
-  slice_max(size, n = 30) |>
+  slice_max(size, n = 20) |>
   pull(community)
 
 # --- Cosine similarity of global gamma profiles ------------------------------
