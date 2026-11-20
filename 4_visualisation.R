@@ -13,7 +13,7 @@ g <- get_graph_data(num_posts)
 # break into one component graph 
 ig_comp <- igraph::components(g) # Connected components
 g1_v <- ig_comp$membership == 1
-g1 <- induced_subgraph(g, g1_v)
+g1 <- igraph::induced_subgraph(g, g1_v)
 g <- g1
 
 nodes <- igraph::as_data_frame(g, what = "vertices")
@@ -21,7 +21,7 @@ edges <- igraph::as_data_frame(g, what = "edges")
 
 cat("\n===  Step 4a: Interactive visualization with visNetwork ===")
 vis_nodes <- nodes |>
-  mutate(
+  dplyr::mutate(
     id = name,
     label = name,
     # hover tooltip
@@ -30,10 +30,10 @@ vis_nodes <- nodes |>
     # size by repost_count # nolint: line_length_linter.
     group = name
   ) |>
-  distinct(id, .keep_all = TRUE)
+  dplyr::distinct(id, .keep_all = TRUE)
 
 vis_nodes <- vis_nodes |>
-  mutate(
+  dplyr::mutate(
     title = paste0(
       "<b>",
       name,
@@ -53,23 +53,23 @@ vis_nodes <- vis_nodes |>
   )
 
 vis_edges <- edges |>
-  mutate(arrows = "from")
+  dplyr::mutate(arrows = "from")
 # add arrow pointing to the reposter node
 
 # Build igraph object from edges
-vis_g <- graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
+vis_g <- igraph::graph_from_data_frame(vis_edges, vertices = vis_nodes, directed = TRUE)
 
 # Compute degree for each node # TBD: use the precomputed degree from SQL if available
 deg <- igraph::degree(vis_g, mode = "all")
 
 # Add degree to vis_nodes
 vis_nodes <- vis_nodes |>
-  mutate(degree = deg[id])
+  dplyr::mutate(degree = deg[id])
 
 # Sort IDs by degree (descending)
 sorted_ids <- vis_nodes |>
-  arrange((name)) |>
-  pull(id)
+  dplyr::arrange((name)) |>
+  dplyr::pull(id)
 
 cat("\n===  Step 4b: Load precomputed 'nicely' layout coordinates from SQL ===")
 # --- Load precomputed 'nicely' layout coordinates from SQL ---
@@ -123,7 +123,7 @@ scaled_z <- min_coord_range +
     (max(vis_nodes$reposts_made) - min(vis_nodes$reposts_made))) *
     (max_coord_range - min_coord_range)
 vis_nodes$z <- scaled_z
-top_nodes <- vis_nodes |> arrange(desc(degree)) |> slice(1:50) |> pull(id)
+top_nodes <- vis_nodes |> dplyr::arrange(dplyr::desc(degree)) |> dplyr::slice(1:50) |> dplyr::pull(id)
 vis_nodes$label <- ifelse(vis_nodes$id %in% top_nodes, vis_nodes$label, NA)
 plan(orig_plan)
 # Community detection -- now done in SQL code
@@ -134,8 +134,9 @@ plan(orig_plan)
 
 # Redefine isolated as degree below 10th percentile, since degree==0 is impossible
 # in an edge-list-derived graph (all nodes have at least one edge by definition)
-degree_p10 <- quantile(vis_nodes$degree, 0.10, na.rm = TRUE)
-vis_nodes$isolated <- vis_nodes$degree <= degree_p10
+# decided to use closeness_norm to highlight nodes that are not well connected to the rest of the graph
+degree_p10 <- quantile(vis_nodes$closeness_norm, 0.10, na.rm = TRUE)
+vis_nodes$isolated <- vis_nodes$closeness_norm <= degree_p10
 if (sql_server_available()) {
   rxWriteObject(
     ds_Graphs,
@@ -321,7 +322,7 @@ community_labels <- community_analysis |>
 cat("\n===  Step 4e: COMMUNITY LABELS & TYPES ===")
 datatable(slice(community_labels, 1:10))
 
-# Print community members for inspection
+# Print community members for inspection - put this into something
 cat("\n===  Step 4f: COMMUNITY MEMBERSHIP BREAKDOWN ===\n")
 for (comm_id in sort(unique(vis_nodes$community))) {
   members <- vis_nodes |>
