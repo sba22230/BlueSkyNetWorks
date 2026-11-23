@@ -56,7 +56,7 @@ layout_types <- c(
   "drl_fast",
   "drl",
   "fr",
-  #"graphopt",
+  "graphopt",
   "lgl",
   "kk",
   #,"mds"
@@ -250,7 +250,7 @@ cat(sprintf(
 ### TODO ; tidy up the community analysis - too many datatables with similiar infromation ###
 
 # Community statistics (size, internal density, external connections)
-community_stats <- nodes |>
+community_stats <- vis_nodes |>
   group_by(community) |>
   summarise(
     community_size = n(),

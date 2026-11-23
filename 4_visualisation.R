@@ -73,6 +73,7 @@ sorted_ids <- vis_nodes |>
 
 cat("\n===  Step 4b: Load precomputed 'nicely' layout coordinates from SQL ===")
 # --- Load precomputed 'nicely' layout coordinates from SQL ---
+if (sql_server_available()) {
 res_g <- tryCatch(
   rxReadObject(ds_Graphs, "layout_exec_results"),
   error = function(e) {
@@ -80,6 +81,7 @@ res_g <- tryCatch(
     NULL
   }
 )
+}
 
 if (is.null(res_g) || length(res_g) == 0) {
   stop(
