@@ -254,11 +254,13 @@ community_stats <- vis_nodes |>
   group_by(community) |>
   summarise(
     community_size = n(),
+    label = first(community_label),
     # rough estimate
     internal_edges = sum(in_degree[name %in% name], na.rm = TRUE) / 2,
     avg_internal_degree = mean(in_degree + out_degree, na.rm = TRUE),
     avg_pagerank = mean(pagerank, na.rm = TRUE),
     avg_authority = mean(authority_score, na.rm = TRUE),
+    
     .groups = "drop"
   ) |>
   arrange(desc(community_size))
