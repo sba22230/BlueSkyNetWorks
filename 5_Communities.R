@@ -164,7 +164,7 @@ plot_community_svg <- function(entry, pal, save_graph_svg) {
 
 # Plot all communities in parallel — one SVG per community
 rxExec(
-  FUN = plot_community_svg,
+  FUN = plot_community_svg, # change this function to plot one graph, sentiment, word plot, and degree 
   entry = rxElemArg(community_layouts),
   pal = pal,
   save_graph_svg = save_graph_svg,
