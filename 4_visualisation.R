@@ -777,7 +777,7 @@ tobermvd <- c(
   'nodes_with_metrics',
   'vis_edges',
   'vis_g',
-  'vis_nodes',
+  #'vis_nodes',
   'gtn',
   'gto'
 )
