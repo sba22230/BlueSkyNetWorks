@@ -25,7 +25,7 @@ DECLARE @RowsInserted AS INT = 1;
 WHILE @RowsInserted > 0
     BEGIN
         WITH Batch
-        AS   (SELECT   TOP (100) *
+        AS   (SELECT   TOP (200) *
               FROM     #todo
               WHERE NOT EXISTS
                       (
